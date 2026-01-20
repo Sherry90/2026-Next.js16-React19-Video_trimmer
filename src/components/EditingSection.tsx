@@ -7,7 +7,6 @@ import { FRAME_STEP, SECOND_STEP } from '@/constants/keyboardShortcuts';
 import { VideoPlayerProvider } from '@/features/player/context/VideoPlayerContext';
 import { VideoPlayerView } from '@/features/player/components/VideoPlayerView';
 import { TimelineEditor } from '@/features/timeline/components/TimelineEditor';
-import { ExportButton } from '@/features/export/components/ExportButton';
 import { useStore } from '@/stores/useStore';
 
 export function EditingSection() {
@@ -62,7 +61,6 @@ export function EditingSection() {
   }, [outPoint, seek]);
 
   const handlePreviewMode = useCallback(() => {
-    // 미리보기: in point로 이동하고 재생 시작
     seek(inPoint);
     togglePlay();
   }, [inPoint, seek, togglePlay]);
@@ -91,11 +89,31 @@ export function EditingSection() {
 
   return (
     <VideoPlayerProvider value={videoPlayerValue}>
-      <div className="space-y-8">
-        <VideoPlayerView videoRef={videoRef} />
-        <TimelineEditor />
-        <div className="flex justify-center">
-          <ExportButton />
+      <div style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+      }}>
+        {/* Video Player Area */}
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px',
+        }}>
+          <VideoPlayerView videoRef={videoRef} />
+        </div>
+
+        {/* Timeline - Fixed at bottom, 250px height */}
+        <div style={{
+          height: '250px',
+          minHeight: '250px',
+          backgroundColor: '#101114',
+          borderTop: '1px solid #000000',
+        }}>
+          <TimelineEditor />
         </div>
       </div>
     </VideoPlayerProvider>

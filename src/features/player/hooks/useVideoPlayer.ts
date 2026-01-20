@@ -16,7 +16,6 @@ export function useVideoPlayer(options: UseVideoPlayerOptions = {}) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const videoFile = useStore((state) => state.videoFile);
-  const outPoint = useStore((state) => state.timeline.outPoint);
   const setVideoDuration = useStore((state) => state.setVideoDuration);
   const setCurrentTime = useStore((state) => state.setCurrentTime);
   const setIsPlaying = useStore((state) => state.setIsPlaying);
@@ -57,10 +56,11 @@ export function useVideoPlayer(options: UseVideoPlayerOptions = {}) {
         setCurrentTime(currentTime);
         options.onTimeUpdate?.(currentTime);
 
-        // out point에 도달하면 자동 정지
-        if (currentTime >= outPoint && !player.paused()) {
+        // out point에 도달하면 자동 정지 (최신 outPoint 가져오기)
+        const currentOutPoint = useStore.getState().timeline.outPoint;
+        if (currentTime >= currentOutPoint && !player.paused()) {
           player.pause();
-          player.currentTime(outPoint);
+          player.currentTime(currentOutPoint);
         }
       }
     });
@@ -88,7 +88,8 @@ export function useVideoPlayer(options: UseVideoPlayerOptions = {}) {
         playerRef.current = null;
       }
     };
-  }, [videoFile, setVideoDuration, setCurrentTime, setIsPlaying, options]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoFile, setVideoDuration, setCurrentTime, setIsPlaying]);
 
   const play = useCallback(() => {
     playerRef.current?.play();
