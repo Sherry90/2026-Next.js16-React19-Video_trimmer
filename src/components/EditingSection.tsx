@@ -2,7 +2,8 @@
 
 import { useCallback } from 'react';
 import { useVideoPlayer } from '@/features/player/hooks/useVideoPlayer';
-import { useKeyboardShortcuts, FRAME_STEP, SECOND_STEP } from '@/hooks/useKeyboardShortcuts';
+import { useKeyboardShortcuts } from '@/features/timeline/hooks/useKeyboardShortcuts';
+import { FRAME_STEP, SECOND_STEP } from '@/constants/keyboardShortcuts';
 import { VideoPlayerProvider } from '@/features/player/context/VideoPlayerContext';
 import { VideoPlayerView } from '@/features/player/components/VideoPlayerView';
 import { TimelineEditor } from '@/features/timeline/components/TimelineEditor';

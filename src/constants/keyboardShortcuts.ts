@@ -8,6 +8,7 @@ export const KEYBOARD_SHORTCUTS = {
   SET_OUT_POINT: 'o',
   GOTO_IN_POINT: 'Home',
   GOTO_OUT_POINT: 'End',
+  PREVIEW: 'a',
 } as const;
 
 export const KEYBOARD_SHORTCUT_LABELS = {
@@ -20,4 +21,9 @@ export const KEYBOARD_SHORTCUT_LABELS = {
   [KEYBOARD_SHORTCUTS.SET_OUT_POINT]: 'O',
   [KEYBOARD_SHORTCUTS.GOTO_IN_POINT]: 'Home',
   [KEYBOARD_SHORTCUTS.GOTO_OUT_POINT]: 'End',
+  [KEYBOARD_SHORTCUTS.PREVIEW]: 'A',
 } as const;
+
+// 타임라인 탐색 상수
+export const FRAME_STEP = 1 / 30; // 30fps 기준 1프레임
+export const SECOND_STEP = 1; // 1초

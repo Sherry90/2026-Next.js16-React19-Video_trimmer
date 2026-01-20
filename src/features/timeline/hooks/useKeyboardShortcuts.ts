@@ -14,9 +14,6 @@ export interface KeyboardShortcutsConfig {
   onPreviewMode?: () => void;
 }
 
-const FRAME_STEP = 1 / 30; // 30fps 기준 1프레임
-const SECOND_STEP = 1; // 1초
-
 export function useKeyboardShortcuts(config: KeyboardShortcutsConfig) {
   const phase = useStore((state) => state.phase);
 
@@ -105,5 +102,3 @@ export function useKeyboardShortcuts(config: KeyboardShortcutsConfig) {
     };
   }, [handleKeyDown]);
 }
-
-export { FRAME_STEP, SECOND_STEP };
