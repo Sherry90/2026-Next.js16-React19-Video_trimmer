@@ -16,6 +16,7 @@ export function useVideoPlayer(options: UseVideoPlayerOptions = {}) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const videoFile = useStore((state) => state.videoFile);
+  const outPoint = useStore((state) => state.timeline.outPoint);
   const setVideoDuration = useStore((state) => state.setVideoDuration);
   const setCurrentTime = useStore((state) => state.setCurrentTime);
   const setIsPlaying = useStore((state) => state.setIsPlaying);
@@ -55,6 +56,12 @@ export function useVideoPlayer(options: UseVideoPlayerOptions = {}) {
       if (currentTime !== undefined) {
         setCurrentTime(currentTime);
         options.onTimeUpdate?.(currentTime);
+
+        // out point에 도달하면 자동 정지
+        if (currentTime >= outPoint && !player.paused()) {
+          player.pause();
+          player.currentTime(outPoint);
+        }
       }
     });
 

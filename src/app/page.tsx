@@ -8,14 +8,10 @@ import { UploadZone } from '@/features/upload/components/UploadZone';
 import { UploadProgress } from '@/features/upload/components/UploadProgress';
 import { FileValidationError } from '@/features/upload/components/FileValidationError';
 
-// Player feature
-import { VideoPlayer } from '@/features/player/components/VideoPlayer';
-
-// Timeline feature
-import { TimelineEditor } from '@/features/timeline/components/TimelineEditor';
+// Editing section
+import { EditingSection } from '@/components/EditingSection';
 
 // Export feature
-import { ExportButton } from '@/features/export/components/ExportButton';
 import { ExportProgress } from '@/features/export/components/ExportProgress';
 import { DownloadButton } from '@/features/export/components/DownloadButton';
 import { ErrorDisplay } from '@/features/export/components/ErrorDisplay';
@@ -56,15 +52,7 @@ export default function HomePage() {
         <UploadProgress />
 
         {/* 편집 화면 (ready 또는 editing 상태일 때) */}
-        {(phase === 'ready' || phase === 'editing') && (
-          <div className="space-y-8">
-            <VideoPlayer />
-            <TimelineEditor />
-            <div className="flex justify-center">
-              <ExportButton />
-            </div>
-          </div>
-        )}
+        {(phase === 'ready' || phase === 'editing') && <EditingSection />}
 
         {/* 처리 진행률 */}
         <ExportProgress />
