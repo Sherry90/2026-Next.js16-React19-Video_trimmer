@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useStore } from '@/stores/useStore';
 import { useFFmpeg } from '@/hooks/useFFmpeg';
 
@@ -17,49 +18,93 @@ import { DownloadButton } from '@/features/export/components/DownloadButton';
 import { ErrorDisplay } from '@/features/export/components/ErrorDisplay';
 
 export default function HomePage() {
-  useFFmpeg(); // FFmpeg 훅 초기화
+  useFFmpeg();
   const phase = useStore((state) => state.phase);
   const setPhase = useStore((state) => state.setPhase);
 
-  // ready 상태에서 editing으로 전환
-  if (phase === 'ready') {
-    setPhase('editing');
-  }
+  useEffect(() => {
+    if (phase === 'ready') {
+      setPhase('editing');
+    }
+  }, [phase, setPhase]);
 
   return (
-    <main className="min-h-screen p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* 헤더 */}
-        <header className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100">
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#101114',
+      display: 'flex',
+      flexDirection: 'column',
+    }}>
+      {/* Header */}
+      <header style={{
+        height: '52px',
+        minHeight: '52px',
+        backgroundColor: '#101114',
+        borderBottom: '1px solid #000000',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 24px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <h1 style={{
+            fontSize: '14px',
+            fontWeight: 600,
+            color: '#d9dce3',
+            margin: 0,
+          }}>
             Video Trimmer
           </h1>
-          <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">
-            Trim videos in your browser
-          </p>
-        </header>
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {(phase === 'ready' || phase === 'editing') && (
+            <button
+              style={{
+                padding: '7px 30px',
+                fontSize: '13px',
+                fontWeight: 500,
+                color: '#ffffff',
+                backgroundColor: '#2962ff',
+                border: 'none',
+                borderRadius: '3px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0041f5'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2962ff'}
+            >
+              Export
+            </button>
+          )}
+        </div>
+      </header>
 
-        {/* 에러 표시 */}
-        <ErrorDisplay />
+      {/* Main Content Area */}
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}>
+        {/* Work Area (Video Player) */}
+        <div style={{
+          flex: 1,
+          backgroundColor: '#212123',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'auto',
+        }}>
+          <ErrorDisplay />
+          <FileValidationError />
 
-        {/* 파일 검증 에러 */}
-        <FileValidationError />
-
-        {/* 업로드 영역 (idle 상태일 때만) */}
-        {phase === 'idle' && <UploadZone />}
-
-        {/* 업로드 진행률 */}
-        <UploadProgress />
-
-        {/* 편집 화면 (ready 또는 editing 상태일 때) */}
-        {(phase === 'ready' || phase === 'editing') && <EditingSection />}
-
-        {/* 처리 진행률 */}
-        <ExportProgress />
-
-        {/* 다운로드 버튼 */}
-        <DownloadButton />
+          {phase === 'idle' && <UploadZone />}
+          <UploadProgress />
+          {(phase === 'ready' || phase === 'editing') && <EditingSection />}
+          <ExportProgress />
+          <DownloadButton />
+        </div>
       </div>
-    </main>
+    </div>
   );
 }

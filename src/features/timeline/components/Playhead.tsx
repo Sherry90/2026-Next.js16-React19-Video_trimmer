@@ -1,23 +1,28 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import { useStore } from '@/stores/useStore';
 import { useDragHandle } from '@/features/timeline/hooks/useDragHandle';
 
 export function Playhead() {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const playhead = useStore((state) => state.timeline.playhead);
+  const currentTime = useStore((state) => state.player.currentTime);
   const duration = useStore((state) => state.videoFile?.duration ?? 0);
   const setPlayhead = useStore((state) => state.setPlayhead);
 
-  const position = duration > 0 ? (playhead / duration) * 100 : 0;
+  const position = duration > 0 ? (currentTime / duration) * 100 : 0;
 
-  const startTimeRef = useRef(playhead);
+  const startTimeRef = useRef(currentTime);
+
+  // Sync playhead with currentTime
+  useEffect(() => {
+    setPlayhead(currentTime);
+  }, [currentTime, setPlayhead]);
 
   const handleDragStart = useCallback(() => {
-    startTimeRef.current = playhead;
-  }, [playhead]);
+    startTimeRef.current = currentTime;
+  }, [currentTime]);
 
   const handleDrag = useCallback(
     (_handleType: string, deltaX: number) => {
@@ -40,24 +45,39 @@ export function Playhead() {
   return (
     <div
       ref={containerRef}
-      className="absolute top-0 bottom-0 z-20 pointer-events-none"
-      style={{ left: `${position}%` }}
+      className="absolute top-0 bottom-0 pointer-events-none"
+      style={{
+        left: `${position}%`,
+        zIndex: 30,
+      }}
     >
-      {/* 플레이헤드 라인 */}
       <div
         onMouseDown={handleMouseDown}
-        className="absolute top-0 bottom-0 w-0.5 bg-blue-500 pointer-events-auto cursor-ew-resize"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: '-1px',
+          bottom: 0,
+          width: '2px',
+          backgroundColor: '#2962ff',
+          cursor: 'ew-resize',
+          pointerEvents: 'auto',
+        }}
       >
-        {/* 상단 헤드 */}
-        <div className="absolute -top-2 -left-3 w-6 h-4 bg-blue-500 rounded-t pointer-events-auto">
-          <svg
-            className="w-full h-full text-white"
-            viewBox="0 0 24 16"
-            fill="currentColor"
-          >
-            <path d="M12 16L0 0h24z" />
-          </svg>
-        </div>
+        {/* Top circle handle */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '-4px',
+            left: '-5px',
+            width: '12px',
+            height: '12px',
+            backgroundColor: '#2962ff',
+            borderRadius: '50%',
+            border: '2px solid #101114',
+            cursor: 'ew-resize',
+          }}
+        />
       </div>
     </div>
   );

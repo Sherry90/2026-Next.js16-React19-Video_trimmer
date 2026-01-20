@@ -41,24 +41,38 @@ export function OutPointHandle() {
   return (
     <div
       ref={containerRef}
-      className="absolute top-0 bottom-0 z-10"
-      style={{ left: `${position}%` }}
+      className="absolute top-0 bottom-0"
+      style={{
+        left: `${position}%`,
+        zIndex: 20,
+      }}
     >
-      {/* 핸들 */}
       <div
         onMouseDown={isLocked ? undefined : handleMouseDown}
-        className={`
-          absolute top-0 bottom-0 w-1 bg-red-500
-          ${isLocked ? 'cursor-not-allowed opacity-50' : 'cursor-ew-resize hover:bg-red-600'}
-        `}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: '-4px',
+          bottom: 0,
+          width: '4px',
+          backgroundColor: '#ffee65',
+          cursor: isLocked ? 'not-allowed' : 'ew-resize',
+          opacity: isLocked ? 0.5 : 1,
+        }}
       >
-        {/* 상단 그립 */}
-        <div className="absolute -top-1 -left-2 w-5 h-5 bg-red-500 rounded-full border-2 border-white dark:border-gray-900" />
-
-        {/* 라벨 */}
-        <div className="absolute -top-6 -left-6 px-2 py-1 text-xs font-medium text-white bg-red-500 rounded whitespace-nowrap">
-          OUT
-        </div>
+        {/* Top handle grip */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: '-4px',
+            width: '12px',
+            height: '24px',
+            backgroundColor: '#ffee65',
+            borderRadius: '0 0 4px 4px',
+            cursor: isLocked ? 'not-allowed' : 'ew-resize',
+          }}
+        />
       </div>
     </div>
   );
