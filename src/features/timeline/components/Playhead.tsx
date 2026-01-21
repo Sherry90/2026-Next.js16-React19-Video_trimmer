@@ -1,12 +1,14 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useStore } from '@/stores/useStore';
 import { useDragHandle } from '@/features/timeline/hooks/useDragHandle';
 import { useVideoPlayerContext } from '@/features/player/context/VideoPlayerContext';
 
 export function Playhead() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [draggingTime, setDraggingTime] = useState<number | null>(null);
+  const lastSeekTimeRef = useRef<number>(0);
 
   const currentTime = useStore((state) => state.player.currentTime);
   const duration = useStore((state) => state.videoFile?.duration ?? 0);
@@ -15,12 +17,15 @@ export function Playhead() {
 
   const { seek } = useVideoPlayerContext();
 
-  const position = duration > 0 ? (currentTime / duration) * 100 : 0;
+  // Use draggingTime if available (during drag), otherwise source of truth from store
+  const displayTime = draggingTime ?? currentTime;
+  const position = duration > 0 ? (displayTime / duration) * 100 : 0;
 
   const startTimeRef = useRef(currentTime);
 
   const handleDragStart = useCallback(() => {
     startTimeRef.current = currentTime;
+    setDraggingTime(currentTime);
   }, [currentTime]);
 
   const handleDrag = useCallback(
@@ -34,14 +39,31 @@ export function Playhead() {
       // Constrain to in/out points
       newTime = Math.max(inPoint, Math.min(newTime, outPoint));
 
-      seek(newTime);
+      // Update local state immediately for smooth UI
+      setDraggingTime(newTime);
+
+      // Throttle video seeking to prevent lag
+      const now = Date.now();
+      if (now - lastSeekTimeRef.current > 50) { // Update video every ~50ms
+        seek(newTime);
+        lastSeekTimeRef.current = now;
+      }
     },
     [duration, inPoint, outPoint, seek]
   );
 
+  const handleDragEnd = useCallback(() => {
+    // Ensure final position is synced
+    if (draggingTime !== null) {
+      seek(draggingTime);
+    }
+    setDraggingTime(null);
+  }, [draggingTime, seek]);
+
   const { handleMouseDown } = useDragHandle('playhead', {
     onDragStart: handleDragStart,
     onDrag: handleDrag,
+    onDragEnd: handleDragEnd,
   });
 
   return (
