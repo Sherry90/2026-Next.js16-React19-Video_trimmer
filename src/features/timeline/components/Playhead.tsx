@@ -15,7 +15,7 @@ export function Playhead() {
   const inPoint = useStore((state) => state.timeline.inPoint);
   const outPoint = useStore((state) => state.timeline.outPoint);
 
-  const { seek } = useVideoPlayerContext();
+  const { seek, setIsScrubbing } = useVideoPlayerContext();
 
   // Use draggingTime if available (during drag), otherwise source of truth from store
   const displayTime = draggingTime ?? currentTime;
@@ -26,7 +26,8 @@ export function Playhead() {
   const handleDragStart = useCallback(() => {
     startTimeRef.current = currentTime;
     setDraggingTime(currentTime);
-  }, [currentTime]);
+    setIsScrubbing(true);
+  }, [currentTime, setIsScrubbing]);
 
   const handleDrag = useCallback(
     (_handleType: string, deltaX: number) => {
@@ -56,9 +57,20 @@ export function Playhead() {
     // Ensure final position is synced
     if (draggingTime !== null) {
       seek(draggingTime);
+      // We must allow the final update to propagate
+      // But we set isScrubbing false first? No, if we set false, then the seek's timeupdate will catch it.
+      // Wait, seek() is async roughly.
+      // Better: setIsScrubbing(false) then seek?
+      // If we seek first, timeupdate might fire while isScrubbing is true.
+      // Actually, we want the FINAL update.
+      setIsScrubbing(false);
+      // Force store update for final position if needed, or rely on next timeupdate
+      // seek() triggers timeupdate.
+    } else {
+      setIsScrubbing(false);
     }
     setDraggingTime(null);
-  }, [draggingTime, seek]);
+  }, [draggingTime, seek, setIsScrubbing]);
 
   const { handleMouseDown } = useDragHandle('playhead', {
     onDragStart: handleDragStart,
