@@ -13,7 +13,7 @@ interface VideoPlayerViewProps {
 export function VideoPlayerView({ children }: VideoPlayerViewProps) {
   const videoRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<Player | null>(null);
-  
+
   const videoUrl = useStore((state) => state.videoFile?.url);
   const setVideoDuration = useStore((state) => state.setVideoDuration);
   const setCurrentTime = useStore((state) => state.setCurrentTime);
@@ -55,16 +55,19 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
 
       player.on('timeupdate', () => {
         const currentTime = player.currentTime();
-        // Only update current time if specific conditions met (handled in callback)
-        // Note: setCurrentTime in store might trigger re-renders, optimize if needed.
-        // Direct state update:
-        // Skip update if scrubbing to prevent performance issues
-        if (!useStore.getState().player.isScrubbing) {
-           useStore.getState().setCurrentTime(currentTime || 0);
+        const state = useStore.getState();
+
+        // CRITICAL: Ignore timeupdate if scrubbing OR if video is still seeking
+        // This prevents stale timeupdate events from overwriting the store
+        if (state.player.isScrubbing || player.seeking()) {
+          return;
         }
 
+        // Normal playback: update store with video time
+        state.setCurrentTime(currentTime || 0);
+
         // Stop at outPoint logic
-        const currentOutPoint = useStore.getState().timeline.outPoint;
+        const currentOutPoint = state.timeline.outPoint;
         if ((currentTime || 0) >= currentOutPoint && currentOutPoint > 0 && !player.paused()) {
            player.pause();
            player.currentTime(currentOutPoint);
