@@ -1,6 +1,8 @@
 'use client';
 
 import { useRef, useEffect, useCallback } from 'react';
+import videojs from 'video.js';
+import type Player from 'video.js/dist/types/player';
 import { useStore } from '@/stores/useStore';
 import { VideoPlayerProvider } from '../context/VideoPlayerContext';
 
@@ -9,7 +11,9 @@ interface VideoPlayerViewProps {
 }
 
 export function VideoPlayerView({ children }: VideoPlayerViewProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<Player | null>(null);
+  
   const videoUrl = useStore((state) => state.videoFile?.url);
   const setVideoDuration = useStore((state) => state.setVideoDuration);
   const setCurrentTime = useStore((state) => state.setCurrentTime);
@@ -17,77 +21,96 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
   const outPoint = useStore((state) => state.timeline.outPoint);
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
+    // Determine the video element to use
+    // Since we are using video.js, we need to make sure we create the video element 
+    // or let video.js handle it. 
+    // Best practice for React: render a <video> element (or div) and let video.js wrap it.
+    
+    if (!videoRef.current || !videoUrl) return;
 
-    const handleLoadedMetadata = () => {
-      const duration = video.duration;
-      if (duration && !isNaN(duration)) {
-        setVideoDuration(duration);
-      }
-    };
+    // Create a video element dynamically to ensure clean slate for video.js
+    const videoElement = document.createElement('video-js');
+    videoElement.classList.add('vjs-big-play-centered');
+    videoRef.current.appendChild(videoElement);
 
-    const handleTimeUpdate = () => {
-      const currentTime = video.currentTime;
-      setCurrentTime(currentTime);
+    const player = (playerRef.current = videojs(videoElement, {
+      controls: true,
+      autoplay: false,
+      preload: 'auto',
+      sources: [{
+        src: videoUrl,
+        type: 'video/mp4' // Assuming mp4 for now based on common uploads, or inferred
+      }],
+      fluid: true, // Responsiveness
+    }, () => {
+      videojs.log('player is ready');
+      
+      // Handle events
+      player.on('loadedmetadata', () => {
+        const duration = player.duration();
+        if (duration && !isNaN(duration)) {
+          setVideoDuration(duration);
+        }
+      });
 
-      // Stop at outPoint
-      if (currentTime >= outPoint && outPoint > 0 && !video.paused) {
-        video.pause();
-        video.currentTime = outPoint;
-      }
-    };
+      player.on('timeupdate', () => {
+        const currentTime = player.currentTime();
+        // Only update current time if specific conditions met (handled in callback)
+        // Note: setCurrentTime in store might trigger re-renders, optimize if needed.
+        // Direct state update:
+        useStore.getState().setCurrentTime(currentTime || 0);
 
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
-    const handleEnded = () => setIsPlaying(false);
+        // Stop at outPoint logic
+        const currentOutPoint = useStore.getState().timeline.outPoint;
+        if ((currentTime || 0) >= currentOutPoint && currentOutPoint > 0 && !player.paused()) {
+           player.pause();
+           player.currentTime(currentOutPoint);
+        }
+      });
 
-    video.addEventListener('loadedmetadata', handleLoadedMetadata);
-    video.addEventListener('timeupdate', handleTimeUpdate);
-    video.addEventListener('play', handlePlay);
-    video.addEventListener('pause', handlePause);
-    video.addEventListener('ended', handleEnded);
+      player.on('play', () => setIsPlaying(true));
+      player.on('pause', () => setIsPlaying(false));
+      player.on('ended', () => setIsPlaying(false));
+    }));
 
-    // If metadata already loaded
-    if (video.readyState >= 1) {
-      handleLoadedMetadata();
-    }
+    // If metadata happens to be loaded already (unlikely with new instance but safe to check)
+    // In video.js, 'loadedmetadata' event is reliable.
 
     return () => {
-      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      video.removeEventListener('timeupdate', handleTimeUpdate);
-      video.removeEventListener('play', handlePlay);
-      video.removeEventListener('pause', handlePause);
-      video.removeEventListener('ended', handleEnded);
+      if (player && !player.isDisposed()) {
+        player.dispose();
+        playerRef.current = null;
+      }
     };
-  }, [videoUrl, setVideoDuration, setCurrentTime, setIsPlaying, outPoint]);
+  }, [videoUrl, setVideoDuration, setIsPlaying]); // Removed specific timeline deps to avoid re-init, using getState inside
 
+  // Sync methods
   const play = useCallback(() => {
-    videoRef.current?.play();
+    playerRef.current?.play();
   }, []);
 
   const pause = useCallback(() => {
-    videoRef.current?.pause();
+    playerRef.current?.pause();
   }, []);
 
   const seek = useCallback((time: number) => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = time;
+    if (playerRef.current) {
+      playerRef.current.currentTime(time);
     }
   }, []);
 
   const togglePlay = useCallback(() => {
-    if (videoRef.current) {
-      if (videoRef.current.paused) {
-        videoRef.current.play();
+    if (playerRef.current) {
+      if (playerRef.current.paused()) {
+        playerRef.current.play();
       } else {
-        videoRef.current.pause();
+        playerRef.current.pause();
       }
     }
   }, []);
 
   const contextValue = {
-    videoRef,
+    player: playerRef.current,
     play,
     pause,
     seek,
@@ -117,42 +140,23 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
               margin: '0 auto',
             }}
           >
-            <div
+             <div
               style={{
                 position: 'relative',
                 width: '100%',
-                paddingBottom: '56.25%',
+                // paddingBottom: '56.25%', // Fluid handling by video.js
                 backgroundColor: '#000000',
                 borderRadius: '4px',
                 overflow: 'hidden',
               }}
             >
-              <div
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                }}
-              >
-                {videoUrl ? (
-                  <video
-                    ref={videoRef}
-                    src={videoUrl}
-                    controls
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'contain',
-                    }}
-                  />
-                ) : (
-                  <div style={{ color: 'white', padding: '20px', textAlign: 'center' }}>
-                    Loading video...
-                  </div>
-                )}
-              </div>
+             {videoUrl ? (
+                 <div ref={videoRef} data-vjs-player /> 
+              ) : (
+                <div style={{ color: 'white', padding: '20px', textAlign: 'center', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  Loading video...
+                </div>
+              )}
             </div>
           </div>
         </div>
