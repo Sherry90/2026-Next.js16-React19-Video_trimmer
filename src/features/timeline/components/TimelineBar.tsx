@@ -21,18 +21,20 @@ export function TimelineBar({ children }: TimelineBarProps) {
       {/* Timeline Wrapper with padding */}
       <div className="h-full" style={{ paddingTop: '16px', paddingLeft: '16px', paddingRight: '16px' }}>
         {/* Timeline main area */}
-        <div className="relative w-full" style={{ height: '180px', backgroundColor: '#1c1d20', borderRadius: '4px', overflow: 'hidden' }}>
+        <div className="relative w-full" style={{ position: 'relative', width: '100%', height: '180px', backgroundColor: '#1c1d20', borderRadius: '4px', overflow: 'hidden' }}>
           {/* Waveform background */}
-          <div className="absolute inset-0 pointer-events-none">
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
             <WaveformBackground />
           </div>
 
           {/* Darkened regions (non-selected) */}
-          <div className="absolute inset-0 pointer-events-none">
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
             {/* Left darkened area (before in point) */}
             <div
-              className="absolute top-0 bottom-0"
               style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
                 left: 0,
                 width: `${inPosition}%`,
                 backgroundColor: 'rgba(0, 0, 0, 0.6)',
@@ -40,8 +42,10 @@ export function TimelineBar({ children }: TimelineBarProps) {
             />
             {/* Right darkened area (after out point) */}
             <div
-              className="absolute top-0 bottom-0"
               style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
                 left: `${outPosition}%`,
                 right: 0,
                 backgroundColor: 'rgba(0, 0, 0, 0.6)',
@@ -50,7 +54,7 @@ export function TimelineBar({ children }: TimelineBarProps) {
           </div>
 
           {/* Handles and playhead */}
-          <div className="absolute inset-0">
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
             {children}
           </div>
         </div>

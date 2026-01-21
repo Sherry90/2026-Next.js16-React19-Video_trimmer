@@ -47,8 +47,11 @@ export function Playhead() {
   return (
     <div
       ref={containerRef}
-      className="absolute top-0 bottom-0 pointer-events-none"
+      className="pointer-events-none"
       style={{
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
         left: `${position}%`,
         zIndex: 30,
       }}

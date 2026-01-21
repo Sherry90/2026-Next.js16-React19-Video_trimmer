@@ -41,8 +41,10 @@ export function OutPointHandle() {
   return (
     <div
       ref={containerRef}
-      className="absolute top-0 bottom-0"
       style={{
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
         left: `${position}%`,
         zIndex: 20,
       }}
