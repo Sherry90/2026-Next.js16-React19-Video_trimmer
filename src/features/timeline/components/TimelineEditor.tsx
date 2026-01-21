@@ -86,7 +86,7 @@ export function TimelineEditor() {
   }, [zoom, setZoom]);
 
   return (
-    <div ref={timelineRef} style={{ width: '100%', height: '100%' }}>
+    <div ref={timelineRef} className="w-full h-full">
       {/* Timeline Bar */}
       <TimelineBar>
         <InPointHandle />
@@ -95,16 +95,10 @@ export function TimelineEditor() {
       </TimelineBar>
 
       {/* Controls - positioned at bottom */}
-      <div style={{
-        padding: '0 16px 16px 16px',
-        display: 'flex',
-        gap: '16px',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
+      <div className="px-4 pb-4 flex items-center justify-between gap-4">
         {/* Time inputs */}
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <TimeInput
               label="In"
               value={inPoint}
@@ -119,7 +113,7 @@ export function TimelineEditor() {
               label="In Point"
             />
           </div>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div className="flex items-center gap-2">
             <TimeInput
               label="Out"
               value={outPoint}
@@ -137,40 +131,16 @@ export function TimelineEditor() {
         </div>
 
         {/* Preview buttons */}
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div className="flex gap-2">
           <button
             onClick={handlePreview}
-            style={{
-              padding: '7px 24px',
-              fontSize: '13px',
-              fontWeight: 500,
-              color: '#ffffff',
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              border: 'none',
-              borderRadius: '3px',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
+            className="px-6 py-[7px] text-[13px] font-medium text-white bg-white/10 rounded-sm cursor-pointer transition-colors duration-200 hover:bg-white/15"
           >
             Preview Full
           </button>
           <button
             onClick={handlePreviewEdges}
-            style={{
-              padding: '7px 24px',
-              fontSize: '13px',
-              fontWeight: 500,
-              color: '#ffffff',
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              border: 'none',
-              borderRadius: '3px',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
+            className="px-6 py-[7px] text-[13px] font-medium text-white bg-white/10 rounded-sm cursor-pointer transition-colors duration-200 hover:bg-white/15"
           >
             Preview Edges
           </button>

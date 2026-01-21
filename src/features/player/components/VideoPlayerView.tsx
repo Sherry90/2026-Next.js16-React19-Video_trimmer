@@ -119,41 +119,15 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
 
   return (
     <VideoPlayerProvider value={contextValue}>
-      <div style={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-      }}>
+      <div className="w-full h-full flex flex-col">
         {/* Video Player Area */}
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '24px',
-        }}>
-          <div
-            style={{
-              width: '100%',
-              maxWidth: '1200px',
-              margin: '0 auto',
-            }}
-          >
-             <div
-              style={{
-                position: 'relative',
-                width: '100%',
-                // paddingBottom: '56.25%', // Fluid handling by video.js
-                backgroundColor: '#000000',
-                borderRadius: '4px',
-                overflow: 'hidden',
-              }}
-            >
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="w-full max-w-[1200px] mx-auto">
+             <div className="relative w-full bg-black rounded overflow-hidden">
              {videoUrl ? (
                  <div ref={videoRef} data-vjs-player /> 
               ) : (
-                <div style={{ color: 'white', padding: '20px', textAlign: 'center', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div className="text-white p-5 text-center h-full flex items-center justify-center">
                   Loading video...
                 </div>
               )}

@@ -85,7 +85,7 @@ export function WaveformBackground() {
   if (isLoading) {
     return (
       <div className="w-full h-full flex items-center justify-center">
-        <div style={{ fontSize: '12px', color: '#74808c' }}>
+        <div className="text-xs text-[#74808c]">
           Loading waveform... {Math.round(waveformProgress)}%
         </div>
       </div>
@@ -96,7 +96,7 @@ export function WaveformBackground() {
   if (!hasAudio) {
     return (
       <div className="w-full h-full flex items-center justify-center">
-        <div style={{ fontSize: '12px', color: '#74808c' }}>No audio track</div>
+        <div className="text-xs text-[#74808c]">No audio track</div>
       </div>
     );
   }
