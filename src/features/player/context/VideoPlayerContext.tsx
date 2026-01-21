@@ -1,10 +1,9 @@
 'use client';
 
-import { createContext, useContext, ReactNode } from 'react';
-import type Player from 'video.js/dist/types/player';
+import { createContext, useContext, ReactNode, RefObject } from 'react';
 
 interface VideoPlayerContextValue {
-  player: Player | null;
+  videoRef: RefObject<HTMLVideoElement | null> | null;
   play: () => void;
   pause: () => void;
   seek: (time: number) => void;

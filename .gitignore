@@ -40,3 +40,6 @@ next-env.d.ts
 
 # Claude Code CLI
 .claude
+
+# Test sample videos
+/testsample
