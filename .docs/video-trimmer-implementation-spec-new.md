@@ -87,10 +87,10 @@ video-trimmer/
 │   │   │
 │   │   ├── player/
 │   │   │   ├── components/
-│   │   │   │   ├── VideoPlayer.tsx       # Video.js 래퍼
+│   │   │   │   ├── VideoPlayerView.tsx   # Video.js 래퍼 (기존 VideoPlayer.tsx에서 변경됨)
 │   │   │   │   └── PlayerControls.tsx    # 커스텀 컨트롤 (선택)
 │   │   │   └── hooks/
-│   │   │       └── useVideoPlayer.ts     # Video.js 인스턴스 관리
+│   │   │       └── useVideoPlayer.ts     # Video.js 인스턴스 관리 (현재 미사용, Context로 대체됨)
 │   │   │
 │   │   ├── timeline/
 │   │   │   ├── components/
@@ -151,7 +151,7 @@ video-trimmer/
 │
 ├── next.config.ts
 ├── tsconfig.json
-├── tailwind.config.ts
+├── tailwind.config.ts                    # (Tailwind v4 사용 시 생략 가능)
 ├── eslint.config.mjs
 ├── vitest.config.ts                      # Phase 6
 ├── playwright.config.ts                  # Phase 6
@@ -564,6 +564,7 @@ chore: update files  # 너무 추상적
 - **What & Why**를 설명 (How는 코드가 설명)
 - 72자 이내로 줄바꿈
 - Subject와 한 줄 띄우기
+- body 내용에 ai가 작성했다는 내용을 제외하라.
 
 ```bash
 feat: Add file size validation in UploadZone
