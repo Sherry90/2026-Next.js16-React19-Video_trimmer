@@ -1,24 +1,23 @@
 'use client';
 
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef } from 'react';
 import { useStore } from '@/stores/useStore';
 import { useDragHandle } from '@/features/timeline/hooks/useDragHandle';
+import { useVideoPlayerContext } from '@/features/player/context/VideoPlayerContext';
 
 export function Playhead() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const currentTime = useStore((state) => state.player.currentTime);
   const duration = useStore((state) => state.videoFile?.duration ?? 0);
-  const setPlayhead = useStore((state) => state.setPlayhead);
+  const inPoint = useStore((state) => state.timeline.inPoint);
+  const outPoint = useStore((state) => state.timeline.outPoint);
+
+  const { seek } = useVideoPlayerContext();
 
   const position = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   const startTimeRef = useRef(currentTime);
-
-  // Sync playhead with currentTime
-  useEffect(() => {
-    setPlayhead(currentTime);
-  }, [currentTime, setPlayhead]);
 
   const handleDragStart = useCallback(() => {
     startTimeRef.current = currentTime;
@@ -30,11 +29,14 @@ export function Playhead() {
 
       const containerWidth = containerRef.current.parentElement?.clientWidth ?? 0;
       const deltaTime = (deltaX / containerWidth) * duration;
-      const newTime = startTimeRef.current + deltaTime;
+      let newTime = startTimeRef.current + deltaTime;
 
-      setPlayhead(newTime);
+      // Constrain to in/out points
+      newTime = Math.max(inPoint, Math.min(newTime, outPoint));
+
+      seek(newTime);
     },
-    [duration, setPlayhead]
+    [duration, inPoint, outPoint, seek]
   );
 
   const { handleMouseDown } = useDragHandle('playhead', {
