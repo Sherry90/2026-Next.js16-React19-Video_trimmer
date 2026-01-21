@@ -53,24 +53,24 @@ export function Playhead() {
     [duration, inPoint, outPoint, seek]
   );
 
+  const setCurrentTime = useStore((state) => state.setCurrentTime);
+
   const handleDragEnd = useCallback(() => {
     // Ensure final position is synced
     if (draggingTime !== null) {
+      // 1. Force update store immediately to prevent snap-back
+      setCurrentTime(draggingTime);
+      
+      // 2. Seek video
       seek(draggingTime);
-      // We must allow the final update to propagate
-      // But we set isScrubbing false first? No, if we set false, then the seek's timeupdate will catch it.
-      // Wait, seek() is async roughly.
-      // Better: setIsScrubbing(false) then seek?
-      // If we seek first, timeupdate might fire while isScrubbing is true.
-      // Actually, we want the FINAL update.
+      
+      // 3. Unlock scrubbing
       setIsScrubbing(false);
-      // Force store update for final position if needed, or rely on next timeupdate
-      // seek() triggers timeupdate.
     } else {
       setIsScrubbing(false);
     }
     setDraggingTime(null);
-  }, [draggingTime, seek, setIsScrubbing]);
+  }, [draggingTime, seek, setIsScrubbing, setCurrentTime]);
 
   const { handleMouseDown } = useDragHandle('playhead', {
     onDragStart: handleDragStart,
