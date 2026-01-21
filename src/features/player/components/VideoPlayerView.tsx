@@ -58,7 +58,10 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
         // Only update current time if specific conditions met (handled in callback)
         // Note: setCurrentTime in store might trigger re-renders, optimize if needed.
         // Direct state update:
-        useStore.getState().setCurrentTime(currentTime || 0);
+        // Skip update if scrubbing to prevent performance issues
+        if (!useStore.getState().player.isScrubbing) {
+           useStore.getState().setCurrentTime(currentTime || 0);
+        }
 
         // Stop at outPoint logic
         const currentOutPoint = useStore.getState().timeline.outPoint;
@@ -109,12 +112,15 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
     }
   }, []);
 
+  const setIsScrubbing = useStore((state) => state.setIsScrubbing);
+
   const contextValue = {
     player: playerRef.current,
     play,
     pause,
     seek,
     togglePlay,
+    setIsScrubbing,
   };
 
   return (

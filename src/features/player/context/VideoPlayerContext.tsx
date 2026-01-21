@@ -9,6 +9,7 @@ interface VideoPlayerContextValue {
   pause: () => void;
   seek: (time: number) => void;
   togglePlay: () => void;
+  setIsScrubbing: (scrubbing: boolean) => void;
 }
 
 const VideoPlayerContext = createContext<VideoPlayerContextValue | null>(null);

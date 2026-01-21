@@ -38,6 +38,7 @@ export interface PlayerState {
   currentTime: number;
   volume: number;
   isMuted: boolean;
+  isScrubbing: boolean;
 }
 
 export interface ErrorState {

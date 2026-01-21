@@ -67,6 +67,7 @@ interface StoreActions {
   setCurrentTime: (time: number) => void;
   setVolume: (volume: number) => void;
   setIsMuted: (muted: boolean) => void;
+  setIsScrubbing: (scrubbing: boolean) => void;
 
   // 에러 관련
   setError: (message: string, code?: string) => void;
@@ -107,6 +108,7 @@ const initialState: StoreState = {
     currentTime: 0,
     volume: 1,
     isMuted: false,
+    isScrubbing: false,
   },
   error: {
     hasError: false,
@@ -246,6 +248,9 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
 
   setIsMuted: (muted) =>
     set((state) => ({ player: { ...state.player, isMuted: muted } })),
+
+  setIsScrubbing: (scrubbing) =>
+    set((state) => ({ player: { ...state.player, isScrubbing: scrubbing } })),
 
   // 에러 관련
   setError: (message, code) =>
