@@ -29,49 +29,18 @@ export default function HomePage() {
   }, [phase, setPhase]);
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#101114',
-      display: 'flex',
-      flexDirection: 'column',
-    }}>
+    <div className="min-h-screen bg-[#101114] flex flex-col">
       {/* Header */}
-      <header style={{
-        height: '52px',
-        minHeight: '52px',
-        backgroundColor: '#101114',
-        borderBottom: '1px solid #000000',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 24px',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <h1 style={{
-            fontSize: '14px',
-            fontWeight: 600,
-            color: '#d9dce3',
-            margin: 0,
-          }}>
+      <header className="h-[52px] min-h-[52px] bg-[#101114] border-b border-black flex items-center justify-between px-6">
+        <div className="flex items-center gap-4">
+          <h1 className="text-sm font-semibold text-[#d9dce3] m-0">
             Video Trimmer
           </h1>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div className="flex gap-2">
           {(phase === 'ready' || phase === 'editing') && (
             <button
-              style={{
-                padding: '7px 30px',
-                fontSize: '13px',
-                fontWeight: 500,
-                color: '#ffffff',
-                backgroundColor: '#2962ff',
-                border: 'none',
-                borderRadius: '3px',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0041f5'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2962ff'}
+              className="px-[30px] py-[7px] text-[13px] font-medium text-white bg-[#2962ff] border-none rounded-sm cursor-pointer transition-colors duration-200 hover:bg-[#0041f5]"
             >
               Export
             </button>
@@ -80,21 +49,9 @@ export default function HomePage() {
       </header>
 
       {/* Main Content Area */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-      }}>
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Work Area (Video Player) */}
-        <div style={{
-          flex: 1,
-          backgroundColor: '#212123',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: 'auto',
-        }}>
+        <div className="flex-1 bg-[#212123] flex items-center justify-center overflow-auto">
           <ErrorDisplay />
           <FileValidationError />
 

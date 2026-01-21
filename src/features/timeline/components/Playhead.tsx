@@ -54,30 +54,11 @@ export function Playhead() {
     >
       <div
         onMouseDown={handleMouseDown}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: '-1px',
-          bottom: 0,
-          width: '2px',
-          backgroundColor: '#2962ff',
-          cursor: 'ew-resize',
-          pointerEvents: 'auto',
-        }}
+        className="absolute top-0 -left-px bottom-0 w-[2px] bg-[#2962ff] cursor-ew-resize pointer-events-auto"
       >
         {/* Top circle handle */}
         <div
-          style={{
-            position: 'absolute',
-            top: '-4px',
-            left: '-5px',
-            width: '12px',
-            height: '12px',
-            backgroundColor: '#2962ff',
-            borderRadius: '50%',
-            border: '2px solid #101114',
-            cursor: 'ew-resize',
-          }}
+          className="absolute -top-1 -left-[5px] w-3 h-3 bg-[#2962ff] rounded-full border-2 border-[#101114] cursor-ew-resize"
         />
       </div>
     </div>

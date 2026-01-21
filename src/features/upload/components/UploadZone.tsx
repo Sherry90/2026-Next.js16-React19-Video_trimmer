@@ -54,25 +54,15 @@ export function UploadZone() {
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '100%',
-        maxWidth: '600px',
-        minHeight: '400px',
-        padding: '48px',
-        border: isDragging ? '2px dashed #2962ff' : '2px dashed rgba(255, 255, 255, 0.2)',
-        borderRadius: '8px',
-        backgroundColor: isDragging ? 'rgba(41, 98, 255, 0.05)' : 'transparent',
-        transition: 'all 0.2s',
-        cursor: 'pointer',
-      }}
+      className={`flex flex-col items-center justify-center w-full max-w-[600px] min-h-[400px] p-12 border-2 border-dashed rounded-lg transition-all duration-200 cursor-pointer ${
+        isDragging
+          ? 'border-[#2962ff] bg-[#2962ff]/5'
+          : 'border-white/20 bg-transparent'
+      }`}
       onClick={() => document.getElementById('file-upload')?.click()}
     >
       <svg
-        style={{ width: '64px', height: '64px', marginBottom: '24px', opacity: 0.5 }}
+        className="w-16 h-16 mb-6 opacity-50"
         fill="none"
         stroke="#74808c"
         viewBox="0 0 24 24"
@@ -85,21 +75,11 @@ export function UploadZone() {
         />
       </svg>
 
-      <h3 style={{
-        marginBottom: '12px',
-        fontSize: '18px',
-        fontWeight: 500,
-        color: '#d9dce3',
-      }}>
+      <h3 className="mb-3 text-[18px] font-medium text-[#d9dce3]">
         Drop video file here
       </h3>
 
-      <p style={{
-        marginBottom: '24px',
-        fontSize: '13px',
-        color: '#74808c',
-        fontWeight: 300,
-      }}>
+      <p className="mb-6 text-[13px] text-[#74808c] font-light">
         or click to browse
       </p>
 
@@ -107,24 +87,12 @@ export function UploadZone() {
         type="file"
         accept="video/*"
         onChange={handleFileInputChange}
-        style={{ display: 'none' }}
+        className="hidden"
         id="file-upload"
       />
 
       <button
-        style={{
-          padding: '7px 30px',
-          fontSize: '13px',
-          fontWeight: 500,
-          color: '#ffffff',
-          backgroundColor: '#2962ff',
-          border: 'none',
-          borderRadius: '3px',
-          cursor: 'pointer',
-          transition: 'background-color 0.2s',
-        }}
-        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0041f5'}
-        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2962ff'}
+        className="px-[30px] py-[7px] text-[13px] font-medium text-white bg-[#2962ff] border-none rounded-sm cursor-pointer transition-colors duration-200 hover:bg-[#0041f5]"
         onClick={(e) => {
           e.stopPropagation();
           document.getElementById('file-upload')?.click();
@@ -133,12 +101,7 @@ export function UploadZone() {
         Choose File
       </button>
 
-      <p style={{
-        marginTop: '24px',
-        fontSize: '11px',
-        color: '#74808c',
-        opacity: 0.7,
-      }}>
+      <p className="mt-6 text-[11px] text-[#74808c] opacity-70">
         Supported formats: MP4, WebM, OGG, MOV, AVI, MKV (Max 1GB)
       </p>
     </div>

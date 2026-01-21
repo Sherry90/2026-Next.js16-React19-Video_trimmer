@@ -43,12 +43,7 @@ function TimelineWithShortcuts() {
   });
 
   return (
-    <div style={{
-      height: '250px',
-      minHeight: '250px',
-      backgroundColor: '#101114',
-      borderTop: '1px solid #000000',
-    }}>
+    <div className="h-[250px] min-h-[250px] bg-[#101114] border-t border-black">
       <TimelineEditor />
     </div>
   );

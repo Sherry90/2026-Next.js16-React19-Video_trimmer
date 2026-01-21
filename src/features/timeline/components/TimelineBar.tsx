@@ -17,9 +17,9 @@ export function TimelineBar({ children }: TimelineBarProps) {
   const outPosition = duration > 0 ? (outPoint / duration) * 100 : 100;
 
   return (
-    <div className="w-full" style={{ height: '250px' }}>
+    <div className="w-full h-[250px]">
       {/* Timeline Wrapper with padding */}
-      <div className="h-full" style={{ paddingTop: '16px', paddingLeft: '16px', paddingRight: '16px' }}>
+      <div className="h-full pt-4 px-4">
         {/* Timeline main area */}
         <div className="relative w-full h-[180px] bg-[#1c1d20] rounded overflow-hidden">
           {/* Waveform background */}
@@ -52,15 +52,7 @@ export function TimelineBar({ children }: TimelineBarProps) {
         </div>
 
         {/* Time ruler */}
-        <div
-          className="w-full flex justify-between items-center"
-          style={{
-            height: '22px',
-            marginTop: '12px',
-            fontSize: '11px',
-            color: '#74808c',
-          }}
-        >
+        <div className="w-full flex justify-between items-center h-[22px] mt-3 text-[11px] text-[#74808c]">
           <span>{formatSimpleTime(0)}</span>
           <span>{formatSimpleTime(duration)}</span>
         </div>

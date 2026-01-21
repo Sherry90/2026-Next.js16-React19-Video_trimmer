@@ -48,29 +48,15 @@ export function OutPointHandle() {
     >
       <div
         onMouseDown={isLocked ? undefined : handleMouseDown}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: '-4px',
-          bottom: 0,
-          width: '4px',
-          backgroundColor: '#ffee65',
-          cursor: isLocked ? 'not-allowed' : 'ew-resize',
-          opacity: isLocked ? 0.5 : 1,
-        }}
+        className={`absolute top-0 -left-1 bottom-0 w-1 bg-[#ffee65] ${
+          isLocked ? 'cursor-not-allowed opacity-50' : 'cursor-ew-resize opacity-100'
+        }`}
       >
         {/* Top handle grip */}
         <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: '-4px',
-            width: '12px',
-            height: '24px',
-            backgroundColor: '#ffee65',
-            borderRadius: '0 0 4px 4px',
-            cursor: isLocked ? 'not-allowed' : 'ew-resize',
-          }}
+          className={`absolute top-0 -left-1 w-3 h-6 bg-[#ffee65] rounded-b ${
+            isLocked ? 'cursor-not-allowed' : 'cursor-ew-resize'
+          }`}
         />
       </div>
     </div>
