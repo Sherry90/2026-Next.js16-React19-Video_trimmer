@@ -7,6 +7,7 @@ export function DownloadButton() {
   const phase = useStore((state) => state.phase);
   const outputUrl = useStore((state) => state.export.outputUrl);
   const outputFilename = useStore((state) => state.export.outputFilename);
+  const reset = useStore((state) => state.reset);
 
   const handleDownload = useCallback(() => {
     if (!outputUrl || !outputFilename) return;
@@ -16,6 +17,10 @@ export function DownloadButton() {
     link.download = outputFilename;
     link.click();
   }, [outputUrl, outputFilename]);
+
+  const handleEditAnother = useCallback(() => {
+    reset();
+  }, [reset]);
 
   if (phase !== 'completed' || !outputUrl || !outputFilename) {
     return null;
@@ -45,12 +50,21 @@ export function DownloadButton() {
         Your trimmed video is ready to download
       </p>
 
-      <button
-        onClick={handleDownload}
-        className="px-6 py-3 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-      >
-        Download Video
-      </button>
+      <div className="flex gap-3 justify-center">
+        <button
+          onClick={handleDownload}
+          className="px-6 py-3 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          Download Video
+        </button>
+
+        <button
+          onClick={handleEditAnother}
+          className="px-6 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+        >
+          Edit Another File
+        </button>
+      </div>
     </div>
   );
 }
