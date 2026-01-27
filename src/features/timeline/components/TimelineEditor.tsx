@@ -12,6 +12,7 @@ import { LockButton } from './LockButton';
 
 export function TimelineEditor() {
   const timelineRef = useRef<HTMLDivElement>(null);
+  const previewCheckTimeRef = useRef<(() => void) | null>(null);
 
   const inPoint = useStore((state) => state.timeline.inPoint);
   const outPoint = useStore((state) => state.timeline.outPoint);
@@ -35,6 +36,12 @@ export function TimelineEditor() {
   }, [inPoint, seek, togglePlay, player]);
 
   const handlePreviewEdges = useCallback(() => {
+    // Clean up any existing preview listener
+    if (previewCheckTimeRef.current && player) {
+      player.off('timeupdate', previewCheckTimeRef.current);
+      previewCheckTimeRef.current = null;
+    }
+
     const segmentDuration = outPoint - inPoint;
 
     if (segmentDuration < 10) {
@@ -43,6 +50,7 @@ export function TimelineEditor() {
     }
 
     const firstSegmentEnd = inPoint + 5;
+    let isTransitioning = false;
 
     seek(inPoint);
     if (player?.paused()) {
@@ -53,13 +61,25 @@ export function TimelineEditor() {
       if (!player) return;
 
       const currentTime = player.currentTime();
-      if (currentTime !== undefined && currentTime >= firstSegmentEnd) {
+      if (currentTime !== undefined && currentTime >= firstSegmentEnd && !isTransitioning) {
+        isTransitioning = true;
         const secondSegmentStart = outPoint - 5;
+        player.pause();
         seek(secondSegmentStart);
+
+        // Wait for seek to complete before resuming playback
+        const seekedHandler = () => {
+          player.play();
+          player.off('seeked', seekedHandler);
+        };
+        player.on('seeked', seekedHandler);
+
         player.off('timeupdate', checkTime);
+        previewCheckTimeRef.current = null;
       }
     };
 
+    previewCheckTimeRef.current = checkTime;
     player?.on('timeupdate', checkTime);
   }, [inPoint, outPoint, seek, togglePlay, player, handlePreview]);
 
@@ -84,6 +104,16 @@ export function TimelineEditor() {
       }
     };
   }, [zoom, setZoom]);
+
+  // Cleanup preview listener on unmount
+  useEffect(() => {
+    return () => {
+      if (previewCheckTimeRef.current && player) {
+        player.off('timeupdate', previewCheckTimeRef.current);
+        previewCheckTimeRef.current = null;
+      }
+    };
+  }, [player]);
 
   return (
     <div ref={timelineRef} className="w-full h-full">
