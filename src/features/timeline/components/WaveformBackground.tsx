@@ -16,57 +16,74 @@ export function WaveformBackground() {
   const setWaveformProgress = useStore((state) => state.setWaveformProgress);
 
   useEffect(() => {
-    if (!waveformRef.current || !videoFile) return;
+    if (!videoFile) return;
 
-    // Cleanup previous instance
-    if (wavesurferRef.current) {
-      wavesurferRef.current.destroy();
-      wavesurferRef.current = null;
-    }
+    // Wait for DOM to be ready
+    const initializeWaveSurfer = () => {
+      if (!waveformRef.current) {
+        return;
+      }
 
-    setIsLoading(true);
-    setWaveformProgress(0);
+      // Cleanup previous instance
+      if (wavesurferRef.current) {
+        wavesurferRef.current.destroy();
+        wavesurferRef.current = null;
+      }
 
-    // Create WaveSurfer instance
-    const wavesurfer = WaveSurfer.create({
-      container: waveformRef.current,
-      waveColor: '#2962ff',
-      progressColor: 'transparent',
-      cursorColor: 'transparent',
-      barWidth: 2,
-      barGap: 1,
-      height: 180,
-      normalize: true,
-      interact: false,
-      hideScrollbar: true,
-    });
+      setIsLoading(true);
+      setWaveformProgress(0);
 
-    wavesurferRef.current = wavesurfer;
+      try {
+        // Create WaveSurfer instance
+        const wavesurfer = WaveSurfer.create({
+          container: waveformRef.current,
+          waveColor: '#2962ff',
+          progressColor: 'transparent',
+          cursorColor: 'transparent',
+          barWidth: 2,
+          barGap: 1,
+          height: 180,
+          normalize: true,
+          interact: false,
+          hideScrollbar: true,
+        });
 
-    // Load audio from video file
-    wavesurfer.load(videoFile.url);
+        wavesurferRef.current = wavesurfer;
 
-    // Progress tracking
-    wavesurfer.on('loading', (percent) => {
-      setWaveformProgress(percent);
-    });
+        // Progress tracking
+        wavesurfer.on('loading', (percent) => {
+          setWaveformProgress(percent);
+        });
 
-    // Ready event
-    wavesurfer.on('ready', () => {
-      setIsLoading(false);
-      setWaveformProgress(100);
-      setHasAudio(true);
-    });
+        // Ready event
+        wavesurfer.on('ready', () => {
+          setIsLoading(false);
+          setWaveformProgress(100);
+          setHasAudio(true);
+        });
 
-    // Error handling (no audio track)
-    wavesurfer.on('error', (error) => {
-      console.warn('Waveform error (possibly no audio):', error);
-      setHasAudio(false);
-      setIsLoading(false);
-      setWaveformProgress(100);
-    });
+        // Error handling (no audio track)
+        wavesurfer.on('error', (error) => {
+          console.warn('Waveform error (possibly no audio):', error);
+          setHasAudio(false);
+          setIsLoading(false);
+          setWaveformProgress(100);
+        });
+
+        // Load audio from video file
+        wavesurfer.load(videoFile.url);
+      } catch (error) {
+        console.error('Failed to create WaveSurfer:', error);
+        setHasAudio(false);
+        setIsLoading(false);
+      }
+    };
+
+    // Use setTimeout to ensure DOM is ready
+    const timer = setTimeout(initializeWaveSurfer, 100);
 
     return () => {
+      clearTimeout(timer);
       if (wavesurferRef.current) {
         wavesurferRef.current.destroy();
         wavesurferRef.current = null;
@@ -81,30 +98,26 @@ export function WaveformBackground() {
     }
   }, [zoom, isLoading]);
 
-  // Show loading state
-  if (isLoading) {
-    return (
-      <div className="w-full h-full flex items-center justify-center">
-        <div className="text-xs text-[#74808c]">
-          Loading waveform... {Math.round(waveformProgress)}%
-        </div>
-      </div>
-    );
-  }
-
-  // Show empty background if no audio
-  if (!hasAudio) {
-    return (
-      <div className="w-full h-full flex items-center justify-center">
-        <div className="text-xs text-[#74808c]">No audio track</div>
-      </div>
-    );
-  }
-
-  // Show waveform
   return (
-    <div className="w-full h-full overflow-hidden pointer-events-none">
-      <div ref={waveformRef} className="w-full h-full" />
+    <div className="w-full h-full overflow-hidden pointer-events-none relative">
+      {/* Waveform container - always rendered so ref can attach */}
+      <div ref={waveformRef} className="w-full h-full absolute inset-0" />
+
+      {/* Loading overlay */}
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-[#1c1d20] z-10">
+          <div className="text-xs text-[#74808c]">
+            Loading waveform... {Math.round(waveformProgress)}%
+          </div>
+        </div>
+      )}
+
+      {/* No audio overlay */}
+      {!isLoading && !hasAudio && (
+        <div className="absolute inset-0 flex items-center justify-center bg-[#1c1d20] z-10">
+          <div className="text-xs text-[#74808c]">No audio track</div>
+        </div>
+      )}
     </div>
   );
 }
