@@ -119,8 +119,9 @@ export function Playhead() {
 
         const handleSeeked = () => {
           // Verify this is the correct seek
-          if (player.currentTime && finalSeekTargetRef.current !== null) {
-            const diff = Math.abs(player.currentTime() - finalSeekTargetRef.current);
+          const currentTime = player.currentTime?.();
+          if (currentTime !== undefined && finalSeekTargetRef.current !== null) {
+            const diff = Math.abs(currentTime - finalSeekTargetRef.current);
 
             // Only release if we're at the target position (within 0.1s)
             if (diff < 0.1) {
