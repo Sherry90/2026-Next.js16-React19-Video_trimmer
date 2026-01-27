@@ -1,8 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useStore } from '@/stores/useStore';
-import { useFFmpeg } from '@/hooks/useFFmpeg';
 
 // Upload feature
 import { UploadZone } from '@/features/upload/components/UploadZone';
@@ -13,20 +11,13 @@ import { FileValidationError } from '@/features/upload/components/FileValidation
 import { EditingSection } from '@/components/EditingSection';
 
 // Export feature
+import { ExportButton } from '@/features/export/components/ExportButton';
 import { ExportProgress } from '@/features/export/components/ExportProgress';
 import { DownloadButton } from '@/features/export/components/DownloadButton';
 import { ErrorDisplay } from '@/features/export/components/ErrorDisplay';
 
 export default function HomePage() {
-  useFFmpeg();
   const phase = useStore((state) => state.phase);
-  const setPhase = useStore((state) => state.setPhase);
-
-  useEffect(() => {
-    if (phase === 'ready') {
-      setPhase('editing');
-    }
-  }, [phase, setPhase]);
 
   return (
     <div className="min-h-screen bg-[#101114] flex flex-col">
@@ -38,13 +29,7 @@ export default function HomePage() {
           </h1>
         </div>
         <div className="flex gap-2">
-          {(phase === 'ready' || phase === 'editing') && (
-            <button
-              className="px-[30px] py-[7px] text-[13px] font-medium text-white bg-[#2962ff] border-none rounded-sm cursor-pointer transition-colors duration-200 hover:bg-[#0041f5]"
-            >
-              Export
-            </button>
-          )}
+          <ExportButton />
         </div>
       </header>
 
@@ -57,7 +42,7 @@ export default function HomePage() {
 
           {phase === 'idle' && <UploadZone />}
           <UploadProgress />
-          {(phase === 'ready' || phase === 'editing') && <EditingSection />}
+          {phase === 'editing' && <EditingSection />}
           <ExportProgress />
           <DownloadButton />
         </div>

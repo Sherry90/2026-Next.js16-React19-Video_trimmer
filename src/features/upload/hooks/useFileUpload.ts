@@ -39,8 +39,8 @@ export function useFileUpload() {
         setVideoFile(videoFile);
         setUploadProgress(100);
 
-        // FFmpeg 로딩 단계로 전환
-        setPhase('loading-ffmpeg');
+        // 편집 단계로 전환 (FFmpeg 불필요)
+        setPhase('editing');
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'File upload failed';
         setError(errorMessage, 'UPLOAD_ERROR');
