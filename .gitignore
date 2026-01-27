@@ -43,3 +43,5 @@ next-env.d.ts
 
 # Test sample videos
 /testsample
+/public/*.mp4
+/public/.DS_Store
