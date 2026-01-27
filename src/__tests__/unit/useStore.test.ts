@@ -208,12 +208,6 @@ describe('useStore', () => {
       expect(useStore.getState().processing.uploadProgress).toBe(50);
     });
 
-    it('should set FFmpeg load progress', () => {
-      const { setFFmpegLoadProgress } = useStore.getState();
-      setFFmpegLoadProgress(75);
-      expect(useStore.getState().processing.ffmpegLoadProgress).toBe(75);
-    });
-
     it('should set trim progress', () => {
       const { setTrimProgress } = useStore.getState();
       setTrimProgress(30);
@@ -312,14 +306,6 @@ describe('useStore', () => {
       const { export: exportState } = useStore.getState();
       expect(exportState.outputUrl).toBe(null);
       expect(exportState.outputFilename).toBe(null);
-    });
-  });
-
-  describe('FFmpeg management', () => {
-    it('should set FFmpeg ready state', () => {
-      const { setFFmpegReady } = useStore.getState();
-      setFFmpegReady(true);
-      expect(useStore.getState().isFFmpegReady).toBe(true);
     });
   });
 
