@@ -1,4 +1,16 @@
-import MP4Box, { type MP4File, type MP4Info, type MP4Sample, type MP4ArrayBuffer } from 'mp4box';
+import { createFile } from 'mp4box';
+import type { ISOFile, Track, Sample, MP4BoxBuffer } from 'mp4box';
+
+// Movie type from mp4box
+interface Movie {
+  audioTracks: Track[];
+  videoTracks: Track[];
+  duration: number;
+  timescale: number;
+  isFragmented: boolean;
+  isProgressive: boolean;
+  brands: string[];
+}
 
 export interface TrimOptions {
   inputFile: File;
@@ -8,9 +20,9 @@ export interface TrimOptions {
 }
 
 interface SampleData {
-  samples: MP4Sample[];
+  samples: Sample[];
   trackId: number;
-  info: any;
+  info: Track;
 }
 
 export async function trimVideoMP4Box(options: TrimOptions): Promise<Blob> {
@@ -28,11 +40,7 @@ export async function trimVideoMP4Box(options: TrimOptions): Promise<Blob> {
     onProgress?.(50);
 
     // Step 3: Create new MP4 with trimmed samples
-    const outputBuffer = await createTrimmedMP4(info, tracksData, startTime, endTime);
-    onProgress?.(90);
-
-    // Step 4: Create Blob
-    const blob = new Blob([outputBuffer], { type: inputFile.type || 'video/mp4' });
+    const blob = await createTrimmedMP4(info, tracksData, startTime, endTime);
     onProgress?.(100);
 
     return blob;
@@ -46,13 +54,13 @@ async function parseAndExtractSamples(
   arrayBuffer: ArrayBuffer,
   startTime: number,
   endTime: number
-): Promise<{ info: MP4Info; tracksData: Map<number, SampleData> }> {
+): Promise<{ info: Movie; tracksData: Map<number, SampleData> }> {
   return new Promise((resolve, reject) => {
-    const mp4boxfile = MP4Box.createFile();
+    const mp4boxfile = createFile();
     const tracksData = new Map<number, SampleData>();
-    let info: MP4Info;
+    let info: Movie;
 
-    mp4boxfile.onReady = (parsedInfo: MP4Info) => {
+    mp4boxfile.onReady = (parsedInfo: Movie) => {
       info = parsedInfo;
 
       // Set extraction options for all tracks
@@ -70,7 +78,7 @@ async function parseAndExtractSamples(
       mp4boxfile.start();
     };
 
-    mp4boxfile.onSamples = (trackId: number, user: any, samples: MP4Sample[]) => {
+    mp4boxfile.onSamples = (trackId: number, user: any, samples: Sample[]) => {
       const trackData = tracksData.get(trackId);
       if (trackData) {
         trackData.samples.push(...samples);
@@ -82,7 +90,7 @@ async function parseAndExtractSamples(
     };
 
     // Append buffer
-    const mp4ArrayBuffer = arrayBuffer as MP4ArrayBuffer;
+    const mp4ArrayBuffer = arrayBuffer as MP4BoxBuffer;
     mp4ArrayBuffer.fileStart = 0;
     mp4boxfile.appendBuffer(mp4ArrayBuffer);
     mp4boxfile.flush();
@@ -144,13 +152,13 @@ async function parseAndExtractSamples(
 }
 
 async function createTrimmedMP4(
-  info: MP4Info,
+  info: Movie,
   tracksData: Map<number, SampleData>,
   startTime: number,
   endTime: number
-): Promise<ArrayBuffer> {
+): Promise<Blob> {
   return new Promise((resolve, reject) => {
-    const mp4boxfile = MP4Box.createFile();
+    const mp4boxfile = createFile();
 
     try {
       // Add tracks
@@ -172,12 +180,12 @@ async function createTrimmedMP4(
 
         if (isVideo) {
           trackOptions.type = 'video';
-          trackOptions.avcDecoderConfigRecord = track.codec_config || null;
+          trackOptions.avcDecoderConfigRecord = (track as any).codec_config || null;
         } else {
           trackOptions.type = 'audio';
-          trackOptions.samplerate = track.audio?.sample_rate || 48000;
-          trackOptions.channel_count = track.audio?.channel_count || 2;
-          trackOptions.samplesize = track.audio?.sample_size || 16;
+          trackOptions.samplerate = (track as any).audio?.sample_rate || 48000;
+          trackOptions.channel_count = (track as any).audio?.channel_count || 2;
+          trackOptions.samplesize = (track as any).audio?.sample_size || 16;
         }
 
         const newTrackId = mp4boxfile.addTrack(trackOptions);
@@ -192,6 +200,8 @@ async function createTrimmedMP4(
         const firstDts = trackData.samples[0].dts;
 
         trackData.samples.forEach((sample, index) => {
+          if (!sample.data) return; // Skip samples without data
+
           const sampleOptions = {
             duration: sample.duration,
             dts: sample.dts - firstDts,
@@ -204,8 +214,8 @@ async function createTrimmedMP4(
       });
 
       // Save the file
-      const arrayBuffer = mp4boxfile.save();
-      resolve(arrayBuffer);
+      const blob = mp4boxfile.save('output.mp4');
+      resolve(blob);
     } catch (error) {
       reject(error);
     }
