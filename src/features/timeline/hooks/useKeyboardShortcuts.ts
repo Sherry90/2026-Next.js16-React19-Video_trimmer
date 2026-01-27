@@ -19,8 +19,8 @@ export function useKeyboardShortcuts(config: KeyboardShortcutsConfig) {
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      // editing 또는 ready 상태에서만 작동
-      if (phase !== 'editing' && phase !== 'ready') {
+      // editing 상태에서만 작동
+      if (phase !== 'editing') {
         return;
       }
 

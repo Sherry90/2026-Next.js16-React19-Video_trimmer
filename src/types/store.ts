@@ -1,8 +1,6 @@
 export type AppPhase =
   | 'idle'           // 초기 상태
   | 'uploading'      // 파일 업로드 중
-  | 'loading-ffmpeg' // FFmpeg 로딩 중
-  | 'ready'          // 편집 준비 완료
   | 'editing'        // 편집 중
   | 'processing'     // 트리밍 처리 중
   | 'completed'      // 완료
@@ -28,7 +26,6 @@ export interface TimelineState {
 
 export interface ProcessingState {
   uploadProgress: number;     // 0-100
-  ffmpegLoadProgress: number; // 0-100
   trimProgress: number;       // 0-100
   waveformProgress: number;   // Phase 4, 0-100
 }
