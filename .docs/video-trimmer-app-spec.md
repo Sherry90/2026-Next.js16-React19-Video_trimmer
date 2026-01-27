@@ -203,48 +203,49 @@ src/
 
 ## 12. 개발 Phase
 
-### Phase 1: 프로젝트 설정 및 기본 구동
-- [ ] Next.js 16 + Turbopack + TypeScript 초기화
-- [ ] Tailwind CSS 설정
-- [ ] COOP/COEP 헤더 설정
-- [ ] Zustand 스토어 구조 설정
-- [ ] ESLint, Prettier 설정
-- [ ] 폴더 구조 생성 (Feature 기반)
-- [ ] 기본 레이아웃 컴포넌트
-- [ ] 개발 서버 정상 구동 확인
-- [ ] `tsc --noEmit` 통과 확인
+### Phase 1: 프로젝트 설정 및 기본 구동 ✅ COMPLETE (2025-01-20)
+- [x] Next.js 16 + Turbopack + TypeScript 초기화
+- [x] Tailwind CSS 설정
+- [x] COOP/COEP 헤더 설정
+- [x] Zustand 스토어 구조 설정
+- [x] ESLint, Prettier 설정
+- [x] 폴더 구조 생성 (Feature 기반)
+- [x] 기본 레이아웃 컴포넌트
+- [x] 개발 서버 정상 구동 확인
+- [x] `tsc --noEmit` 통과 확인
 
-### Phase 2: 핵심 흐름 + 기본 UI
-- [ ] 파일 업로드 컴포넌트 (드래그 앤 드롭) + Progress
-- [ ] 입력 사양 검증 (포맷, 1GB 제한) + 거절 시 경고
-- [ ] FFmpeg.wasm 로딩 + Progress + 캐싱
-- [ ] Video.js 플레이어 컴포넌트
-- [ ] 타임라인 에디터 (단색 배경)
-  - [ ] 인 포인트 / 아웃 포인트 핸들 (드래그)
-  - [ ] 인 포인트 / 아웃 포인트 시간 입력
-  - [ ] 플레이헤드 + 현재 시간 표시
-  - [ ] 핸들 제약 조건 (인 < 아웃)
-  - [ ] 핸들 UI 구별
-- [ ] 재생 (Space)
-- [ ] 트리밍 실행 + Progress
-- [ ] 다운로드 (`_edited` suffix)
-- [ ] 에러 표시 (원본 메시지 출력)
+### Phase 2: 핵심 흐름 + 기본 UI ✅ COMPLETE (2025-01-21)
+- [x] 파일 업로드 컴포넌트 (드래그 앤 드롭) + Progress
+- [x] 입력 사양 검증 (포맷, 1GB 제한) + 거절 시 경고
+- [x] FFmpeg.wasm 로딩 + Progress + 캐싱
+- [x] Video.js 플레이어 컴포넌트
+- [x] 타임라인 에디터 (단색 배경)
+  - [x] 인 포인트 / 아웃 포인트 핸들 (드래그)
+  - [x] 인 포인트 / 아웃 포인트 시간 입력
+  - [x] 플레이헤드 + 현재 시간 표시
+  - [x] 핸들 제약 조건 (인 < 아웃)
+  - [x] 핸들 UI 구별
+- [x] 재생 (Space)
+- [x] 트리밍 실행 + Progress
+- [x] 다운로드 (`_edited` suffix)
+- [x] 에러 표시 (원본 메시지 출력)
+- [x] **버그 수정**: Playhead snap-back 제거 (commit 23fa7f9)
 
-### Phase 3: 편의 기능
-- [ ] 키보드 단축키 (←→, Shift+←→, I, O, Home, End)
-- [ ] 미리보기 (A) 전체 구간
+### Phase 3: 편의 기능 ✅ COMPLETE (2025-01-21)
+- [x] 키보드 단축키 (←→, Shift+←→, I, O, Home, End)
+- [x] 미리보기 (A) 전체 구간
 
-### Phase 4: 고급 기능
-- [ ] wavesurfer.js 파형 표시 + Progress (오디오 없으면 빈 배경)
-- [ ] 타임라인 줌 (Ctrl + 휠)
-- [ ] 인/아웃 포인트 잠금 기능
-- [ ] 미리보기 (B) 앞뒤 5초 옵션
+### Phase 4: 고급 기능 ⚠️ MOSTLY COMPLETE (2025-01-21)
+- [x] wavesurfer.js 파형 표시 + Progress (오디오 없으면 빈 배경)
+- [x] 타임라인 줌 (Ctrl + 휠)
+- [x] 인/아웃 포인트 잠금 기능
+- [ ] 미리보기 (B) 앞뒤 5초 옵션 ⚠️ 기본 구현 있음, 개선 필요
 
-### Phase 5: 흐름 완성
-- [ ] 완료 후 새 파일 편집
-- [ ] 실패 후 재시도
+### Phase 5: 흐름 완성 ✅ COMPLETE (2025-01-27)
+- [x] 완료 후 새 파일 편집 (DownloadButton에 "Edit Another File" 버튼 추가)
+- [x] 실패 후 재시도 (ErrorDisplay에 "Start Over" 버튼 이미 구현됨)
 
-### Phase 6: 테스트
+### Phase 6: 테스트 ⏸️ NOT STARTED
 - [ ] Vitest 단위 테스트
   - [ ] 유틸리티 함수
   - [ ] Zustand 스토어
