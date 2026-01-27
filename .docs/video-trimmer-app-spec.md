@@ -13,7 +13,7 @@
 | React | 19 | 라이브러리 |
 | React Compiler | -  | 자동 메모이제이션 |
 | TypeScript | -  | 타입 안정성           |
-| FFmpeg.wasm | -  | 브라우저 내 동영상 트리밍   |
+| MP4Box.js | -  | 브라우저 내 동영상 트리밍 (스트림 복사)   |
 | Video.js | -  | 동영상 재생 (프리뷰 포함)  |
 | wavesurfer.js | -  | 오디오 파형 시각화 (Phase 4) |
 | Zustand | -  | 상태 관리 (단일 스토어)   |
@@ -23,38 +23,23 @@
 
 ## 3. 기술 요구사항
 
-### 3.1 COOP/COEP 헤더 설정 (필수)
-FFmpeg.wasm의 SharedArrayBuffer 사용을 위해 `next.config.ts`에 설정:
-```typescript
-async headers() {
-  return [{
-    source: '/(.*)',
-    headers: [
-      { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
-      { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
-    ],
-  }];
-}
-```
+### 3.1 MP4Box.js 처리 방식
+- **처리 방식**: 스트림 복사 (재인코딩 없음)
+- **장점**: 빠른 처리 속도, 원본 화질 유지, 파일 크기 제한 없음
+- **제약**: 키프레임 기반 트리밍 (1-2초 정확도)
 
-### 3.2 FFmpeg.wasm 로딩 전략
-- **로딩 시점**: 동영상 업로드 시작 시 (앱 진입 시 아님)
-- **Progress 표시**: 파일 업로드와 별도로 FFmpeg 다운로드 Progress 표시
-- **캐싱**: Service Worker 또는 HTTP Cache-Control로 캐싱
-  - 새로고침/재방문 시 캐시에서 즉시 로드
-- **편집 화면 진입 조건**: 파일 업로드 + FFmpeg 로딩 둘 다 완료 시
-
-### 3.3 입력 사양
-- **포맷**: FFmpeg.wasm 지원 포맷으로 한정
-- **용량**: 최대 1GB
+### 3.2 입력 사양
+- **포맷**: MP4, WebM, OGG, QuickTime, AVI, MKV
+- **용량**: 제한 없음 (브라우저 메모리 한도 내)
 - **미준수 시**: 업로드 거절 + 경고 문구 표시
 
-### 3.4 출력 사양
+### 3.3 출력 사양
 - 원본 메타데이터 유지 (화질, 해상도, 코덱 변경 없음)
 - 파일명: `{원본파일명}_edited.{확장자}`
 
-### 3.5 브라우저 호환성
-- Chromium 기반 브라우저 (Chrome, Edge 등)
+### 3.4 브라우저 호환성
+- 최신 웹 브라우저 (Chrome, Edge, Firefox, Safari 등)
+- File API 및 Blob 지원 필수
 
 ## 4. 용어 정의
 | 용어 | 영문 | 설명 |
@@ -69,12 +54,10 @@ async headers() {
 ```
 [업로드 화면]
      ↓ 파일 선택/드래그
-[업로드 중] ← 2개 Progress 동시 표시
-  ├─ 파일 업로드 Progress
-  └─ FFmpeg.wasm 다운로드 Progress (캐시 시 즉시 완료)
-     ↓ 둘 다 완료
+[업로드 중] ← 파일 업로드 Progress
+     ↓ 완료
 [편집 화면] ← 비디오 플레이어 + 타임라인 에디터
-     ↓ 완료 버튼
+     ↓ Export 버튼
 [처리 중] ← 트리밍 Progress (0~100%)
      ↓
 [완료] → 다운로드 버튼

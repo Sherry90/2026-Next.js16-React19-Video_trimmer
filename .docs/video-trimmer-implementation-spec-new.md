@@ -1,8 +1,9 @@
 # 웹 동영상 트리밍 앱 - 구현 설계서
 
-> **버전**: 1.0.1  
-> **최종 수정일**: 2025-01-20  
-> **프로젝트 위치**: `/Users/pc/Documents/study/video-trimmer`
+> **버전**: 2.0.0
+> **최종 수정일**: 2026-01-28
+> **프로젝트 위치**: `/Users/pc/Documents/study/Video_Trimmer`
+> **주요 변경**: FFmpeg.wasm → MP4Box.js 스트림 복사 방식으로 전환
 
 ---
 
@@ -17,8 +18,8 @@
 - **점진적 개발**: Phase 1~6으로 단계적 구현
 
 ### 1.3 지원 브라우저
-- Chromium 기반 브라우저 (Chrome, Edge, Brave 등)
-- SharedArrayBuffer 지원 필수
+- 최신 웹 브라우저 (Chrome, Edge, Firefox, Safari 등)
+- File API 및 Blob 지원 필수
 
 ---
 
@@ -31,8 +32,7 @@
 | TypeScript | 5.x | `typescript@latest` | 타입 안정성 |
 | Turbopack | 내장 | - | 번들러 (Next.js 16 기본) |
 | React Compiler | 내장 | `babel-plugin-react-compiler` | 자동 메모이제이션 |
-| FFmpeg.wasm | 0.12.10 | `@ffmpeg/ffmpeg`, `@ffmpeg/util` | 동영상 트리밍 |
-| FFmpeg Core MT | 0.12.10 | `@ffmpeg/core-mt` | 멀티스레드 코어 |
+| MP4Box.js | 2.x | `mp4box` | 동영상 트리밍 (스트림 복사) |
 | Video.js | 8.x | `video.js` | 동영상 재생 |
 | wavesurfer.js | 7.x | `wavesurfer.js` | 오디오 파형 (Phase 4) |
 | Zustand | 5.x | `zustand` | 상태 관리 |
@@ -47,7 +47,7 @@
 npx create-next-app@16.1.1 video-trimmer --typescript --tailwind --eslint --app --turbopack
 
 # 핵심 의존성
-npm install zustand video.js @ffmpeg/ffmpeg @ffmpeg/util
+npm install zustand video.js mp4box
 
 # React Compiler
 npm install -D babel-plugin-react-compiler
@@ -67,7 +67,6 @@ npm install -D @playwright/test
 ```
 video-trimmer/
 ├── public/
-│   └── ffmpeg/                    # FFmpeg 로컬 캐싱용 (선택)
 ├── src/
 │   ├── app/
 │   │   ├── layout.tsx             # 루트 레이아웃
@@ -118,8 +117,7 @@ video-trimmer/
 │   │       │   ├── DownloadButton.tsx    # 다운로드 버튼
 │   │       │   └── ErrorDisplay.tsx      # 에러 표시
 │   │       └── utils/
-│   │           ├── ffmpegLoader.ts       # FFmpeg 로더
-│   │           ├── trimVideo.ts          # 트리밍 실행
+│   │           ├── trimVideoMP4Box.ts    # MP4Box 트리밍 실행
 │   │           └── generateFilename.ts   # 파일명 생성
 │   │
 │   ├── stores/
@@ -129,9 +127,6 @@ video-trimmer/
 │   │   ├── Layout.tsx                    # 앱 레이아웃
 │   │   ├── LoadingSpinner.tsx            # 로딩 스피너
 │   │   └── ProgressBar.tsx               # 공통 프로그레스 바
-│   │
-│   ├── hooks/
-│   │   └── useFFmpeg.ts                  # FFmpeg 인스턴스 관리
 │   │
 │   ├── utils/
 │   │   └── formatBytes.ts                # 바이트 포맷팅
@@ -171,11 +166,9 @@ import { create } from 'zustand';
 
 // ==================== 타입 정의 ====================
 
-type AppPhase = 
+type AppPhase =
   | 'idle'           // 초기 상태
   | 'uploading'      // 파일 업로드 중
-  | 'loading-ffmpeg' // FFmpeg 로딩 중
-  | 'ready'          // 편집 준비 완료
   | 'editing'        // 편집 중
   | 'processing'     // 트리밍 처리 중
   | 'completed'      // 완료
@@ -201,7 +194,6 @@ interface TimelineState {
 
 interface ProcessingState {
   uploadProgress: number;     // 0-100
-  ffmpegLoadProgress: number; // 0-100
   trimProgress: number;       // 0-100
   waveformProgress: number;   // Phase 4, 0-100
 }
@@ -247,9 +239,6 @@ interface StoreState {
   
   // 내보내기 결과
   export: ExportState;
-  
-  // FFmpeg 준비 상태
-  isFFmpegReady: boolean;
 }
 
 // ==================== 스토어 액션 ====================
@@ -273,7 +262,6 @@ interface StoreActions {
   
   // 진행률 관련
   setUploadProgress: (progress: number) => void;
-  setFFmpegLoadProgress: (progress: number) => void;
   setTrimProgress: (progress: number) => void;
   setWaveformProgress: (progress: number) => void;
   
@@ -290,10 +278,7 @@ interface StoreActions {
   // 내보내기 관련
   setExportResult: (url: string, filename: string) => void;
   clearExportResult: () => void;
-  
-  // FFmpeg 관련
-  setFFmpegReady: (ready: boolean) => void;
-  
+
   // 전체 리셋
   reset: () => void;
 }
@@ -313,7 +298,6 @@ const initialState: StoreState = {
   },
   processing: {
     uploadProgress: 0,
-    ffmpegLoadProgress: 0,
     trimProgress: 0,
     waveformProgress: 0,
   },
@@ -332,7 +316,6 @@ const initialState: StoreState = {
     outputUrl: null,
     outputFilename: null,
   },
-  isFFmpegReady: false,
 };
 
 // ==================== 스토어 생성 ====================
@@ -432,11 +415,6 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
       processing: { ...state.processing, uploadProgress: progress },
     })),
 
-  setFFmpegLoadProgress: (progress) =>
-    set((state) => ({
-      processing: { ...state.processing, ffmpegLoadProgress: progress },
-    })),
-
   setTrimProgress: (progress) =>
     set((state) => ({
       processing: { ...state.processing, trimProgress: progress },
@@ -488,9 +466,6 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
     }
     set({ export: { outputUrl: null, outputFilename: null } });
   },
-
-  // FFmpeg 관련
-  setFFmpegReady: (ready) => set({ isFFmpegReady: ready }),
 
   // 전체 리셋
   reset: () => {
@@ -731,14 +706,14 @@ git log --oneline --graph -10
 
 ### 15.1 공식 문서
 - [Next.js 16 Documentation](https://nextjs.org/docs)
-- [FFmpeg.wasm Documentation](https://github.com/ffmpegwasm/ffmpeg.wasm)
+- [MP4Box.js (GPAC)](https://github.com/gpac/mp4box.js)
 - [Video.js Documentation](https://videojs.com/guides)
 - [wavesurfer.js Documentation](https://wavesurfer.xyz)
 - [Zustand Documentation](https://docs.pmnd.rs/zustand)
 - [Tailwind CSS Documentation](https://tailwindcss.com/docs)
 
 ### 15.2 핵심 API 참조
-- FFmpeg 트리밍: `ffmpeg.exec(['-i', input, '-ss', start, '-to', end, '-c', 'copy', output])`
+- MP4Box.js: `MP4Box.createFile()`, `appendBuffer()`, `setExtractionOptions()`, `save()`
 - Video.js: `videojs(id, options)`, `player.currentTime()`, `player.duration()`
 - wavesurfer.js: `WaveSurfer.create({ container, waveColor, progressColor, url })`
 - Zustand: `create<State>()((set, get) => ({ ... }))`

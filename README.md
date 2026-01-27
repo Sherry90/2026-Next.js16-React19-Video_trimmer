@@ -5,7 +5,7 @@
 ## 주요 기능
 
 - 🎬 브라우저에서 직접 동영상 트리밍 (서버 업로드 없음)
-- ⚡ FFmpeg.wasm을 사용한 빠른 처리
+- ⚡ MP4Box.js를 사용한 스트림 복사 트리밍 (재인코딩 없음)
 - 🎨 Video.js 기반 비디오 플레이어
 - 🎵 wavesurfer.js를 사용한 오디오 파형 시각화
 - ⌨️ 키보드 단축키 지원
@@ -17,7 +17,7 @@
 - **Framework**: Next.js 16 with Turbopack
 - **Language**: TypeScript
 - **UI**: React 19, Tailwind CSS
-- **Video Processing**: FFmpeg.wasm
+- **Video Processing**: MP4Box.js (GPAC MP4 Parser/Muxer)
 - **Video Player**: Video.js
 - **Audio Visualization**: wavesurfer.js
 - **State Management**: Zustand
@@ -95,12 +95,16 @@ npm run test:e2e:ui
 - AVI (video/x-msvideo)
 - MKV (video/x-matroska)
 
-**최대 파일 크기**: 1GB
+**처리 방식**: 스트림 복사 (재인코딩 없음)
+- 원본 화질 유지
+- 키프레임 기반 트리밍 (1-2초 정확도)
+- 빠른 처리 속도
+- 파일 크기 제한 없음
 
 ## 브라우저 지원
 
-- Chromium 기반 브라우저 (Chrome, Edge, Brave 등)
-- SharedArrayBuffer 지원 필수
+- 최신 웹 브라우저 (Chrome, Edge, Firefox, Safari 등)
+- File API 및 Blob 지원 필수
 
 ## 개발 과정
 
