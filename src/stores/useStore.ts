@@ -32,9 +32,6 @@ interface StoreState {
 
   // 내보내기 결과
   export: ExportState;
-
-  // FFmpeg 준비 상태
-  isFFmpegReady: boolean;
 }
 
 // ==================== 스토어 액션 ====================
@@ -58,7 +55,6 @@ interface StoreActions {
 
   // 진행률 관련
   setUploadProgress: (progress: number) => void;
-  setFFmpegLoadProgress: (progress: number) => void;
   setTrimProgress: (progress: number) => void;
   setWaveformProgress: (progress: number) => void;
 
@@ -76,9 +72,6 @@ interface StoreActions {
   // 내보내기 관련
   setExportResult: (url: string, filename: string) => void;
   clearExportResult: () => void;
-
-  // FFmpeg 관련
-  setFFmpegReady: (ready: boolean) => void;
 
   // 전체 리셋
   reset: () => void;
@@ -99,7 +92,6 @@ const initialState: StoreState = {
   },
   processing: {
     uploadProgress: 0,
-    ffmpegLoadProgress: 0,
     trimProgress: 0,
     waveformProgress: 0,
   },
@@ -119,7 +111,6 @@ const initialState: StoreState = {
     outputUrl: null,
     outputFilename: null,
   },
-  isFFmpegReady: false,
 };
 
 // ==================== 스토어 생성 ====================
@@ -219,11 +210,6 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
       processing: { ...state.processing, uploadProgress: progress },
     })),
 
-  setFFmpegLoadProgress: (progress) =>
-    set((state) => ({
-      processing: { ...state.processing, ffmpegLoadProgress: progress },
-    })),
-
   setTrimProgress: (progress) =>
     set((state) => ({
       processing: { ...state.processing, trimProgress: progress },
@@ -278,9 +264,6 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
     }
     set({ export: { outputUrl: null, outputFilename: null } });
   },
-
-  // FFmpeg 관련
-  setFFmpegReady: (ready) => set({ isFFmpegReady: ready }),
 
   // 전체 리셋
   reset: () => {
