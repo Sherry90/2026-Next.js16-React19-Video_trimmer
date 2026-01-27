@@ -2,13 +2,10 @@
 
 import { useCallback } from 'react';
 import { useStore } from '@/stores/useStore';
-import { useFFmpeg } from '@/hooks/useFFmpeg';
-import { trimVideo } from '@/features/export/utils/trimVideo';
+import { trimVideoMP4Box } from '@/features/export/utils/trimVideoMP4Box';
 import { generateEditedFilename } from '@/features/export/utils/generateFilename';
 
 export function ExportButton() {
-  const { ffmpeg } = useFFmpeg();
-
   const videoFile = useStore((state) => state.videoFile);
   const inPoint = useStore((state) => state.timeline.inPoint);
   const outPoint = useStore((state) => state.timeline.outPoint);
@@ -20,8 +17,8 @@ export function ExportButton() {
   const setError = useStore((state) => state.setError);
 
   const handleExport = useCallback(async () => {
-    if (!ffmpeg || !videoFile) {
-      setError('FFmpeg or video file not available', 'EXPORT_ERROR');
+    if (!videoFile) {
+      setError('Video file not available', 'EXPORT_ERROR');
       return;
     }
 
@@ -29,7 +26,7 @@ export function ExportButton() {
       setPhase('processing');
       setTrimProgress(0);
 
-      const outputBlob = await trimVideo(ffmpeg, {
+      const outputBlob = await trimVideoMP4Box({
         inputFile: videoFile.file,
         startTime: inPoint,
         endTime: outPoint,
@@ -47,19 +44,19 @@ export function ExportButton() {
       const errorMessage = error instanceof Error ? error.message : 'Export failed';
       setError(errorMessage, 'EXPORT_ERROR');
     }
-  }, [ffmpeg, videoFile, inPoint, outPoint, setPhase, setTrimProgress, setExportResult, setError]);
+  }, [videoFile, inPoint, outPoint, setPhase, setTrimProgress, setExportResult, setError]);
 
-  if (phase !== 'editing' && phase !== 'ready') {
+  if (phase !== 'editing') {
     return null;
   }
 
   return (
     <button
       onClick={handleExport}
-      className="px-6 py-3 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      disabled={!ffmpeg || !videoFile}
+      className="px-[30px] py-[7px] text-[13px] font-medium text-white bg-[#2962ff] border-none rounded-sm cursor-pointer transition-colors duration-200 hover:bg-[#0041f5] disabled:opacity-50 disabled:cursor-not-allowed"
+      disabled={!videoFile}
     >
-      Export Video
+      Export
     </button>
   );
 }

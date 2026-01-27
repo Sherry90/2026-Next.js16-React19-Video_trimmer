@@ -7,10 +7,9 @@ import { formatBytes } from '@/utils/formatBytes';
 export function UploadProgress() {
   const videoFile = useStore((state) => state.videoFile);
   const uploadProgress = useStore((state) => state.processing.uploadProgress);
-  const ffmpegLoadProgress = useStore((state) => state.processing.ffmpegLoadProgress);
   const phase = useStore((state) => state.phase);
 
-  if (!videoFile || (phase !== 'uploading' && phase !== 'loading-ffmpeg')) {
+  if (!videoFile || phase !== 'uploading') {
     return null;
   }
 
@@ -31,12 +30,6 @@ export function UploadProgress() {
         <ProgressBar
           progress={uploadProgress}
           label="File Upload"
-        />
-
-        {/* FFmpeg 로딩 진행률 */}
-        <ProgressBar
-          progress={ffmpegLoadProgress}
-          label="Loading FFmpeg"
         />
       </div>
     </div>
