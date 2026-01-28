@@ -2,6 +2,7 @@ import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { toBlobURL, fetchFile } from '@ffmpeg/util';
 import { checkMemoryAvailability } from '@/utils/memoryMonitor';
 import { parseFFmpegError } from '@/utils/errorHandler';
+import { parseFFmpegProgress, calculateProgress } from '@/utils/ffmpegLogParser';
 
 export interface TrimOptions {
   ffmpeg: FFmpeg;
@@ -52,29 +53,58 @@ export async function trimVideoFFmpeg(options: TrimOptions): Promise<Blob> {
     // Calculate duration
     const duration = endTime - startTime;
 
-    // FFmpeg command with stream copy (no re-encoding)
-    // -i: input file
-    // -ss: start time (AFTER -i for accurate seeking - output seeking, ±0.02s accuracy)
-    // -t: duration
-    // -c copy: stream copy (no re-encoding)
-    //
-    // Note: Changed from input seeking (-ss before -i) to output seeking (-ss after -i)
-    // for better accuracy. Previous concern about dropping video stream was unfounded.
-    // Speed impact is negligible (+0.002s) while accuracy improved from ±0.5s to ±0.02s.
-    const ffmpegArgs = [
-      '-i', inputFileName,
-      '-ss', startTime.toString(),
-      '-t', duration.toString(),
-      '-c', 'copy',
-      outputFileName
-    ];
+    // Set up FFmpeg log parser for accurate progress tracking
+    const progressHandler = ({ message }: { message: string }) => {
+      const progressInfo = parseFFmpegProgress(message);
+      if (progressInfo) {
+        // Calculate progress: 20% (file load) + 70% (processing) = 90% total
+        const processingProgress = calculateProgress(
+          progressInfo.processedTime,
+          duration
+        );
+        const totalProgress = 20 + (processingProgress * 0.7);
+        onProgress?.(Math.min(Math.round(totalProgress), 90));
+      }
+    };
 
-    onProgress?.(30);
+    // Attach log handler
+    ffmpeg.on('log', progressHandler);
 
-    // Execute FFmpeg command
-    await ffmpeg.exec(ffmpegArgs);
+    try {
+      // FFmpeg command with stream copy (no re-encoding)
+      // -i: input file
+      // -ss: start time (AFTER -i for accurate seeking - output seeking, ±0.02s accuracy)
+      // -t: duration
+      // -c copy: stream copy (no re-encoding)
+      // -progress: enable progress reporting
+      //
+      // Note: Changed from input seeking (-ss before -i) to output seeking (-ss after -i)
+      // for better accuracy. Previous concern about dropping video stream was unfounded.
+      // Speed impact is negligible (+0.002s) while accuracy improved from ±0.5s to ±0.02s.
+      const ffmpegArgs = [
+        '-i',
+        inputFileName,
+        '-ss',
+        startTime.toString(),
+        '-t',
+        duration.toString(),
+        '-c',
+        'copy',
+        '-progress',
+        'pipe:1', // Output progress to stdout for parsing
+        outputFileName,
+      ];
 
-    onProgress?.(80);
+      onProgress?.(30);
+
+      // Execute FFmpeg command
+      await ffmpeg.exec(ffmpegArgs);
+
+      onProgress?.(90);
+    } finally {
+      // Always remove log handler, even if exec fails
+      ffmpeg.off('log', progressHandler);
+    }
 
     // Read output file
     const data = await ffmpeg.readFile(outputFileName);
