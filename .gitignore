@@ -44,6 +44,13 @@ next-env.d.ts
 # Claude Code CLI
 .claude
 
+# Claude workspace configs
+.claude-plugin/
+statuses/
+labels/
+config.json
+views.json
+
 # Test sample videos
 /testsample
 /public/*.mp4
