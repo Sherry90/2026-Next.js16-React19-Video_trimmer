@@ -11,18 +11,58 @@ export const FILE_SIZE = {
 export const VIDEO_CONSTRAINTS: VideoConstraints = {
   maxSize: FILE_SIZE.HARD_MAX, // Use hard max for backward compatibility
   supportedFormats: [
+    // Core formats
     'video/mp4',
     'video/webm',
     'video/ogg',
-    'video/quicktime',
-    'video/x-msvideo',
-    'video/x-matroska',
+
+    // Apple/QuickTime
+    'video/quicktime', // .mov
+    'video/x-m4v', // .m4v
+
+    // Microsoft/Windows
+    'video/x-msvideo', // .avi
+    'video/x-ms-wmv', // .wmv
+
+    // Matroska/MKV
+    'video/x-matroska', // .mkv
+
+    // Streaming/Mobile
+    'video/x-flv', // .flv
+    'video/mp2t', // .ts (MPEG Transport Stream)
+    'video/3gpp', // .3gp
+    'video/3gpp2', // .3g2
+
+    // Additional MPEG variants
+    'video/mpeg', // .mpeg, .mpg
   ],
 };
 
+// Supported file extensions (for display/documentation)
+export const SUPPORTED_EXTENSIONS = [
+  '.mp4',
+  '.webm',
+  '.ogg',
+  '.mov',
+  '.m4v',
+  '.avi',
+  '.wmv',
+  '.mkv',
+  '.flv',
+  '.ts',
+  '.3gp',
+  '.3g2',
+  '.mpeg',
+  '.mpg',
+] as const;
+
 export const FILE_CONSTRAINT_MESSAGES = {
-  SIZE_EXCEEDED: `파일 크기가 ${FILE_SIZE.HARD_MAX / (1024 * 1024 * 1024)}GB를 초과합니다.`,
-  UNSUPPORTED_FORMAT: '지원하지 않는 파일 형식입니다.',
+  SIZE_EXCEEDED: `파일 크기가 ${
+    FILE_SIZE.HARD_MAX / (1024 * 1024 * 1024)
+  }GB를 초과합니다.`,
+  UNSUPPORTED_FORMAT: `지원하지 않는 파일 형식입니다. 지원 형식: ${SUPPORTED_EXTENSIONS.join(
+    ', '
+  )}`,
   SIZE_WARNING: `파일이 큽니다 (권장: ${
     FILE_SIZE.RECOMMENDED_MAX / (1024 * 1024)
   }MB 이하). 처리 시간이 오래 걸리거나 메모리 부족이 발생할 수 있습니다.`,
