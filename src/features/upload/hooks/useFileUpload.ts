@@ -14,8 +14,17 @@ export function useFileUpload() {
       // 파일 검증
       const validation = validateFile(file);
       if (!validation.isValid) {
-        setError(validation.error || 'Unknown validation error', 'VALIDATION_ERROR');
+        setError(
+          validation.error || 'Unknown validation error',
+          'VALIDATION_ERROR'
+        );
         return;
+      }
+
+      // 경고가 있으면 콘솔에 표시 (처리는 계속)
+      if (validation.warning) {
+        console.warn('[File Size Warning]', validation.warning);
+        // TODO: UI에 경고 메시지 표시 (선택사항)
       }
 
       // 업로드 시작
