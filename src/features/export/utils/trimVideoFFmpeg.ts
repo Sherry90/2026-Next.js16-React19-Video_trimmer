@@ -1,5 +1,7 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { toBlobURL, fetchFile } from '@ffmpeg/util';
+import { checkMemoryAvailability } from '@/utils/memoryMonitor';
+import { parseFFmpegError } from '@/utils/errorHandler';
 
 export interface TrimOptions {
   ffmpeg: FFmpeg;
@@ -28,6 +30,13 @@ export async function trimVideoFFmpeg(options: TrimOptions): Promise<Blob> {
 
   try {
     onProgress?.(0);
+
+    // Check memory availability before processing
+    if (!checkMemoryAvailability(inputFile.size)) {
+      throw new Error(
+        'MEMORY_INSUFFICIENT: Not enough memory to process this file. Please use a smaller file (recommended: < 500MB).'
+      );
+    }
 
     // Input and output filenames
     const inputFileName = 'input.mp4';
@@ -92,7 +101,15 @@ export async function trimVideoFFmpeg(options: TrimOptions): Promise<Blob> {
 
     return blob;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    throw new Error(`Video trimming failed: ${errorMessage}`);
+    // Parse FFmpeg error into user-friendly AppError
+    const appError = parseFFmpegError(
+      error instanceof Error ? error : new Error('Unknown error')
+    );
+
+    // Throw error with enhanced message
+    const enhancedError = new Error(`Video trimming failed: ${appError.message}`);
+    // Attach AppError details for UI to use
+    (enhancedError as any).appError = appError;
+    throw enhancedError;
   }
 }

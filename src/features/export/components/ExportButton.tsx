@@ -59,8 +59,21 @@ export function ExportButton() {
 
       setExportResult(outputUrl, outputFilename);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Export failed';
-      setError(errorMessage, 'EXPORT_ERROR');
+      // Check if error has AppError attached (from parseFFmpegError)
+      const appError =
+        error instanceof Error && (error as any).appError
+          ? (error as any).appError
+          : null;
+
+      if (appError) {
+        // Use parsed error code and user-friendly message
+        setError(appError.userMessage, appError.code);
+      } else {
+        // Fallback to basic error
+        const errorMessage =
+          error instanceof Error ? error.message : 'Export failed';
+        setError(errorMessage, 'EXPORT_ERROR');
+      }
     }
   }, [videoFile, inPoint, outPoint, ffmpeg, setPhase, setTrimProgress, setExportResult, setError]);
 
