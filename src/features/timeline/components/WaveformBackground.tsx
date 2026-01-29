@@ -91,11 +91,20 @@ export function WaveformBackground() {
     };
   }, [videoFile, setWaveformProgress]);
 
-  // Handle zoom changes
+  // Handle zoom changes with 100ms debounce for smoother experience
   useEffect(() => {
-    if (wavesurferRef.current && !isLoading) {
-      wavesurferRef.current.zoom(zoom * 10);
-    }
+    if (!wavesurferRef.current || isLoading) return;
+
+    // Debounce zoom updates to reduce CPU usage during rapid Ctrl+wheel scrolling
+    const debounceTimer = setTimeout(() => {
+      if (wavesurferRef.current) {
+        wavesurferRef.current.zoom(zoom * 10);
+      }
+    }, 100);
+
+    return () => {
+      clearTimeout(debounceTimer);
+    };
   }, [zoom, isLoading]);
 
   return (
