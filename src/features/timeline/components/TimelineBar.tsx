@@ -17,7 +17,7 @@ export function TimelineBar({ children }: TimelineBarProps) {
   const outPosition = duration > 0 ? (outPoint / duration) * 100 : 100;
 
   return (
-    <div className="w-full h-[100px]">
+    <div className="w-full h-[140px]">
       {/* Timeline Wrapper with padding */}
       <div className="h-full pt-4 px-4">
         {/* Timeline main area */}
