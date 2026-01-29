@@ -1,10 +1,10 @@
 'use client';
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useState } from 'react';
 import { useStore } from '@/stores/useStore';
-import { useFFmpeg } from '@/hooks/useFFmpeg';
-import { trimVideoFFmpeg } from '@/features/export/utils/trimVideoFFmpeg';
+import { trimVideo } from '@/features/export/utils/trimVideoDispatcher';
 import { generateEditedFilename } from '@/features/export/utils/generateFilename';
+import { requiresFFmpegDownload } from '@/features/export/utils/formatDetector';
 
 export function ExportButton() {
   const videoFile = useStore((state) => state.videoFile);
@@ -17,16 +17,9 @@ export function ExportButton() {
   const setExportResult = useStore((state) => state.setExportResult);
   const setError = useStore((state) => state.setError);
 
-  const { ffmpeg, isLoaded, isLoading, load } = useFFmpeg();
-
-  // Load FFmpeg when component mounts
-  useEffect(() => {
-    if (!isLoaded && !isLoading) {
-      load().catch((error) => {
-        console.error('Failed to load FFmpeg:', error);
-      });
-    }
-  }, [isLoaded, isLoading, load]);
+  // State for FFmpeg loading (only happens for non-MP4 formats)
+  const [isLoadingFFmpeg, setIsLoadingFFmpeg] = useState(false);
+  const [ffmpegLoadProgress, setFFmpegLoadProgress] = useState(0);
 
   const handleExport = useCallback(async () => {
     if (!videoFile) {
@@ -34,22 +27,28 @@ export function ExportButton() {
       return;
     }
 
-    if (!ffmpeg) {
-      setError('FFmpeg not loaded', 'EXPORT_ERROR');
-      return;
-    }
-
     try {
       setPhase('processing');
       setTrimProgress(0);
+      setFFmpegLoadProgress(0);
 
-      const outputBlob = await trimVideoFFmpeg({
-        ffmpeg,
+      const outputBlob = await trimVideo({
         inputFile: videoFile.file,
         startTime: inPoint,
         endTime: outPoint,
         onProgress: (progress) => {
           setTrimProgress(progress);
+        },
+        onFFmpegLoadStart: () => {
+          setIsLoadingFFmpeg(true);
+          setFFmpegLoadProgress(0);
+        },
+        onFFmpegLoadProgress: (progress) => {
+          setFFmpegLoadProgress(progress);
+        },
+        onFFmpegLoadComplete: () => {
+          setIsLoadingFFmpeg(false);
+          setFFmpegLoadProgress(100);
         },
       });
 
@@ -75,20 +74,42 @@ export function ExportButton() {
         setError(errorMessage, 'EXPORT_ERROR');
       }
     }
-  }, [videoFile, inPoint, outPoint, ffmpeg, setPhase, setTrimProgress, setExportResult, setError]);
+  }, [videoFile, inPoint, outPoint, setPhase, setTrimProgress, setExportResult, setError]);
 
   if (phase !== 'editing') {
     return null;
   }
 
+  // Check if this video will require FFmpeg download
+  const willDownloadFFmpeg = videoFile && requiresFFmpegDownload(videoFile.file);
+
+  // Button text based on loading state
+  const getButtonText = () => {
+    if (isLoadingFFmpeg) {
+      return `Loading FFmpeg... ${ffmpegLoadProgress}%`;
+    }
+    return 'Export';
+  };
+
+  // Button title (tooltip) based on state
+  const getButtonTitle = () => {
+    if (isLoadingFFmpeg) {
+      return `Downloading FFmpeg (20MB)... ${ffmpegLoadProgress}%`;
+    }
+    if (willDownloadFFmpeg) {
+      return 'This format requires downloading FFmpeg (20MB, one-time)';
+    }
+    return undefined;
+  };
+
   return (
     <button
       onClick={handleExport}
       className="px-[30px] py-[7px] text-[13px] font-medium text-white bg-[#2962ff] border-none rounded-sm cursor-pointer transition-colors duration-200 hover:bg-[#0041f5] disabled:opacity-50 disabled:cursor-not-allowed"
-      disabled={!videoFile || !isLoaded}
-      title={!isLoaded ? 'Loading FFmpeg...' : undefined}
+      disabled={!videoFile || isLoadingFFmpeg}
+      title={getButtonTitle()}
     >
-      Export
+      {getButtonText()}
     </button>
   );
 }
