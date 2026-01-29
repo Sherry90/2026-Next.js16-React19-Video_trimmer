@@ -1,6 +1,7 @@
 /**
  * Browser memory monitoring utilities
  */
+import { formatBytes } from './formatBytes';
 
 // 권장 파일 크기: 500MB
 const RECOMMENDED_FILE_SIZE = 500 * 1024 * 1024; // 500MB in bytes
@@ -99,17 +100,5 @@ export function getMemoryStatusMessage(fileSize: number): string | null {
   return '파일이 너무 큽니다. 브라우저 메모리 한계로 처리에 실패할 수 있습니다. 500MB 이하 파일 사용을 권장합니다.';
 }
 
-/**
- * Format bytes to human-readable string
- */
-export function formatBytes(bytes: number, decimals: number = 2): string {
-  if (bytes === 0) return '0 Bytes';
-
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-}
+// Re-export formatBytes for backward compatibility
+export { formatBytes };
