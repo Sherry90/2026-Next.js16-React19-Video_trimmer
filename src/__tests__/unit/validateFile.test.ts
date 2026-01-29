@@ -29,11 +29,22 @@ describe('validateFile', () => {
       expect(result.isValid).toBe(true);
     });
 
-    it('should reject file over 1GB', () => {
+    it('should show warning for file over 1GB', () => {
       const file = new File(['test'], 'test.mp4', {
         type: 'video/mp4',
       });
       Object.defineProperty(file, 'size', { value: 1024 * 1024 * 1024 + 1 }); // 1GB + 1 byte
+
+      const result = validateFileSize(file);
+      expect(result.isValid).toBe(true);
+      expect(result.warning).toBeDefined();
+    });
+
+    it('should reject file over 5GB (hard limit)', () => {
+      const file = new File(['test'], 'test.mp4', {
+        type: 'video/mp4',
+      });
+      Object.defineProperty(file, 'size', { value: 6 * 1024 * 1024 * 1024 }); // 6GB
 
       const result = validateFileSize(file);
       expect(result.isValid).toBe(false);
@@ -143,7 +154,7 @@ describe('validateFile', () => {
       const file = new File(['test'], 'test.mp4', {
         type: 'video/mp4',
       });
-      Object.defineProperty(file, 'size', { value: 2 * 1024 * 1024 * 1024 }); // 2GB
+      Object.defineProperty(file, 'size', { value: 6 * 1024 * 1024 * 1024 }); // 6GB (over hard limit)
 
       const result = validateFile(file);
       expect(result.isValid).toBe(false);
@@ -165,12 +176,12 @@ describe('validateFile', () => {
       const file = new File(['test'], 'test.txt', {
         type: 'text/plain',
       });
-      Object.defineProperty(file, 'size', { value: 2 * 1024 * 1024 * 1024 });
+      Object.defineProperty(file, 'size', { value: 6 * 1024 * 1024 * 1024 }); // 6GB
 
       const result = validateFile(file);
       expect(result.isValid).toBe(false);
-      // Should return size error first
-      expect(result.error).toBe(FILE_CONSTRAINT_MESSAGES.SIZE_EXCEEDED);
+      // Should return type error first (type validation comes before size)
+      expect(result.error).toBe(FILE_CONSTRAINT_MESSAGES.UNSUPPORTED_FORMAT);
     });
   });
 });
