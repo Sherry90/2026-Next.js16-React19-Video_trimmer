@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useStore } from '@/stores/useStore';
+import { useVideoDuration, useTrimPoints, usePlayerActions } from '@/stores/selectors';
 import { useDragHandle } from '@/features/timeline/hooks/useDragHandle';
 import { useVideoPlayerContext } from '@/features/player/context/VideoPlayerContext';
 
@@ -22,11 +23,10 @@ export function Playhead() {
   const seekThrottleDelay = 50; // ms
 
   const currentTime = useStore((state) => state.player.currentTime);
-  const duration = useStore((state) => state.videoFile?.duration ?? 0);
-  const inPoint = useStore((state) => state.timeline.inPoint);
-  const outPoint = useStore((state) => state.timeline.outPoint);
+  const duration = useVideoDuration();
+  const { inPoint, outPoint } = useTrimPoints();
 
-  const setCurrentTime = useStore((state) => state.setCurrentTime);
+  const { setCurrentTime } = usePlayerActions();
   const { seek, setIsScrubbing, player } = useVideoPlayerContext();
 
   // UI works in COORDINATES, not time

@@ -2,15 +2,16 @@
 
 import { useCallback, useRef } from 'react';
 import { useStore } from '@/stores/useStore';
+import { useVideoDuration, useTimelineActions } from '@/stores/selectors';
 import { useDragHandle } from '@/features/timeline/hooks/useDragHandle';
 
 export function InPointHandle() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const inPoint = useStore((state) => state.timeline.inPoint);
-  const duration = useStore((state) => state.videoFile?.duration ?? 0);
+  const duration = useVideoDuration();
   const isLocked = useStore((state) => state.timeline.isInPointLocked);
-  const setInPoint = useStore((state) => state.setInPoint);
+  const { setInPoint } = useTimelineActions();
 
   const position = duration > 0 ? (inPoint / duration) * 100 : 0;
 

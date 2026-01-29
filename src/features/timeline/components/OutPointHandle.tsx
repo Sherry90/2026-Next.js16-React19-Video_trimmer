@@ -2,15 +2,16 @@
 
 import { useCallback, useRef } from 'react';
 import { useStore } from '@/stores/useStore';
+import { useVideoDuration, useTimelineActions } from '@/stores/selectors';
 import { useDragHandle } from '@/features/timeline/hooks/useDragHandle';
 
 export function OutPointHandle() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const outPoint = useStore((state) => state.timeline.outPoint);
-  const duration = useStore((state) => state.videoFile?.duration ?? 0);
+  const duration = useVideoDuration();
   const isLocked = useStore((state) => state.timeline.isOutPointLocked);
-  const setOutPoint = useStore((state) => state.setOutPoint);
+  const { setOutPoint } = useTimelineActions();
 
   const position = duration > 0 ? (outPoint / duration) * 100 : 100;
 
