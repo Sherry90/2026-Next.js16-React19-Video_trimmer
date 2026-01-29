@@ -23,6 +23,7 @@ interface SampleData {
   samples: Sample[];
   trackId: number;
   info: Track;
+  completed: boolean;
 }
 
 export async function trimVideoMP4Box(options: TrimOptions): Promise<Blob> {
@@ -59,44 +60,15 @@ async function parseAndExtractSamples(
     const mp4boxfile = createFile();
     const tracksData = new Map<number, SampleData>();
     let info: Movie;
+    let expectedTracks = 0;
+    let completedTracks = 0;
+    let hasResolved = false;
 
-    mp4boxfile.onReady = (parsedInfo: Movie) => {
-      info = parsedInfo;
+    // Helper function to filter samples and resolve
+    const filterAndResolve = () => {
+      if (hasResolved) return;
+      hasResolved = true;
 
-      // Set extraction options for all tracks
-      [...parsedInfo.videoTracks, ...parsedInfo.audioTracks].forEach(track => {
-        tracksData.set(track.id, {
-          samples: [],
-          trackId: track.id,
-          info: track,
-        });
-
-        // Extract all samples (we'll filter by time later)
-        mp4boxfile.setExtractionOptions(track.id, null, { nbSamples: 100000 });
-      });
-
-      mp4boxfile.start();
-    };
-
-    mp4boxfile.onSamples = (trackId: number, user: any, samples: Sample[]) => {
-      const trackData = tracksData.get(trackId);
-      if (trackData) {
-        trackData.samples.push(...samples);
-      }
-    };
-
-    mp4boxfile.onError = (e: string) => {
-      reject(new Error(`MP4 parsing error: ${e}`));
-    };
-
-    // Append buffer
-    const mp4ArrayBuffer = arrayBuffer as MP4BoxBuffer;
-    mp4ArrayBuffer.fileStart = 0;
-    mp4boxfile.appendBuffer(mp4ArrayBuffer);
-    mp4boxfile.flush();
-
-    // Wait for extraction to complete
-    setTimeout(() => {
       if (info && tracksData.size > 0) {
         // Filter samples by time range
         tracksData.forEach(trackData => {
@@ -147,7 +119,60 @@ async function parseAndExtractSamples(
       } else {
         reject(new Error('Failed to parse MP4 or no tracks found'));
       }
-    }, 2000); // Wait 2 seconds for samples to be extracted
+    };
+
+    mp4boxfile.onReady = (parsedInfo: Movie) => {
+      info = parsedInfo;
+      expectedTracks = parsedInfo.videoTracks.length + parsedInfo.audioTracks.length;
+
+      // Set extraction options for all tracks
+      [...parsedInfo.videoTracks, ...parsedInfo.audioTracks].forEach(track => {
+        tracksData.set(track.id, {
+          samples: [],
+          trackId: track.id,
+          info: track,
+          completed: false,
+        });
+
+        // Extract all samples (we'll filter by time later)
+        mp4boxfile.setExtractionOptions(track.id, null, { nbSamples: 100000 });
+      });
+
+      mp4boxfile.start();
+    };
+
+    mp4boxfile.onSamples = (trackId: number, user: any, samples: Sample[]) => {
+      const trackData = tracksData.get(trackId);
+      if (trackData) {
+        trackData.samples.push(...samples);
+
+        // Mark track as completed if not already marked
+        if (!trackData.completed) {
+          trackData.completed = true;
+          completedTracks++;
+
+          // Check if all tracks are complete
+          if (completedTracks === expectedTracks) {
+            filterAndResolve();
+          }
+        }
+      }
+    };
+
+    mp4boxfile.onError = (e: string) => {
+      reject(new Error(`MP4 parsing error: ${e}`));
+    };
+
+    // Append buffer
+    const mp4ArrayBuffer = arrayBuffer as MP4BoxBuffer;
+    mp4ArrayBuffer.fileStart = 0;
+    mp4boxfile.appendBuffer(mp4ArrayBuffer);
+    mp4boxfile.flush();
+
+    // Safety timeout (10 seconds) as fallback
+    setTimeout(() => {
+      filterAndResolve();
+    }, 10000);
   });
 }
 
