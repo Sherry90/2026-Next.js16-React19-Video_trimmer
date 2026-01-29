@@ -1,5 +1,6 @@
 'use client';
 
+import { lazy, Suspense } from 'react';
 import { useStore } from '@/stores/useStore';
 
 // Upload feature
@@ -10,11 +11,13 @@ import { FileValidationError } from '@/features/upload/components/FileValidation
 // Editing section
 import { EditingSection } from '@/components/EditingSection';
 
-// Export feature
+// Export feature (eager load button and error, lazy load progress/download)
 import { ExportButton } from '@/features/export/components/ExportButton';
-import { ExportProgress } from '@/features/export/components/ExportProgress';
-import { DownloadButton } from '@/features/export/components/DownloadButton';
 import { ErrorDisplay } from '@/features/export/components/ErrorDisplay';
+
+// Lazy load components only needed during/after export to reduce initial bundle
+const ExportProgress = lazy(() => import('@/features/export/components/ExportProgress').then(m => ({ default: m.ExportProgress })));
+const DownloadButton = lazy(() => import('@/features/export/components/DownloadButton').then(m => ({ default: m.DownloadButton })));
 
 export default function HomePage() {
   const phase = useStore((state) => state.phase);
@@ -43,8 +46,12 @@ export default function HomePage() {
           {phase === 'idle' && <UploadZone />}
           <UploadProgress />
           {phase === 'editing' && <EditingSection />}
-          <ExportProgress />
-          <DownloadButton />
+          <Suspense fallback={null}>
+            <ExportProgress />
+          </Suspense>
+          <Suspense fallback={null}>
+            <DownloadButton />
+          </Suspense>
         </div>
       </div>
     </div>

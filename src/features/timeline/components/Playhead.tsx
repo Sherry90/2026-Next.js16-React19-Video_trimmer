@@ -1,12 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
 import { useStore } from '@/stores/useStore';
 import { useVideoDuration, useTrimPoints, usePlayerActions } from '@/stores/selectors';
 import { useDragHandle } from '@/features/timeline/hooks/useDragHandle';
 import { useVideoPlayerContext } from '@/features/player/context/VideoPlayerContext';
 
-export function Playhead() {
+export const Playhead = memo(function Playhead() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Store position as PERCENTAGE (0-100), not time!
@@ -30,9 +30,13 @@ export function Playhead() {
   const { seek, setIsScrubbing, player } = useVideoPlayerContext();
 
   // UI works in COORDINATES, not time
-  const position = draggingPosition !== null
-    ? draggingPosition
-    : (duration > 0 ? (currentTime / duration) * 100 : 0);
+  // Memoize position calculation to avoid recalculation on every render
+  const position = useMemo(() => {
+    if (draggingPosition !== null) {
+      return draggingPosition;
+    }
+    return duration > 0 ? (currentTime / duration) * 100 : 0;
+  }, [draggingPosition, currentTime, duration]);
 
   const startPositionRef = useRef(position);
 
@@ -207,4 +211,4 @@ export function Playhead() {
       </div>
     </div>
   );
-}
+});
