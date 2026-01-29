@@ -4,8 +4,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useStore } from '@/stores/useStore';
 import { useVideoPlayerContext } from '@/features/player/context/VideoPlayerContext';
 import { TimelineBar } from './TimelineBar';
-import { InPointHandle } from './InPointHandle';
-import { OutPointHandle } from './OutPointHandle';
+import { TrimHandle } from './TrimHandle';
 import { Playhead } from './Playhead';
 import { TimeInput } from './TimeInput';
 import { LockButton } from './LockButton';
@@ -119,8 +118,8 @@ export function TimelineEditor() {
     <div ref={timelineRef} className="w-full h-full">
       {/* Timeline Bar */}
       <TimelineBar>
-        <InPointHandle />
-        <OutPointHandle />
+        <TrimHandle type="in" />
+        <TrimHandle type="out" />
         <Playhead />
       </TimelineBar>
 
