@@ -198,11 +198,11 @@ export function Playhead() {
     >
       <div
         onMouseDown={handleMouseDown}
-        className="absolute top-0 -left-px bottom-0 w-[2px] bg-[#2962ff] cursor-ew-resize pointer-events-auto"
+        className="absolute top-0 -left-px bottom-0 w-[2px] bg-[#ff4444] cursor-ew-resize pointer-events-auto"
       >
         {/* Top circle handle */}
         <div
-          className="absolute -top-1 -left-[5px] w-3 h-3 bg-[#2962ff] rounded-full border-2 border-[#101114] cursor-ew-resize"
+          className="absolute -top-1 -left-[5px] w-3 h-3 bg-[#ff4444] rounded-full border-2 border-[#101114] cursor-ew-resize"
         />
       </div>
     </div>
