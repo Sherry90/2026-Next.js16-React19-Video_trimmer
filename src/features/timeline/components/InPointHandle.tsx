@@ -48,13 +48,13 @@ export function InPointHandle() {
     >
       <div
         onMouseDown={isLocked ? undefined : handleMouseDown}
-        className={`absolute top-0 left-0 bottom-0 w-1 bg-[#ffee65] ${
+        className={`absolute top-0 left-0 bottom-0 w-px bg-[#ffee65] ${
           isLocked ? 'cursor-not-allowed opacity-50' : 'cursor-ew-resize opacity-100'
         }`}
       >
         {/* Top handle grip */}
         <div
-          className={`absolute top-0 -left-1 w-3 h-6 bg-[#ffee65] rounded-b ${
+          className={`absolute top-0 -left-[3px] w-[7px] h-6 bg-[#ffee65] rounded-b ${
             isLocked ? 'cursor-not-allowed' : 'cursor-ew-resize'
           }`}
         />
