@@ -8,6 +8,7 @@ import type {
   ErrorState,
   ExportState,
 } from '@/types/store';
+import { cleanupFFmpeg } from '@/features/export/utils/trimVideoDispatcher';
 
 // ==================== 스토어 상태 ====================
 
@@ -75,6 +76,10 @@ interface StoreActions {
 
   // 전체 리셋
   reset: () => void;
+
+  // 복합 액션 (상태 + 페이즈 전환)
+  setErrorAndTransition: (message: string, code?: string) => void;
+  setExportResultAndComplete: (url: string, filename: string) => void;
 }
 
 // ==================== 초기 상태 ====================
@@ -242,7 +247,6 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
   setError: (message, code) =>
     set({
       error: { hasError: true, errorMessage: message, errorCode: code ?? null },
-      phase: 'error',
     }),
 
   clearError: () =>
@@ -254,7 +258,6 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
   setExportResult: (url, filename) =>
     set({
       export: { outputUrl: url, outputFilename: filename },
-      phase: 'completed',
     }),
 
   clearExportResult: () => {
@@ -274,6 +277,23 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
     if (exportState.outputUrl) {
       URL.revokeObjectURL(exportState.outputUrl);
     }
+    // Clean up FFmpeg singleton to free memory
+    cleanupFFmpeg();
     set(initialState);
+  },
+
+  // 복합 액션 (상태 + 페이즈 전환)
+  setErrorAndTransition: (message, code) => {
+    set({
+      error: { hasError: true, errorMessage: message, errorCode: code ?? null },
+      phase: 'error',
+    });
+  },
+
+  setExportResultAndComplete: (url, filename) => {
+    set({
+      export: { outputUrl: url, outputFilename: filename },
+      phase: 'completed',
+    });
   },
 }));

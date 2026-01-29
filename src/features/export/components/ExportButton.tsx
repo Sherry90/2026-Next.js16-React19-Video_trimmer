@@ -18,7 +18,7 @@ export function ExportButton() {
   const { inPoint, outPoint } = useTrimPoints();
   const phase = usePhase();
 
-  const { setPhase, setError, setExportResult } = useCommonActions();
+  const { setPhase, setErrorAndTransition, setExportResultAndComplete } = useCommonActions();
   const { setTrimProgress } = useProgressActions();
 
   // State for FFmpeg loading (only happens for non-MP4 formats)
@@ -27,7 +27,7 @@ export function ExportButton() {
 
   const handleExport = useCallback(async () => {
     if (!videoFile) {
-      setError('Video file not available', 'EXPORT_ERROR');
+      setErrorAndTransition('Video file not available', 'EXPORT_ERROR');
       return;
     }
 
@@ -60,7 +60,7 @@ export function ExportButton() {
       const outputUrl = URL.createObjectURL(outputBlob);
       const outputFilename = generateEditedFilename(videoFile.name);
 
-      setExportResult(outputUrl, outputFilename);
+      setExportResultAndComplete(outputUrl, outputFilename);
     } catch (error) {
       // Check if error has AppError attached (from parseFFmpegError)
       const appError =
@@ -70,15 +70,15 @@ export function ExportButton() {
 
       if (appError) {
         // Use parsed error code and user-friendly message
-        setError(appError.userMessage, appError.code);
+        setErrorAndTransition(appError.userMessage, appError.code);
       } else {
         // Fallback to basic error
         const errorMessage =
           error instanceof Error ? error.message : 'Export failed';
-        setError(errorMessage, 'EXPORT_ERROR');
+        setErrorAndTransition(errorMessage, 'EXPORT_ERROR');
       }
     }
-  }, [videoFile, inPoint, outPoint, setPhase, setTrimProgress, setExportResult, setError]);
+  }, [videoFile, inPoint, outPoint, setPhase, setTrimProgress, setExportResultAndComplete, setErrorAndTransition]);
 
   if (phase !== 'editing') {
     return null;

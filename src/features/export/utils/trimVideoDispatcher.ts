@@ -28,6 +28,19 @@ let isFFmpegLoading = false;
 let ffmpegLoadPromise: Promise<FFmpeg> | null = null;
 
 /**
+ * Cleanup FFmpeg instance and reset state
+ * Call this when resetting the application to free up memory
+ */
+export function cleanupFFmpeg(): void {
+  if (ffmpegInstance) {
+    // FFmpeg instance doesn't have explicit cleanup, but we can null it
+    ffmpegInstance = null;
+  }
+  isFFmpegLoading = false;
+  ffmpegLoadPromise = null;
+}
+
+/**
  * Load FFmpeg.wasm with progress tracking
  * Uses singleton pattern to load only once per session
  *

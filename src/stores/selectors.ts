@@ -196,6 +196,9 @@ export function useCommonActions() {
       setExportResult: state.setExportResult,
       clearExportResult: state.clearExportResult,
       reset: state.reset,
+      // Combined actions
+      setErrorAndTransition: state.setErrorAndTransition,
+      setExportResultAndComplete: state.setExportResultAndComplete,
     }))
   );
 }

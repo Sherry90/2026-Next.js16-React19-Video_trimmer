@@ -6,7 +6,7 @@ import type { VideoFile } from '@/types/store';
 export function useFileUpload() {
   const setVideoFile = useStore((state) => state.setVideoFile);
   const setPhase = useStore((state) => state.setPhase);
-  const setError = useStore((state) => state.setError);
+  const setErrorAndTransition = useStore((state) => state.setErrorAndTransition);
   const setUploadProgress = useStore((state) => state.setUploadProgress);
 
   const handleFileSelect = useCallback(
@@ -14,7 +14,7 @@ export function useFileUpload() {
       // 파일 검증
       const validation = validateFile(file);
       if (!validation.isValid) {
-        setError(
+        setErrorAndTransition(
           validation.error || 'Unknown validation error',
           'VALIDATION_ERROR'
         );
@@ -52,10 +52,10 @@ export function useFileUpload() {
         setPhase('editing');
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'File upload failed';
-        setError(errorMessage, 'UPLOAD_ERROR');
+        setErrorAndTransition(errorMessage, 'UPLOAD_ERROR');
       }
     },
-    [setVideoFile, setPhase, setError, setUploadProgress]
+    [setVideoFile, setPhase, setErrorAndTransition, setUploadProgress]
   );
 
   return {
