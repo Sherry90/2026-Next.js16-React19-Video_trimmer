@@ -54,3 +54,20 @@ export function formatSimpleTime(seconds: number): string {
 
   return `${minutesStr}:${secsStr}`;
 }
+
+/**
+ * 시간을 읽기 쉬운 문자열로 변환 (MM:SS 또는 HH:MM:SS)
+ * 1시간 미만일 경우 MM:SS, 1시간 이상일 경우 HH:MM:SS 형식 사용
+ */
+export function formatDuration(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs
+      .toString()
+      .padStart(2, '0')}`;
+  }
+  return `${minutes}:${secs.toString().padStart(2, '0')}`;
+}

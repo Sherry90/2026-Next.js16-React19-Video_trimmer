@@ -1,6 +1,7 @@
 /**
  * FFmpeg log parsing utilities for accurate progress tracking
  */
+import { formatDuration } from '@/features/timeline/utils/timeFormatter';
 
 export interface FFmpegProgress {
   processedTime: number; // seconds
@@ -100,18 +101,5 @@ export function estimateRemainingTime(
   return remainingDuration / speed;
 }
 
-/**
- * Format time in seconds to human-readable string (MM:SS or HH:MM:SS)
- */
-export function formatDuration(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs
-      .toString()
-      .padStart(2, '0')}`;
-  }
-  return `${minutes}:${secs.toString().padStart(2, '0')}`;
-}
+// Re-export formatDuration for backward compatibility
+export { formatDuration };
