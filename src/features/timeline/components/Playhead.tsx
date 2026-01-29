@@ -19,7 +19,7 @@ export function Playhead() {
 
   // Throttle for real-time seeking during drag (100ms)
   const lastSeekTimeRef = useRef<number>(0);
-  const seekThrottleDelay = 100; // ms
+  const seekThrottleDelay = 50; // ms
 
   const currentTime = useStore((state) => state.player.currentTime);
   const duration = useStore((state) => state.videoFile?.duration ?? 0);
