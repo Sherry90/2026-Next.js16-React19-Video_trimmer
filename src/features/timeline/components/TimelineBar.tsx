@@ -17,11 +17,11 @@ export function TimelineBar({ children }: TimelineBarProps) {
   const outPosition = duration > 0 ? (outPoint / duration) * 100 : 100;
 
   return (
-    <div className="w-full h-[250px]">
+    <div className="w-full h-[100px]">
       {/* Timeline Wrapper with padding */}
       <div className="h-full pt-4 px-4">
         {/* Timeline main area */}
-        <div className="relative w-full h-[180px] bg-[#1c1d20] rounded overflow-hidden">
+        <div className="relative w-full h-[80px] bg-[#1c1d20] rounded overflow-hidden">
           {/* Waveform background */}
           <div className="absolute inset-0 pointer-events-none">
             <WaveformBackground />
