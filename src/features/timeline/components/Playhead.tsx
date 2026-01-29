@@ -17,6 +17,10 @@ export function Playhead() {
   // Track final seek target to verify seeked event
   const finalSeekTargetRef = useRef<number | null>(null);
 
+  // Throttle for real-time seeking during drag (100ms)
+  const lastSeekTimeRef = useRef<number>(0);
+  const seekThrottleDelay = 100; // ms
+
   const currentTime = useStore((state) => state.player.currentTime);
   const duration = useStore((state) => state.videoFile?.duration ?? 0);
   const inPoint = useStore((state) => state.timeline.inPoint);
@@ -41,6 +45,9 @@ export function Playhead() {
     draggingPositionRef.current = startPosition;
     setDraggingPosition(startPosition);
     setIsScrubbing(true);
+
+    // Reset throttle timer for real-time seeking
+    lastSeekTimeRef.current = 0;
 
     // Force cursor style during drag to prevent flicker
     document.body.style.cursor = 'ew-resize';
@@ -67,10 +74,22 @@ export function Playhead() {
       draggingPositionRef.current = newPosition;
       setDraggingPosition(newPosition);
 
-      // NO VIDEO SEEK DURING DRAG
-      // This prevents multiple pending seeks from causing race conditions
+      // Real-time video seeking during drag (throttled to 100ms)
+      const now = Date.now();
+      if (now - lastSeekTimeRef.current >= seekThrottleDelay) {
+        lastSeekTimeRef.current = now;
+
+        // Convert position to time and seek
+        const seekTime = (newPosition / 100) * duration;
+
+        // Update store immediately for UI responsiveness
+        setCurrentTime(seekTime);
+
+        // Seek video player
+        seek(seekTime);
+      }
     },
-    [duration, inPoint, outPoint]
+    [duration, inPoint, outPoint, seek, setCurrentTime, seekThrottleDelay]
   );
 
   const handleDragEnd = useCallback(() => {
