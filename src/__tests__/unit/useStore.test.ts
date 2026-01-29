@@ -264,9 +264,20 @@ describe('useStore', () => {
   });
 
   describe('Error management', () => {
-    it('should set error', () => {
+    it('should set error without phase transition', () => {
       const { setError } = useStore.getState();
       setError('Test error', 'TEST_ERROR');
+
+      const { error, phase } = useStore.getState();
+      expect(error.hasError).toBe(true);
+      expect(error.errorMessage).toBe('Test error');
+      expect(error.errorCode).toBe('TEST_ERROR');
+      expect(phase).toBe('idle'); // Phase not changed
+    });
+
+    it('should set error and transition to error phase', () => {
+      const { setErrorAndTransition } = useStore.getState();
+      setErrorAndTransition('Test error', 'TEST_ERROR');
 
       const { error, phase } = useStore.getState();
       expect(error.hasError).toBe(true);
@@ -288,9 +299,19 @@ describe('useStore', () => {
   });
 
   describe('Export management', () => {
-    it('should set export result', () => {
+    it('should set export result without phase transition', () => {
       const { setExportResult } = useStore.getState();
       setExportResult('blob:output', 'output.mp4');
+
+      const { export: exportState, phase } = useStore.getState();
+      expect(exportState.outputUrl).toBe('blob:output');
+      expect(exportState.outputFilename).toBe('output.mp4');
+      expect(phase).toBe('idle'); // Phase not changed
+    });
+
+    it('should set export result and transition to completed phase', () => {
+      const { setExportResultAndComplete } = useStore.getState();
+      setExportResultAndComplete('blob:output', 'output.mp4');
 
       const { export: exportState, phase } = useStore.getState();
       expect(exportState.outputUrl).toBe('blob:output');

@@ -60,14 +60,20 @@ async function parseAndExtractSamples(
     const mp4boxfile = createFile();
     const tracksData = new Map<number, SampleData>();
     let info: Movie;
-    let expectedTracks = 0;
-    let completedTracks = 0;
     let hasResolved = false;
+    let lastSampleTime = Date.now();
+    let completionCheckInterval: NodeJS.Timeout | null = null;
 
     // Helper function to filter samples and resolve
     const filterAndResolve = () => {
       if (hasResolved) return;
       hasResolved = true;
+
+      // Clear completion check interval
+      if (completionCheckInterval) {
+        clearInterval(completionCheckInterval);
+        completionCheckInterval = null;
+      }
 
       if (info && tracksData.size > 0) {
         // Filter samples by time range
@@ -123,7 +129,6 @@ async function parseAndExtractSamples(
 
     mp4boxfile.onReady = (parsedInfo: Movie) => {
       info = parsedInfo;
-      expectedTracks = parsedInfo.videoTracks.length + parsedInfo.audioTracks.length;
 
       // Set extraction options for all tracks
       [...parsedInfo.videoTracks, ...parsedInfo.audioTracks].forEach(track => {
@@ -139,27 +144,29 @@ async function parseAndExtractSamples(
       });
 
       mp4boxfile.start();
+
+      // Start completion check: if no samples received for 150ms, consider complete
+      completionCheckInterval = setInterval(() => {
+        const timeSinceLastSample = Date.now() - lastSampleTime;
+        if (timeSinceLastSample > 150 && tracksData.size > 0) {
+          // No samples for 150ms and we have tracks - likely complete
+          filterAndResolve();
+        }
+      }, 50); // Check every 50ms
     };
 
     mp4boxfile.onSamples = (trackId: number, user: any, samples: Sample[]) => {
       const trackData = tracksData.get(trackId);
       if (trackData) {
         trackData.samples.push(...samples);
-
-        // Mark track as completed if not already marked
-        if (!trackData.completed) {
-          trackData.completed = true;
-          completedTracks++;
-
-          // Check if all tracks are complete
-          if (completedTracks === expectedTracks) {
-            filterAndResolve();
-          }
-        }
+        lastSampleTime = Date.now(); // Update last sample time
       }
     };
 
     mp4boxfile.onError = (e: string) => {
+      if (completionCheckInterval) {
+        clearInterval(completionCheckInterval);
+      }
       reject(new Error(`MP4 parsing error: ${e}`));
     };
 
@@ -169,10 +176,13 @@ async function parseAndExtractSamples(
     mp4boxfile.appendBuffer(mp4ArrayBuffer);
     mp4boxfile.flush();
 
-    // Safety timeout (10 seconds) as fallback
+    // Safety timeout (5 seconds) as fallback - reduced from 10s
     setTimeout(() => {
+      if (completionCheckInterval) {
+        clearInterval(completionCheckInterval);
+      }
       filterAndResolve();
-    }, 10000);
+    }, 5000);
   });
 }
 
