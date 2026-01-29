@@ -2,20 +2,24 @@
 
 import { useCallback, useState } from 'react';
 import { useStore } from '@/stores/useStore';
+import {
+  useVideoFile,
+  useTrimPoints,
+  usePhase,
+  useCommonActions,
+  useProgressActions,
+} from '@/stores/selectors';
 import { trimVideo } from '@/features/export/utils/trimVideoDispatcher';
 import { generateEditedFilename } from '@/features/export/utils/generateFilename';
 import { requiresFFmpegDownload } from '@/features/export/utils/formatDetector';
 
 export function ExportButton() {
-  const videoFile = useStore((state) => state.videoFile);
-  const inPoint = useStore((state) => state.timeline.inPoint);
-  const outPoint = useStore((state) => state.timeline.outPoint);
-  const phase = useStore((state) => state.phase);
+  const videoFile = useVideoFile();
+  const { inPoint, outPoint } = useTrimPoints();
+  const phase = usePhase();
 
-  const setPhase = useStore((state) => state.setPhase);
-  const setTrimProgress = useStore((state) => state.setTrimProgress);
-  const setExportResult = useStore((state) => state.setExportResult);
-  const setError = useStore((state) => state.setError);
+  const { setPhase, setError, setExportResult } = useCommonActions();
+  const { setTrimProgress } = useProgressActions();
 
   // State for FFmpeg loading (only happens for non-MP4 formats)
   const [isLoadingFFmpeg, setIsLoadingFFmpeg] = useState(false);

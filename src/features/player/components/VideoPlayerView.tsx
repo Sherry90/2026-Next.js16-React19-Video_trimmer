@@ -4,6 +4,7 @@ import { useRef, useEffect, useCallback } from 'react';
 import videojs from 'video.js';
 import type Player from 'video.js/dist/types/player';
 import { useStore } from '@/stores/useStore';
+import { useVideoUrl, usePlayerActions } from '@/stores/selectors';
 import { VideoPlayerProvider } from '../context/VideoPlayerContext';
 
 interface VideoPlayerViewProps {
@@ -14,10 +15,9 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
   const videoRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<Player | null>(null);
 
-  const videoUrl = useStore((state) => state.videoFile?.url);
+  const videoUrl = useVideoUrl();
+  const { setCurrentTime, setIsPlaying } = usePlayerActions();
   const setVideoDuration = useStore((state) => state.setVideoDuration);
-  const setCurrentTime = useStore((state) => state.setCurrentTime);
-  const setIsPlaying = useStore((state) => state.setIsPlaying);
   const outPoint = useStore((state) => state.timeline.outPoint);
 
   useEffect(() => {
