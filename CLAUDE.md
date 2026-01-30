@@ -48,6 +48,8 @@ Single store at `src/stores/useStore.ts` manages all application state:
 - State setters include validation (e.g., `setInPoint` constrains between 0 and outPoint)
 - Memory management: `URL.revokeObjectURL()` called on cleanup to prevent leaks
 - Immutable updates using spread operators
+- **Selector pattern** (`src/stores/selectors.ts`): Reusable selectors with `useShallow` for optimized re-renders
+  - `useTimelineState()`, `useTimelineActions()`, `usePlayerState()`, etc.
 
 ### Feature-Based Organization
 
@@ -55,11 +57,23 @@ Single store at `src/stores/useStore.ts` manages all application state:
 src/features/
 ├── upload/        # File upload, drag-and-drop, validation
 ├── player/        # Video.js player, context provider, playback controls
-├── timeline/      # Timeline editor, handles, playhead, waveform
+├── timeline/      # Timeline editor (refactored into focused components)
+│   ├── components/
+│   │   ├── TimelineEditor.tsx      # 64 lines (orchestrator)
+│   │   ├── TrimHandle.tsx          # Unified In/Out handle
+│   │   ├── Playhead.tsx            # Memoized
+│   │   ├── TimelineControls.tsx    # Control grouping
+│   │   ├── PreviewButtons.tsx      # Preview UI
+│   │   └── WaveformBackground.tsx
+│   └── hooks/
+│       ├── usePreviewPlayback.ts   # Preview logic
+│       └── useTimelineZoom.ts      # Zoom logic
 └── export/        # Export button, trimming logic (MP4Box/FFmpeg)
 ```
 
 Each feature has `components/`, `hooks/`, `utils/`, and sometimes `context/`.
+
+**Recent refactoring (2026-01-30)**: TimelineEditor decomposed from 182 lines to 64 lines. InPointHandle/OutPointHandle merged into TrimHandle.
 
 ### Video Processing Flow
 
@@ -194,7 +208,8 @@ Proper cleanup throughout:
 - `useDragHandle`: Reusable dragging logic with mouse events
 - `useFileUpload`: File upload with validation
 - `useKeyboardShortcuts`: Global keyboard shortcuts with phase awareness
-- `useFFmpeg`: FFmpeg.wasm lifecycle (currently unused but available)
+- `usePreviewPlayback`: Preview playback logic (full segment, edges)
+- `useTimelineZoom`: Timeline zoom control (Ctrl+wheel)
 
 ### Context Usage
 Only the video player uses React Context to avoid prop drilling of the video.js instance. All other state uses Zustand.
@@ -222,7 +237,7 @@ MP4Box trimming finds the nearest keyframe to start time, resulting in 1-2 secon
 Comprehensive coverage of:
 - Utility functions (timeFormatter, constrainPosition, validateFile)
 - Zustand store logic (all state management)
-- 91 tests passing
+- 92 tests passing (updated after refactoring)
 
 ### E2E Tests (Playwright)
 Framework configured with test skeletons:
@@ -249,3 +264,15 @@ When working with video.js:
 - Access player via `useVideoPlayerContext()`
 - Always check player exists before calling methods
 - Dispose player on component unmount
+
+## Documentation
+
+Comprehensive project documentation is organized in `.docs/`:
+
+- **`.docs/03-current/PROJECT-STATUS.md`** - Current project status (start here)
+- **`.docs/03-current/ARCHITECTURE.md`** - Detailed technical architecture
+- **`.docs/03-current/FUTURE-IMPROVEMENTS.md`** - Planned enhancements
+- **`.docs/02-history/`** - Development history and decisions
+- **`.docs/01-design/`** - Initial design specifications
+
+For development history and architectural decisions, refer to the history documents (especially the refactoring document for recent changes).
