@@ -126,11 +126,7 @@ npm run test:e2e:ui
 - `project-specification.md` - 초기 설계 문서 (역사적 기록)
 
 ### 📁 `.docs/02-history/` - 개발 과정
-- `001-playhead-snap-back-bug.md` - Playhead 버그 수정 (2026-01-21)
-- `002-mp4box-migration.md` - MP4Box 전환 (2026-01-28)
-- `003-trimming-accuracy-improvement.md` - 정확도 개선 (2026-01-28)
-- `004-feature-enhancements.md` - 기능 확장 (2026-01-29)
-- `005-refactoring-phase1-6.md` - 6단계 리팩토링 (2026-01-30)
+- `DEVELOPMENT-HISTORY.md` - 전체 개발 히스토리 (2026-01-21 ~ 2026-01-30)
 
 ### 📁 `.docs/03-current/` - 현재 상태
 - `PROJECT-STATUS.md` - **프로젝트 현황** (메인 문서)
@@ -141,7 +137,7 @@ npm run test:e2e:ui
 - `CLAUDE.md` - Claude Code를 위한 개발 가이드
 - `TESTING.md` - 테스트 가이드
 
-**추천 읽기 순서**: PROJECT-STATUS.md → ARCHITECTURE.md → 관심 있는 history 문서
+**추천 읽기 순서**: PROJECT-STATUS.md → ARCHITECTURE.md → DEVELOPMENT-HISTORY.md
 
 ## 라이센스
 
