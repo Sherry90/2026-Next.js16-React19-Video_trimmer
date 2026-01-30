@@ -6,7 +6,7 @@
 > **Phase Coverage**: Planning & Phase 1-6 Design
 > **Status**: ✅ All phases completed (as of 2026-01-30)
 >
-> **Note**: This document reflects the original design intent. See `.docs/02-history/` for implementation changes and improvements made during development.
+> **Note**: This document reflects the original design intent. See `.docs/02-history/DEVELOPMENT-HISTORY.md` for implementation changes and improvements made during development.
 
 ---
 
@@ -44,7 +44,7 @@ Browser-based web application for video trimming without server uploads. All pro
 | Vitest | 3.x | `vitest` | Unit testing (Phase 6) |
 | Playwright | 1.x | `@playwright/test` | E2E testing (Phase 6) |
 
-> ⚠️ **Important Change**: FFmpeg.wasm was replaced with MP4Box.js during Phase 6 for better performance and stream-copy capabilities. See `.docs/02-history/002-mp4box-migration.md` for details.
+> ⚠️ **Important Change**: FFmpeg.wasm was replaced with MP4Box.js during Phase 6 for better performance and stream-copy capabilities. See `.docs/02-history/DEVELOPMENT-HISTORY.md` for details.
 
 ### 2.1 Installation Commands
 
@@ -551,7 +551,7 @@ This specification represents the **initial design intent** as of 2026-01-20. Se
 2. **Hybrid Approach** (2026-01-29): FFmpeg.wasm retained as fallback for accuracy-critical scenarios
 3. **Major Refactoring** (2026-01-30): 6-phase refactoring reduced codebase by 787 lines (15.6%)
 
-See `.docs/02-history/` for detailed evolution of the project.
+See `.docs/02-history/DEVELOPMENT-HISTORY.md` for detailed evolution of the project.
 
 ### 17.2 Why This Document Matters
 

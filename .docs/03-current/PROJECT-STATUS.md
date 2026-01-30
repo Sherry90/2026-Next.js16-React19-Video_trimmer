@@ -510,11 +510,7 @@ const DownloadButton = lazy(() => import('./DownloadButton'));
 - ✅ `project-specification.md` - Initial design (historical)
 
 **History** (`.docs/02-history/`):
-- ✅ `001-playhead-snap-back-bug.md` - Critical bug fix (2026-01-21)
-- ✅ `002-mp4box-migration.md` - FFmpeg → MP4Box (2026-01-28)
-- ✅ `003-trimming-accuracy-improvement.md` - FFmpeg accuracy fix (2026-01-28)
-- ✅ `004-feature-enhancements.md` - Enhancements (2026-01-29)
-- ✅ `005-refactoring-phase1-6.md` - Refactoring (2026-01-30)
+- ✅ `DEVELOPMENT-HISTORY.md` - Complete development history (2026-01-21 ~ 2026-01-30)
 
 **Current** (`.docs/03-current/`):
 - ✅ `PROJECT-STATUS.md` - This document
