@@ -110,14 +110,38 @@ npm run test:e2e:ui
 
 이 프로젝트는 Phase별로 점진적으로 개발되었습니다:
 
-- ✅ **Phase 1**: 프로젝트 설정 및 기본 구동
-- ✅ **Phase 2**: 핵심 흐름 + 기본 UI
-- ✅ **Phase 3**: 편의 기능 (키보드 단축키)
-- ✅ **Phase 4**: 고급 기능 (파형, 줌, 잠금, 미리보기)
-- ✅ **Phase 5**: 흐름 완성 (새 파일 편집, 재시도)
-- ✅ **Phase 6**: 테스트 (Vitest, Playwright)
+- ✅ **Phase 1-6**: 프로젝트 설정부터 테스트까지 완료 (2026-01-20 ~ 2026-01-28)
+- ✅ **MP4Box Migration**: FFmpeg → MP4Box 전환 (10-20x 속도 향상, 2026-01-28)
+- ✅ **Accuracy Improvement**: FFmpeg 정확도 개선 ±0.5s → ±0.02s (2026-01-28)
+- ✅ **Feature Enhancements**: 하이브리드 트리머, 에러 핸들링 강화 (2026-01-29)
+- ✅ **Refactoring**: 6단계 리팩토링 완료 (787줄 감소, 2026-01-30)
 
-자세한 내용은 `.docs` 디렉토리의 문서를 참고하세요.
+**현재 상태**: 프로덕션 준비 완료 (4,252줄, 92개 테스트 통과)
+
+## 문서
+
+프로젝트 문서는 `.docs/` 디렉토리에 체계적으로 정리되어 있습니다:
+
+### 📁 `.docs/01-design/` - 초기 설계
+- `project-specification.md` - 초기 설계 문서 (역사적 기록)
+
+### 📁 `.docs/02-history/` - 개발 과정
+- `001-playhead-snap-back-bug.md` - Playhead 버그 수정 (2026-01-21)
+- `002-mp4box-migration.md` - MP4Box 전환 (2026-01-28)
+- `003-trimming-accuracy-improvement.md` - 정확도 개선 (2026-01-28)
+- `004-feature-enhancements.md` - 기능 확장 (2026-01-29)
+- `005-refactoring-phase1-6.md` - 6단계 리팩토링 (2026-01-30)
+
+### 📁 `.docs/03-current/` - 현재 상태
+- `PROJECT-STATUS.md` - **프로젝트 현황** (메인 문서)
+- `ARCHITECTURE.md` - 기술 아키텍처 상세
+- `FUTURE-IMPROVEMENTS.md` - 향후 개선 계획
+
+### 🤖 개발 가이드
+- `CLAUDE.md` - Claude Code를 위한 개발 가이드
+- `TESTING.md` - 테스트 가이드
+
+**추천 읽기 순서**: PROJECT-STATUS.md → ARCHITECTURE.md → 관심 있는 history 문서
 
 ## 라이센스
 
