@@ -265,6 +265,48 @@ When working with video.js:
 - Always check player exists before calling methods
 - Dispose player on component unmount
 
+## Git Commit Guidelines
+
+### Commit Process
+
+**ALWAYS use interactive staging**:
+```bash
+git add -p  # or git add --patch
+```
+
+### Commit Message Format
+
+**Language**: Write commit messages in Korean (한국어)
+
+**DO NOT include**:
+- AI authorship mentions
+- Co-Authored-By lines
+- References to Claude or AI assistance
+
+**Format**:
+```
+<type>: <subject in Korean>
+
+<body in Korean - optional>
+```
+
+**Types**:
+- `feat`: 새 기능
+- `fix`: 버그 수정
+- `refactor`: 리팩토링
+- `docs`: 문서 변경
+- `test`: 테스트 추가/수정
+- `chore`: 기타 변경
+
+**Example**:
+```
+feat: 타임라인 줌 기능 추가
+
+Ctrl+휠로 타임라인 줌 조절 가능
+- 줌 범위: 0.1x ~ 10x
+- Waveform과 연동
+```
+
 ## Documentation
 
 Comprehensive project documentation is organized in `.docs/`:
@@ -272,7 +314,7 @@ Comprehensive project documentation is organized in `.docs/`:
 - **`.docs/03-current/PROJECT-STATUS.md`** - Current project status (start here)
 - **`.docs/03-current/ARCHITECTURE.md`** - Detailed technical architecture
 - **`.docs/03-current/FUTURE-IMPROVEMENTS.md`** - Planned enhancements
-- **`.docs/02-history/`** - Development history and decisions
+- **`.docs/02-history/DEVELOPMENT-HISTORY.md`** - Development history (2026-01-21 ~ 2026-01-30)
 - **`.docs/01-design/`** - Initial design specifications
 
 For development history and architectural decisions, refer to the history documents (especially the refactoring document for recent changes).
