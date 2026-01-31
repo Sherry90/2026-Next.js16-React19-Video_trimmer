@@ -1,122 +1,122 @@
-# Future Improvements
+# 향후 개선 사항
 
-> **Document Purpose**: Forward-looking roadmap for Video Trimmer enhancements
-> **Last Updated**: 2026-01-30
-> **Current Version**: Post-Refactoring (All Phases Complete)
-
----
-
-## Overview
-
-Video Trimmer is **production-ready** with all planned features implemented. This document outlines potential future enhancements categorized by priority and complexity.
-
-**Note**: All improvements listed here are **optional** and should be considered based on user feedback and actual needs.
+> **문서 목적**: Video Trimmer 개선을 위한 미래 지향적 로드맵
+> **마지막 업데이트**: 2026-01-30
+> **현재 버전**: 리팩토링 이후 (모든 단계 완료)
 
 ---
 
-## Priority Matrix
+## 개요
 
-| Priority | Complexity | Timeline | Examples |
+Video Trimmer는 모든 계획된 기능이 구현된 **프로덕션 준비 완료** 상태입니다. 이 문서는 우선순위와 복잡도별로 분류된 잠재적 향후 개선 사항을 설명합니다.
+
+**참고**: 여기에 나열된 모든 개선 사항은 **선택 사항**이며 사용자 피드백과 실제 필요에 따라 고려되어야 합니다.
+
+---
+
+## 우선순위 매트릭스
+
+| 우선순위 | 복잡도 | 일정 | 예시 |
 |----------|------------|----------|----------|
-| **P0** (Critical) | Low | 1-3 days | E2E test fixtures, UI warnings |
-| **P1** (High) | Medium | 1-2 weeks | Bundle size tracking, performance dashboard |
-| **P2** (Medium) | Medium-High | 2-4 weeks | Additional format support, better mobile UX |
-| **P3** (Nice to Have) | High | 1-3 months | Frame-accurate mode, advanced features |
-| **P4** (Future Vision) | Very High | 3+ months | Multi-clip editing, cloud integration |
+| **P0** (치명적) | 낮음 | 1-3일 | E2E 테스트 픽스처, UI 경고 |
+| **P1** (높음) | 중간 | 1-2주 | 번들 크기 추적, 성능 대시보드 |
+| **P2** (중간) | 중-높음 | 2-4주 | 추가 형식 지원, 더 나은 모바일 UX |
+| **P3** (있으면 좋음) | 높음 | 1-3개월 | 프레임 단위 정확한 모드, 고급 기능 |
+| **P4** (미래 비전) | 매우 높음 | 3개월+ | 멀티 클립 편집, 클라우드 통합 |
 
 ---
 
-## P0: Critical (Quick Wins)
+## P0: 치명적 (빠른 승리)
 
-### 1. E2E Test Fixtures
+### 1. E2E 테스트 픽스처
 
-**Status**: Framework configured, tests skipped
-**Problem**: E2E tests need real video files to run
-**Effort**: 1-2 days
+**상태**: 프레임워크 구성 완료, 테스트 건너뜀
+**문제**: E2E 테스트에 실제 동영상 파일 필요
+**노력**: 1-2일
 
-**Solution**:
+**해결책**:
 ```
 tests/fixtures/
-├── small-video.mp4        # < 10MB, 30s, H.264
-├── medium-video.webm      # 50MB, 2min, VP9
-├── large-video.mov        # 200MB, 5min, QuickTime
-└── test-cases.json        # Expected results
+├── small-video.mp4        # < 10MB, 30초, H.264
+├── medium-video.webm      # 50MB, 2분, VP9
+├── large-video.mov        # 200MB, 5분, QuickTime
+└── test-cases.json        # 예상 결과
 ```
 
-**Implementation**:
-- Add small test videos to repository (use Creative Commons videos)
-- Update Playwright tests to use fixtures
-- Un-skip all E2E tests
-- Add to CI/CD pipeline
+**구현**:
+- 저장소에 작은 테스트 동영상 추가 (Creative Commons 동영상 사용)
+- 픽스처를 사용하도록 Playwright 테스트 업데이트
+- 모든 E2E 테스트 건너뛰기 해제
+- CI/CD 파이프라인에 추가
 
-**Benefits**:
-- ✅ Automated full-workflow testing
-- ✅ Catch regressions before production
-- ✅ Confidence in releases
+**이점**:
+- ✅ 자동화된 전체 워크플로 테스팅
+- ✅ 프로덕션 전 회귀 포착
+- ✅ 릴리스에 대한 신뢰도
 
 ---
 
-### 2. File Size UI Warnings
+### 2. 파일 크기 UI 경고
 
-**Status**: Logic exists, UI warnings minimal
-**Problem**: Users may not notice warnings for large files
-**Effort**: 1 day
+**상태**: 로직 존재, UI 경고 최소
+**문제**: 사용자가 큰 파일에 대한 경고를 놓칠 수 있음
+**노력**: 1일
 
-**Current**:
+**현재**:
 ```
-⚠️ File is large. Processing may take longer.
-[Upload Anyway]
-```
-
-**Proposed**:
-```
-⚠️ Large File Warning
-
-File: video.mp4 (1.2GB)
-Recommended size: < 500MB
-
-Potential issues:
-• Longer processing time
-• Browser may slow down
-• Risk of running out of memory
-
-Suggestions:
-• Use a smaller file
-• Close other browser tabs
-• Consider desktop video software for very large files
-
-[Cancel] [Upload Anyway]
+⚠️ 파일이 큽니다. 처리 시간이 더 오래 걸릴 수 있습니다.
+[어쨌든 업로드]
 ```
 
-**Implementation**:
-- Create `LargeFileWarning.tsx` component
-- Show modal for WARNING and DANGER tiers
-- Add "Don't show again" checkbox (localStorage)
+**제안**:
+```
+⚠️ 큰 파일 경고
 
-**Benefits**:
-- ✅ Better user expectations
-- ✅ Fewer support issues
-- ✅ Professional UX
+파일: video.mp4 (1.2GB)
+권장 크기: < 500MB
+
+잠재적 문제:
+• 더 긴 처리 시간
+• 브라우저 속도 저하 가능
+• 메모리 부족 위험
+
+제안:
+• 더 작은 파일 사용
+• 다른 브라우저 탭 닫기
+• 매우 큰 파일의 경우 데스크톱 동영상 소프트웨어 고려
+
+[취소] [어쨌든 업로드]
+```
+
+**구현**:
+- `LargeFileWarning.tsx` 컴포넌트 생성
+- WARNING 및 DANGER 계층에 대한 모달 표시
+- "다시 표시 안 함" 체크박스 추가 (localStorage)
+
+**이점**:
+- ✅ 더 나은 사용자 기대
+- ✅ 더 적은 지원 문제
+- ✅ 전문적인 UX
 
 ---
 
-### 3. Performance Monitoring
+### 3. 성능 모니터링
 
-**Status**: Not implemented
-**Problem**: No visibility into real-world performance
-**Effort**: 2-3 days
+**상태**: 구현되지 않음
+**문제**: 실제 성능에 대한 가시성 없음
+**노력**: 2-3일
 
-**Implementation**:
-- Add `PerformanceMonitor.tsx` component (dev mode only)
-- Track metrics:
-  - Trim processing time
-  - Memory usage
-  - Component render counts
-  - Bundle load time
-- Display in corner of dev build
-- Log to console for analysis
+**구현**:
+- `PerformanceMonitor.tsx` 컴포넌트 추가 (개발 모드만)
+- 추적 지표:
+  - 트리밍 처리 시간
+  - 메모리 사용량
+  - 컴포넌트 렌더 횟수
+  - 번들 로드 시간
+- 개발 빌드의 코너에 표시
+- 분석을 위해 콘솔에 로그
 
-**Example**:
+**예시**:
 ```typescript
 // src/utils/performanceMonitor.ts
 export function trackTrimPerformance(
@@ -135,24 +135,24 @@ export function trackTrimPerformance(
 }
 ```
 
-**Benefits**:
-- ✅ Data-driven optimization
-- ✅ Identify bottlenecks
-- ✅ Track improvements
+**이점**:
+- ✅ 데이터 기반 최적화
+- ✅ 병목 현상 식별
+- ✅ 개선 추적
 
 ---
 
-## P1: High Priority (Short Term)
+## P1: 높은 우선순위 (단기)
 
-### 4. Bundle Size Tracking
+### 4. 번들 크기 추적
 
-**Status**: No automated tracking
-**Problem**: Bundle size can creep up over time
-**Effort**: 1 week
+**상태**: 자동화된 추적 없음
+**문제**: 번들 크기가 시간이 지남에 따라 증가할 수 있음
+**노력**: 1주
 
-**Implementation**:
-- Add `bundlesize` package or `size-limit`
-- Set thresholds in `package.json`:
+**구현**:
+- `bundlesize` 패키지 또는 `size-limit` 추가
+- `package.json`에 임계값 설정:
   ```json
   {
     "bundlesize": [
@@ -163,231 +163,231 @@ export function trackTrimPerformance(
     ]
   }
   ```
-- Add to CI/CD (fail build if exceeded)
-- Generate bundle analysis: `npm run analyze`
+- CI/CD에 추가 (초과 시 빌드 실패)
+- 번들 분석 생성: `npm run analyze`
 
-**Benefits**:
-- ✅ Prevent bundle bloat
-- ✅ Maintain fast load times
-- ✅ Automated enforcement
-
----
-
-### 5. Component Documentation (Storybook)
-
-**Status**: No component docs
-**Problem**: Hard to visualize components in isolation
-**Effort**: 1-2 weeks
-
-**Implementation**:
-- Install Storybook for Next.js
-- Create stories for key components:
-  - `TrimHandle` - Show both types, locked/unlocked states
-  - `Playhead` - Different positions, dragging state
-  - `TimelineBar` - With/without waveform
-  - `PreviewButtons` - Enabled/disabled states
-  - `ErrorDisplay` - Different error types
-- Document props, behaviors, edge cases
-
-**Benefits**:
-- ✅ Easier development
-- ✅ Visual regression testing
-- ✅ Better onboarding for contributors
+**이점**:
+- ✅ 번들 비대화 방지
+- ✅ 빠른 로드 시간 유지
+- ✅ 자동화된 적용
 
 ---
 
-### 6. Accessibility Audit
+### 5. 컴포넌트 문서 (Storybook)
 
-**Status**: Basic accessibility, not audited
-**Problem**: May not meet WCAG standards
-**Effort**: 1 week
+**상태**: 컴포넌트 문서 없음
+**문제**: 컴포넌트를 격리된 상태로 시각화하기 어려움
+**노력**: 1-2주
 
-**Tasks**:
-- Run Lighthouse accessibility audit
-- Add ARIA labels to controls
-- Ensure keyboard navigation works everywhere
-- Test with screen readers
-- Add focus indicators
-- Check color contrast ratios
+**구현**:
+- Next.js용 Storybook 설치
+- 주요 컴포넌트에 대한 스토리 생성:
+  - `TrimHandle` - 두 가지 타입, 잠금/잠금 해제 상태 표시
+  - `Playhead` - 다른 위치, 드래그 상태
+  - `TimelineBar` - 파형 있음/없음
+  - `PreviewButtons` - 활성화/비활성화 상태
+  - `ErrorDisplay` - 다른 오류 타입
+- props, 동작, 엣지 케이스 문서화
 
-**Example improvements**:
+**이점**:
+- ✅ 더 쉬운 개발
+- ✅ 시각적 회귀 테스팅
+- ✅ 기여자를 위한 더 나은 온보딩
+
+---
+
+### 6. 접근성 감사
+
+**상태**: 기본 접근성, 감사되지 않음
+**문제**: WCAG 표준을 충족하지 못할 수 있음
+**노력**: 1주
+
+**작업**:
+- Lighthouse 접근성 감사 실행
+- 컨트롤에 ARIA 레이블 추가
+- 키보드 탐색이 모든 곳에서 작동하는지 확인
+- 스크린 리더로 테스트
+- 포커스 표시기 추가
+- 색상 대비 비율 확인
+
+**예시 개선**:
 ```tsx
-// Before
+// 이전
 <button onClick={handlePlay}>▶️</button>
 
-// After
+// 이후
 <button
   onClick={handlePlay}
-  aria-label="Play video"
+  aria-label="동영상 재생"
   aria-pressed={isPlaying}
 >
   {isPlaying ? <PauseIcon /> : <PlayIcon />}
 </button>
 ```
 
-**Benefits**:
-- ✅ Inclusive UX
-- ✅ Legal compliance
-- ✅ Better SEO
+**이점**:
+- ✅ 포용적인 UX
+- ✅ 법적 준수
+- ✅ 더 나은 SEO
 
 ---
 
-## P2: Medium Priority (Medium Term)
+## P2: 중간 우선순위 (중기)
 
-### 7. Extended Format Support
+### 7. 확장된 형식 지원
 
-**Status**: MP4, WebM, OGG, MOV, AVI, MKV supported
-**Gap**: Some formats still unsupported
-**Effort**: 2-3 weeks
+**상태**: MP4, WebM, OGG, MOV, AVI, MKV 지원
+**격차**: 일부 형식이 여전히 지원되지 않음
+**노력**: 2-3주
 
-**Potential additions**:
-- **FLV** (Flash Video) - Older format, still used
-- **M4V** (iTunes video) - Similar to MP4
-- **3GP** (Mobile video) - Older mobile format
+**잠재적 추가**:
+- **FLV** (Flash Video) - 오래된 형식이지만 여전히 사용됨
+- **M4V** (iTunes video) - MP4와 유사
+- **3GP** (Mobile video) - 오래된 모바일 형식
 - **TS** (Transport Stream) - MPEG-2 TS
-- **MXF** (Material Exchange Format) - Professional video
+- **MXF** (Material Exchange Format) - 전문 동영상
 
-**Implementation**:
-- Add MIME types to `fileConstraints.ts`
-- Test with sample files
-- Ensure MP4Box or FFmpeg handles them
-- Update documentation
+**구현**:
+- `fileConstraints.ts`에 MIME 타입 추가
+- 샘플 파일로 테스트
+- MP4Box 또는 FFmpeg이 처리하는지 확인
+- 문서 업데이트
 
-**Considerations**:
-- Some formats may not work well with browser APIs
-- MP4Box is MP4-focused, others fall back to FFmpeg
-- Test thoroughly before adding
+**고려 사항**:
+- 일부 형식은 브라우저 API와 잘 작동하지 않을 수 있음
+- MP4Box는 MP4에 중점, 다른 것들은 FFmpeg으로 대체
+- 추가하기 전에 철저히 테스트
 
-**Benefits**:
-- ✅ Wider compatibility
-- ✅ More user scenarios covered
+**이점**:
+- ✅ 더 넓은 호환성
+- ✅ 더 많은 사용자 시나리오 포함
 
 ---
 
-### 8. Mobile UX Improvements
+### 8. 모바일 UX 개선
 
-**Status**: Works on mobile, not optimized
-**Problem**: Small screens, touch interactions challenging
-**Effort**: 2-3 weeks
+**상태**: 모바일에서 작동하지만 최적화되지 않음
+**문제**: 작은 화면, 터치 상호작용이 어려움
+**노력**: 2-3주
 
-**Improvements**:
-- **Responsive timeline**: Adapt height/layout for mobile
-- **Touch-friendly handles**: Larger touch targets (48x48px minimum)
-- **Mobile-specific controls**: Simplified UI for small screens
-- **Orientation handling**: Support landscape/portrait
-- **File size warnings**: More aggressive on mobile (memory constraints)
+**개선 사항**:
+- **반응형 타임라인**: 모바일용 높이/레이아웃 조정
+- **터치 친화적 핸들**: 더 큰 터치 타겟 (최소 48x48px)
+- **모바일 전용 컨트롤**: 작은 화면용 간소화된 UI
+- **방향 처리**: 가로/세로 지원
+- **파일 크기 경고**: 모바일에서 더 적극적 (메모리 제약)
 
-**Example**:
+**예시**:
 ```tsx
-// Responsive handle size
+// 반응형 핸들 크기
 <div className={cn(
   "trim-handle",
-  "w-4 h-full",           // Desktop: 16px
-  "md:w-6",               // Tablet: 24px
-  "touch:w-12 touch:h-12" // Touch devices: 48px
+  "w-4 h-full",           // 데스크톱: 16px
+  "md:w-6",               // 태블릿: 24px
+  "touch:w-12 touch:h-12" // 터치 장치: 48px
 )}>
 ```
 
-**Challenges**:
-- Mobile browsers have limited memory
-- Large files may not work well
-- Processing may be slow on mobile CPUs
+**도전 과제**:
+- 모바일 브라우저는 메모리가 제한됨
+- 큰 파일은 모바일에서 잘 작동하지 않을 수 있음
+- 모바일 CPU에서 처리가 느릴 수 있음
 
-**Benefits**:
-- ✅ Better mobile experience
-- ✅ Wider device support
-
----
-
-### 9. Keyboard Shortcut Customization
-
-**Status**: Fixed shortcuts (Space, I, O, arrows, etc.)
-**Gap**: Users can't customize
-**Effort**: 1-2 weeks
-
-**Implementation**:
-- Create `KeyboardShortcutSettings.tsx` component
-- Store custom shortcuts in localStorage
-- Allow users to rebind keys
-- Show conflict warnings
-- Reset to defaults button
-
-**Example UI**:
-```
-⌨️ Keyboard Shortcuts
-
-Play/Pause:     [Space]     [Change]
-Set In Point:   [I]         [Change]
-Set Out Point:  [O]         [Change]
-Frame Left:     [←]         [Change]
-Frame Right:    [→]         [Change]
-
-[Reset to Defaults] [Save]
-```
-
-**Benefits**:
-- ✅ User preference support
-- ✅ Accessibility (users with disabilities)
-- ✅ Power user friendly
+**이점**:
+- ✅ 더 나은 모바일 경험
+- ✅ 더 넓은 장치 지원
 
 ---
 
-### 10. Batch Processing (Multiple Files)
+### 9. 키보드 단축키 사용자 정의
 
-**Status**: Single file only
-**Gap**: Users want to trim multiple files at once
-**Effort**: 3-4 weeks
+**상태**: 고정 단축키 (Space, I, O, 화살표 등)
+**격차**: 사용자가 사용자 정의할 수 없음
+**노력**: 1-2주
 
-**Implementation**:
-- Accept multiple files in upload
-- Queue system for processing
-- Show progress for each file
-- Apply same trim points to all (or individual settings)
-- Download as ZIP
+**구현**:
+- `KeyboardShortcutSettings.tsx` 컴포넌트 생성
+- localStorage에 사용자 정의 단축키 저장
+- 사용자가 키를 다시 바인딩할 수 있도록 허용
+- 충돌 경고 표시
+- 기본값으로 재설정 버튼
 
-**UI Mockup**:
+**예시 UI**:
 ```
-📁 Batch Trim (3 files)
+⌨️ 키보드 단축키
 
-1. video1.mp4 [✓] Completed (3.2s)
-2. video2.webm [⏳] Processing... 45%
-3. video3.mov [⏸️] Queued
+재생/일시정지:     [Space]     [변경]
+In Point 설정:    [I]         [변경]
+Out Point 설정:   [O]         [변경]
+왼쪽 프레임:      [←]         [변경]
+오른쪽 프레임:    [→]         [변경]
 
-Settings:
-☑ Apply same trim points to all files
+[기본값으로 재설정] [저장]
+```
+
+**이점**:
+- ✅ 사용자 선호도 지원
+- ✅ 접근성 (장애가 있는 사용자)
+- ✅ 파워 유저 친화적
+
+---
+
+### 10. 일괄 처리 (여러 파일)
+
+**상태**: 단일 파일만
+**격차**: 사용자가 여러 파일을 한 번에 트리밍하기 원함
+**노력**: 3-4주
+
+**구현**:
+- 업로드에서 여러 파일 허용
+- 처리를 위한 대기열 시스템
+- 각 파일의 진행률 표시
+- 모든 파일에 동일한 트리밍 포인트 적용 (또는 개별 설정)
+- ZIP으로 다운로드
+
+**UI 모형**:
+```
+📁 일괄 트리밍 (3개 파일)
+
+1. video1.mp4 [✓] 완료 (3.2초)
+2. video2.webm [⏳] 처리 중... 45%
+3. video3.mov [⏸️] 대기 중
+
+설정:
+☑ 모든 파일에 동일한 트리밍 포인트 적용
   In: 00:00:10.00  Out: 00:01:30.00
 
-[Download All (ZIP)] [Cancel]
+[모두 다운로드 (ZIP)] [취소]
 ```
 
-**Considerations**:
-- Memory constraints (can't load all in memory)
-- Process one at a time to avoid browser crash
-- Provide clear progress feedback
+**고려 사항**:
+- 메모리 제약 (모두 메모리에 로드할 수 없음)
+- 브라우저 충돌을 피하기 위해 한 번에 하나씩 처리
+- 명확한 진행률 피드백 제공
 
-**Benefits**:
-- ✅ Huge time saver for users
-- ✅ Competitive feature
-- ✅ Power user tool
+**이점**:
+- ✅ 사용자를 위한 엄청난 시간 절약
+- ✅ 경쟁력 있는 기능
+- ✅ 파워 유저 도구
 
 ---
 
-## P3: Nice to Have (Long Term)
+## P3: 있으면 좋음 (장기)
 
-### 11. Frame-Accurate Trimming Mode
+### 11. 프레임 단위 정확한 트리밍 모드
 
-**Status**: MP4Box (keyframe-based, ±1-2s), FFmpeg (near frame-accurate, ±0.02s)
-**Gap**: True frame-accurate trimming
-**Effort**: 1-2 months
+**상태**: MP4Box (키프레임 기반, ±1-2초), FFmpeg (거의 프레임 단위 정확, ±0.02초)
+**격차**: 진정한 프레임 단위 정확한 트리밍
+**노력**: 1-2개월
 
-**Implementation**:
-- Add "Precision Mode" toggle
-- Use FFmpeg with re-encoding for frame-accurate cuts
-- Warn user about slower processing
-- Show estimated time based on file size
-- Allow quality selection (CRF)
+**구현**:
+- "정밀 모드" 토글 추가
+- 프레임 단위 정확한 컷을 위해 재인코딩이 있는 FFmpeg 사용
+- 더 느린 처리에 대해 사용자에게 경고
+- 파일 크기에 따른 예상 시간 표시
+- 품질 선택 허용 (CRF)
 
-**Example**:
+**예시**:
 ```typescript
 export async function trimVideoPrecise(
   file: File,
@@ -399,7 +399,7 @@ export async function trimVideoPrecise(
 
   await ffmpeg.exec([
     '-i', input,
-    '-ss', inPoint.toFixed(3),  // Millisecond precision
+    '-ss', inPoint.toFixed(3),  // 밀리초 정밀도
     '-to', outPoint.toFixed(3),
     '-c:v', 'libx264',
     '-preset', 'medium',
@@ -411,236 +411,236 @@ export async function trimVideoPrecise(
 }
 ```
 
-**Trade-offs**:
-- ✅ Frame-accurate results
-- ❌ 100-1000x slower (minutes instead of seconds)
-- ❌ Re-encoding (quality loss, larger file)
-- ❌ Goes against core value (speed)
+**트레이드오프**:
+- ✅ 프레임 단위 정확한 결과
+- ❌ 100-1000배 느림 (초 대신 분)
+- ❌ 재인코딩 (품질 손실, 더 큰 파일)
+- ❌ 핵심 가치(속도)에 반함
 
-**Recommendation**: Only add if users strongly request it. Current ±0.02s accuracy is good enough for most cases.
-
----
-
-### 12. Advanced Editing Features
-
-**Status**: Basic trimming only
-**Gap**: Users may want more editing capabilities
-**Effort**: 3-6 months
-
-**Potential features**:
-- **Filters**: Brightness, contrast, saturation, blur, etc.
-- **Transitions**: Fade in/out, crossfade
-- **Text/Subtitles**: Overlay text on video
-- **Audio**: Volume control, mute, replace audio
-- **Speed**: Slow-mo, time-lapse
-- **Rotation**: 90°, 180°, 270°, flip
-- **Crop**: Crop video to specific dimensions
-
-**Complexity**: Each feature is a project in itself
-
-**Considerations**:
-- Requires re-encoding (slow)
-- Significantly more complex UI
-- May bloat the app
-- Competing with full video editors
-
-**Recommendation**: Consider carefully whether this aligns with project goals. May be better as a separate "Video Editor" app.
+**권장 사항**: 사용자가 강력하게 요청하는 경우에만 추가. 현재 ±0.02초 정확도는 대부분의 경우 충분히 좋습니다.
 
 ---
 
-### 13. Cloud Storage Integration (Optional)
+### 12. 고급 편집 기능
 
-**Status**: Local-only, no cloud
-**Gap**: Users may want to save to cloud
-**Effort**: 2-3 months
+**상태**: 기본 트리밍만
+**격차**: 사용자가 더 많은 편집 기능을 원할 수 있음
+**노력**: 3-6개월
 
-**Potential integrations**:
-- **Google Drive**: Save trimmed video to Drive
-- **Dropbox**: Upload to Dropbox
-- **OneDrive**: Microsoft cloud
-- **S3**: Direct S3 upload (advanced users)
+**잠재적 기능**:
+- **필터**: 밝기, 대비, 채도, 흐림 등
+- **전환**: 페이드 인/아웃, 크로스페이드
+- **텍스트/자막**: 동영상에 텍스트 오버레이
+- **오디오**: 볼륨 제어, 음소거, 오디오 교체
+- **속도**: 슬로우 모션, 타임랩스
+- **회전**: 90°, 180°, 270°, 뒤집기
+- **자르기**: 특정 치수로 동영상 자르기
 
-**Implementation**:
-- OAuth authentication
-- File picker from cloud
-- Upload after trimming
-- Progress tracking
+**복잡도**: 각 기능은 그 자체로 프로젝트
 
-**Considerations**:
-- Requires server (for OAuth secrets)
-- Privacy concerns (data leaves browser)
-- Against current "no server" principle
-- Maintenance burden (API changes)
+**고려 사항**:
+- 재인코딩 필요 (느림)
+- 훨씬 더 복잡한 UI
+- 앱이 비대해질 수 있음
+- 전체 동영상 편집기와 경쟁
 
-**Recommendation**: Only add if strong user demand. Consider third-party integrations instead of building custom.
+**권장 사항**: 프로젝트 목표와 일치하는지 신중히 고려. 별도의 "동영상 편집기" 앱으로 더 나을 수 있습니다.
 
 ---
 
-## P4: Future Vision (Long Term)
+### 13. 클라우드 스토리지 통합 (선택 사항)
 
-### 14. Multi-Clip Editing
+**상태**: 로컬 전용, 클라우드 없음
+**격차**: 사용자가 클라우드에 저장하기 원할 수 있음
+**노력**: 2-3개월
 
-**Status**: Single trim range only
-**Gap**: Users may want to combine multiple clips
-**Effort**: 6+ months
+**잠재적 통합**:
+- **Google Drive**: 트리밍된 동영상을 Drive에 저장
+- **Dropbox**: Dropbox에 업로드
+- **OneDrive**: Microsoft 클라우드
+- **S3**: 직접 S3 업로드 (고급 사용자)
 
-**Features**:
-- Multiple trim ranges from single video
-- Combine clips from different videos
-- Reorder clips
-- Timeline-based editing
+**구현**:
+- OAuth 인증
+- 클라우드에서 파일 선택기
+- 트리밍 후 업로드
+- 진행률 추적
 
-**Example**:
+**고려 사항**:
+- 서버 필요 (OAuth 비밀용)
+- 개인정보 문제 (데이터가 브라우저를 떠남)
+- 현재 "서버 없음" 원칙에 반함
+- 유지보수 부담 (API 변경)
+
+**권장 사항**: 강력한 사용자 수요가 있는 경우에만 추가. 사용자 정의 빌드 대신 타사 통합 고려.
+
+---
+
+## P4: 미래 비전 (장기)
+
+### 14. 멀티 클립 편집
+
+**상태**: 단일 트리밍 범위만
+**격차**: 사용자가 여러 클립을 결합하기 원할 수 있음
+**노력**: 6개월+
+
+**기능**:
+- 단일 동영상에서 여러 트리밍 범위
+- 다른 동영상의 클립 결합
+- 클립 재정렬
+- 타임라인 기반 편집
+
+**예시**:
 ```
-Timeline:
-[Clip 1: 0:10-0:30] [Clip 2: 1:00-1:45] [Clip 3: 2:10-2:30]
-```
-
-**Complexity**: Essentially building a video editor
-
-**Recommendation**: Very complex, consider if it aligns with "simple trimmer" goal.
-
----
-
-### 15. Real-Time Preview with Filters
-
-**Status**: Preview shows original video
-**Gap**: Can't preview filters before applying
-**Effort**: 6+ months
-
-**Requirements**:
-- WebGL-based video processing
-- Real-time filter application
-- Preview canvas overlay
-- Performance challenges
-
-**Recommendation**: Very complex, low priority unless strong user demand.
-
----
-
-### 16. Collaborative Editing
-
-**Status**: Single-user, local-only
-**Gap**: Can't collaborate with others
-**Effort**: 12+ months
-
-**Features**:
-- Share project with others
-- Real-time collaboration
-- Comments and annotations
-- Version history
-
-**Requirements**:
-- Backend server
-- WebSocket for real-time sync
-- Authentication and authorization
-- File storage
-
-**Recommendation**: Completely changes project scope. Consider as separate product.
-
----
-
-## Implementation Guidelines
-
-### Before Starting Any Improvement
-
-1. **User Research**: Is this actually needed? Get user feedback.
-2. **Cost-Benefit Analysis**: Is the effort worth the value?
-3. **Alignment Check**: Does it align with project goals (simple, fast, client-side)?
-4. **Prototype First**: Build a quick prototype to validate approach
-5. **Documentation**: Update docs before implementation
-
-### During Implementation
-
-1. **Small PRs**: Break into reviewable chunks
-2. **Test First**: Write tests before implementation (TDD)
-3. **Performance**: Measure impact on bundle size and runtime
-4. **Rollback Plan**: Ensure changes can be reverted
-5. **Feature Flags**: Use flags for gradual rollout
-
-### After Implementation
-
-1. **User Testing**: Get feedback from real users
-2. **Monitor Metrics**: Track adoption and impact
-3. **Document**: Update all relevant documentation
-4. **Celebrate**: Acknowledge the work done!
-
----
-
-## Anti-Patterns to Avoid
-
-### ❌ Feature Creep
-
-**Problem**: Adding features because you can, not because users need them.
-**Solution**: Always validate with users first.
-
-### ❌ Over-Engineering
-
-**Problem**: Building complex solutions for simple problems.
-**Solution**: Start with simplest solution that works.
-
-### ❌ Ignoring Core Values
-
-**Problem**: Adding features that go against "fast, client-side, no server" principles.
-**Solution**: Carefully consider if feature aligns with vision.
-
-### ❌ Breaking Changes
-
-**Problem**: Updating in ways that break existing user workflows.
-**Solution**: Ensure backwards compatibility or provide migration path.
-
-### ❌ No Testing
-
-**Problem**: Adding features without tests leads to regressions.
-**Solution**: Write tests first (TDD).
-
----
-
-## Prioritization Framework
-
-When deciding what to work on next, ask:
-
-1. **User Impact**: How many users will benefit?
-2. **Effort**: How long will it take?
-3. **Alignment**: Does it fit project vision?
-4. **Risk**: What could go wrong?
-5. **Dependencies**: What else needs to be done first?
-
-**Score each on 1-5**, then calculate:
-```
-Priority Score = (User Impact × Alignment) / (Effort × Risk)
+타임라인:
+[클립 1: 0:10-0:30] [클립 2: 1:00-1:45] [클립 3: 2:10-2:30]
 ```
 
-Higher score = higher priority.
+**복잡도**: 본질적으로 동영상 편집기 구축
+
+**권장 사항**: 매우 복잡함, "단순 트리머" 목표와 일치하는지 고려.
 
 ---
 
-## Success Metrics
+### 15. 필터를 사용한 실시간 미리보기
 
-For each improvement, define:
-- **Adoption**: What % of users use this feature?
-- **Performance**: Does it maintain fast processing?
-- **Quality**: Are there bugs or regressions?
-- **User Satisfaction**: Do users like it?
+**상태**: 미리보기가 원본 동영상 표시
+**격차**: 적용하기 전에 필터를 미리 볼 수 없음
+**노력**: 6개월+
 
-Track these and iterate based on data.
+**요구 사항**:
+- WebGL 기반 동영상 처리
+- 실시간 필터 적용
+- 미리보기 캔버스 오버레이
+- 성능 도전 과제
 
----
-
-## Conclusion
-
-Video Trimmer is **complete and production-ready**. All improvements listed here are **optional enhancements** based on potential user needs.
-
-**Recommendation**:
-1. ✅ Start with **P0 (Critical)** items - they're quick wins
-2. ⏳ Gather **user feedback** before committing to P1-P2
-3. ⚠️ Be very careful with P3-P4 - they may not align with project goals
-
-**Remember**: **Done is better than perfect**. The app works great as-is. Only add complexity if it truly adds value.
+**권장 사항**: 매우 복잡함, 강력한 사용자 수요가 없는 한 낮은 우선순위.
 
 ---
 
-**Document Status**: Living Document
-**Review Frequency**: After each major feature or quarterly
-**Owner**: Project maintainer
-**Last Updated**: 2026-01-30
+### 16. 협업 편집
+
+**상태**: 단일 사용자, 로컬 전용
+**격차**: 다른 사람과 협업할 수 없음
+**노력**: 12개월+
+
+**기능**:
+- 다른 사람과 프로젝트 공유
+- 실시간 협업
+- 댓글 및 주석
+- 버전 기록
+
+**요구 사항**:
+- 백엔드 서버
+- 실시간 동기화를 위한 WebSocket
+- 인증 및 권한 부여
+- 파일 스토리지
+
+**권장 사항**: 프로젝트 범위를 완전히 변경. 별도의 제품으로 고려.
+
+---
+
+## 구현 지침
+
+### 개선 사항 시작 전
+
+1. **사용자 조사**: 실제로 필요한가? 사용자 피드백 받기.
+2. **비용-편익 분석**: 노력이 가치가 있는가?
+3. **정렬 확인**: 프로젝트 목표(단순, 빠른, 클라이언트 측)와 일치하는가?
+4. **먼저 프로토타입**: 접근 방식을 검증하기 위한 빠른 프로토타입 구축
+5. **문서화**: 구현 전 문서 업데이트
+
+### 구현 중
+
+1. **작은 PR**: 검토 가능한 청크로 나누기
+2. **테스트 우선**: 구현 전 테스트 작성 (TDD)
+3. **성능**: 번들 크기 및 런타임에 미치는 영향 측정
+4. **롤백 계획**: 변경 사항을 되돌릴 수 있는지 확인
+5. **기능 플래그**: 점진적 롤아웃을 위한 플래그 사용
+
+### 구현 후
+
+1. **사용자 테스팅**: 실제 사용자로부터 피드백 받기
+2. **지표 모니터링**: 채택 및 영향 추적
+3. **문서화**: 모든 관련 문서 업데이트
+4. **축하**: 수행된 작업 인정!
+
+---
+
+## 피해야 할 안티 패턴
+
+### ❌ 기능 크리프
+
+**문제**: 사용자가 필요하기 때문이 아니라 할 수 있기 때문에 기능 추가.
+**해결책**: 항상 사용자와 먼저 검증.
+
+### ❌ 과도한 엔지니어링
+
+**문제**: 단순한 문제에 대한 복잡한 솔루션 구축.
+**해결책**: 작동하는 가장 간단한 솔루션으로 시작.
+
+### ❌ 핵심 가치 무시
+
+**문제**: "빠른, 클라이언트 측, 서버 없음" 원칙에 반하는 기능 추가.
+**해결책**: 기능이 비전과 일치하는지 신중히 고려.
+
+### ❌ 파괴적 변경
+
+**문제**: 기존 사용자 워크플로를 깨뜨리는 방식으로 업데이트.
+**해결책**: 하위 호환성 보장 또는 마이그레이션 경로 제공.
+
+### ❌ 테스트 없음
+
+**문제**: 테스트 없이 기능을 추가하면 회귀 발생.
+**해결책**: 테스트 먼저 작성 (TDD).
+
+---
+
+## 우선순위 지정 프레임워크
+
+다음에 작업할 내용을 결정할 때 다음을 질문:
+
+1. **사용자 영향**: 몇 명의 사용자가 혜택을 받는가?
+2. **노력**: 얼마나 걸리는가?
+3. **정렬**: 프로젝트 비전에 맞는가?
+4. **위험**: 무엇이 잘못될 수 있는가?
+5. **의존성**: 먼저 수행해야 할 다른 것은 무엇인가?
+
+**각각을 1-5로 점수 매기기**, 그런 다음 계산:
+```
+우선순위 점수 = (사용자 영향 × 정렬) / (노력 × 위험)
+```
+
+더 높은 점수 = 더 높은 우선순위.
+
+---
+
+## 성공 지표
+
+각 개선 사항에 대해 다음을 정의:
+- **채택**: 이 기능을 사용하는 사용자의 비율은?
+- **성능**: 빠른 처리를 유지하는가?
+- **품질**: 버그나 회귀가 있는가?
+- **사용자 만족도**: 사용자가 좋아하는가?
+
+이를 추적하고 데이터를 기반으로 반복.
+
+---
+
+## 결론
+
+Video Trimmer는 **완전하고 프로덕션 준비 완료**입니다. 여기에 나열된 모든 개선 사항은 잠재적 사용자 요구에 기반한 **선택적 개선 사항**입니다.
+
+**권장 사항**:
+1. ✅ **P0 (치명적)** 항목으로 시작 - 빠른 승리
+2. ⏳ P1-P2에 커밋하기 전에 **사용자 피드백** 수집
+3. ⚠️ P3-P4에 매우 주의 - 프로젝트 목표와 일치하지 않을 수 있음
+
+**기억하세요**: **완료가 완벽보다 낫습니다**. 앱은 있는 그대로 훌륭하게 작동합니다. 진정으로 가치를 더하는 경우에만 복잡성을 추가하세요.
+
+---
+
+**문서 상태**: 살아있는 문서
+**검토 빈도**: 각 주요 기능 후 또는 분기별
+**소유자**: 프로젝트 유지관리자
+**마지막 업데이트**: 2026-01-30
