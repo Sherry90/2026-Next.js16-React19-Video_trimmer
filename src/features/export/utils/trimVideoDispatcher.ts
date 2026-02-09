@@ -7,10 +7,15 @@ import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { toBlobURL } from '@ffmpeg/util';
 import { trimVideoMP4Box } from './trimVideoMP4Box';
 import { trimVideoFFmpeg } from './trimVideoFFmpeg';
+import { trimVideoServer } from './trimVideoServer';
 import { getTrimmerType } from './formatDetector';
 
 export interface TrimVideoOptions {
-  inputFile: File;
+  inputFile: File | null;
+  source?: 'file' | 'url';
+  streamUrl?: string;
+  originalUrl?: string;
+  filename?: string;
   startTime: number; // seconds
   endTime: number; // seconds
   onProgress?: (progress: number) => void; // 0-100
@@ -112,8 +117,25 @@ async function loadFFmpeg(onProgress?: (progress: number) => void): Promise<FFmp
  * @returns Trimmed video as Blob
  */
 export async function trimVideo(options: TrimVideoOptions): Promise<Blob> {
-  const { inputFile, startTime, endTime, onProgress, onFFmpegLoadStart, onFFmpegLoadProgress, onFFmpegLoadComplete } =
+  const { inputFile, source, streamUrl, originalUrl, filename, startTime, endTime, onProgress, onFFmpegLoadStart, onFFmpegLoadProgress, onFFmpegLoadComplete } =
     options;
+
+  // URL source: use server-side yt-dlp/ffmpeg
+  if (source === 'url') {
+    if (!streamUrl) throw new Error('streamUrl is required for URL source');
+    console.log('[Trimmer] Using server trimming for URL source');
+    return trimVideoServer({
+      originalUrl,
+      streamUrl,
+      startTime,
+      endTime,
+      filename: filename || 'trimmed_video.mp4',
+      onProgress,
+    });
+  }
+
+  // File source: use client-side trimming
+  if (!inputFile) throw new Error('inputFile is required for file source');
 
   const trimmerType = getTrimmerType(inputFile);
 

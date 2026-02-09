@@ -80,6 +80,20 @@ export function useVideoDuration() {
   return useStore((state) => state.videoFile?.duration ?? 0);
 }
 
+/**
+ * Get video source type ('file' | 'url' | undefined)
+ */
+export function useVideoSource() {
+  return useStore((state) => state.videoFile?.source);
+}
+
+/**
+ * Get stream URL for URL sources
+ */
+export function useStreamUrl() {
+  return useStore((state) => state.videoFile?.streamUrl);
+}
+
 // ==================== Player Selectors ====================
 
 /**
@@ -117,6 +131,28 @@ export function usePlayerActions() {
  */
 export function useCurrentTime() {
   return useStore((state) => state.player.currentTime);
+}
+
+// ==================== URL Preview Selectors ====================
+
+/**
+ * Get URL preview state
+ */
+export function useUrlPreview() {
+  return useStore((state) => state.urlPreview);
+}
+
+/**
+ * Get URL preview actions
+ */
+export function useUrlPreviewActions() {
+  return useStore(
+    useShallow((state) => ({
+      setUrlPreview: state.setUrlPreview,
+      setUrlPreviewRange: state.setUrlPreviewRange,
+      clearUrlPreview: state.clearUrlPreview,
+    }))
+  );
 }
 
 // ==================== Phase & Processing Selectors ====================

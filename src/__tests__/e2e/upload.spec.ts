@@ -1,13 +1,15 @@
 import { test, expect } from '@playwright/test';
 import path from 'path';
 
+const TEST_VIDEO_PATH = path.join(__dirname, 'fixtures', 'test-video.mp4');
+
 test.describe('Video Upload', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
   });
 
   test('should display upload zone on initial load', async ({ page }) => {
-    await expect(page.getByText(/drag.*drop/i)).toBeVisible();
+    await expect(page.getByText('Drop video file here')).toBeVisible();
   });
 
   test('should reject files over 1GB', async ({ page }) => {
@@ -29,9 +31,11 @@ test.describe('Video Upload', () => {
   });
 
   test('should accept valid video file', async ({ page }) => {
-    // This test requires a valid video file
-    // For now, we'll skip this test as it requires test fixtures
-    test.skip();
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles(TEST_VIDEO_PATH);
+
+    // Should transition to editing phase - video player should appear
+    await page.locator('[data-vjs-player]').waitFor({ state: 'visible', timeout: 10000 });
   });
 });
 
@@ -40,7 +44,16 @@ test.describe('Video Upload - with valid file', () => {
     // This test requires a valid video file and mocking
   });
 
-  test.skip('should transition to editor after upload completes', async ({ page }) => {
-    // This test requires a valid video file and mocking
+  test('should transition to editor after upload completes', async ({ page }) => {
+    await page.goto('/');
+
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles(TEST_VIDEO_PATH);
+
+    // Should show video player
+    await page.locator('[data-vjs-player]').waitFor({ state: 'visible', timeout: 10000 });
+
+    // Should show export button (editing phase)
+    await expect(page.getByTestId('export-button')).toBeVisible({ timeout: 5000 });
   });
 });

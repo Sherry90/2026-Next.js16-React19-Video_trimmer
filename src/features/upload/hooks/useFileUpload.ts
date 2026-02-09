@@ -38,6 +38,7 @@ export function useFileUpload() {
         // VideoFile 객체 생성
         const videoFile: VideoFile = {
           file,
+          source: 'file',
           name: file.name,
           size: file.size,
           type: file.type,

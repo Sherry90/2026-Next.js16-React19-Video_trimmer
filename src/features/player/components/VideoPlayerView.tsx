@@ -4,7 +4,7 @@ import { useRef, useEffect, useCallback } from 'react';
 import videojs from 'video.js';
 import type Player from 'video.js/dist/types/player';
 import { useStore } from '@/stores/useStore';
-import { useVideoUrl, usePlayerActions } from '@/stores/selectors';
+import { useVideoUrl, useVideoFile, usePlayerActions } from '@/stores/selectors';
 import { VideoPlayerProvider } from '../context/VideoPlayerContext';
 
 interface VideoPlayerViewProps {
@@ -16,19 +16,18 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
   const playerRef = useRef<Player | null>(null);
 
   const videoUrl = useVideoUrl();
+  const videoFile = useVideoFile();
   const { setCurrentTime, setIsPlaying } = usePlayerActions();
-  const setVideoDuration = useStore((state) => state.setVideoDuration);
-  const outPoint = useStore((state) => state.timeline.outPoint);
+
+  // Capture MIME type in a ref so it doesn't trigger player re-creation
+  const mimeTypeRef = useRef(videoFile?.type || 'video/mp4');
+  useEffect(() => {
+    mimeTypeRef.current = videoFile?.type || 'video/mp4';
+  }, [videoFile?.type]);
 
   useEffect(() => {
-    // Determine the video element to use
-    // Since we are using video.js, we need to make sure we create the video element 
-    // or let video.js handle it. 
-    // Best practice for React: render a <video> element (or div) and let video.js wrap it.
-    
     if (!videoRef.current || !videoUrl) return;
 
-    // Create a video element dynamically to ensure clean slate for video.js
     const videoElement = document.createElement('video-js');
     videoElement.classList.add('vjs-big-play-centered');
     videoRef.current.appendChild(videoElement);
@@ -37,19 +36,19 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
       controls: true,
       autoplay: false,
       preload: 'auto',
+      volume: 0.4,
       sources: [{
         src: videoUrl,
-        type: 'video/mp4' // Assuming mp4 for now based on common uploads, or inferred
+        type: mimeTypeRef.current,
       }],
-      fluid: true, // Responsiveness
+      fluid: true,
     }, () => {
       videojs.log('player is ready');
-      
-      // Handle events
+
       player.on('loadedmetadata', () => {
         const duration = player.duration();
         if (duration && !isNaN(duration)) {
-          setVideoDuration(duration);
+          useStore.getState().setVideoDuration(duration);
         }
       });
 
@@ -57,16 +56,12 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
         const currentTime = player.currentTime();
         const state = useStore.getState();
 
-        // CRITICAL: Ignore timeupdate if scrubbing OR if video is still seeking
-        // This prevents stale timeupdate events from overwriting the store
         if (state.player.isScrubbing || player.seeking()) {
           return;
         }
 
-        // Normal playback: update store with video time
         state.setCurrentTime(currentTime || 0);
 
-        // Stop at outPoint logic
         const currentOutPoint = state.timeline.outPoint;
         if ((currentTime || 0) >= currentOutPoint && currentOutPoint > 0 && !player.paused()) {
            player.pause();
@@ -79,16 +74,13 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
       player.on('ended', () => setIsPlaying(false));
     }));
 
-    // If metadata happens to be loaded already (unlikely with new instance but safe to check)
-    // In video.js, 'loadedmetadata' event is reliable.
-
     return () => {
       if (player && !player.isDisposed()) {
         player.dispose();
         playerRef.current = null;
       }
     };
-  }, [videoUrl, setVideoDuration, setIsPlaying]); // Removed specific timeline deps to avoid re-init, using getState inside
+  }, [videoUrl, setIsPlaying]); // Only re-create player when URL changes
 
   // Sync methods
   const play = useCallback(() => {

@@ -69,7 +69,7 @@ export function ErrorDisplay({
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto mt-8 p-6 bg-red-50 border border-red-200 rounded-lg">
+    <div className="w-full max-w-2xl mx-auto mt-8 p-6 bg-red-50 border border-red-200 rounded-lg" data-testid="error-display">
       {/* Error Icon and Title */}
       <div className="flex items-start gap-4">
         <div className="flex-shrink-0">
@@ -143,6 +143,7 @@ export function ErrorDisplay({
           <div className="flex gap-3 mt-6">
             <button
               onClick={handleRetry}
+              data-testid="retry-button"
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
             >
               다시 시도

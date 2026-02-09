@@ -25,6 +25,7 @@ describe('useStore', () => {
       const { setVideoFile } = useStore.getState();
       const mockFile = {
         file: new File(['test'], 'test.mp4'),
+        source: 'file' as const,
         name: 'test.mp4',
         size: 1024,
         type: 'video/mp4',
@@ -40,6 +41,7 @@ describe('useStore', () => {
       const { setVideoFile, setVideoDuration } = useStore.getState();
       const mockFile = {
         file: new File(['test'], 'test.mp4'),
+        source: 'file' as const,
         name: 'test.mp4',
         size: 1024,
         type: 'video/mp4',
@@ -61,6 +63,7 @@ describe('useStore', () => {
       const { setVideoFile, setVideoDuration } = useStore.getState();
       const mockFile = {
         file: new File(['test'], 'test.mp4'),
+        source: 'file' as const,
         name: 'test.mp4',
         size: 1024,
         type: 'video/mp4',
@@ -337,6 +340,7 @@ describe('useStore', () => {
       setPhase('editing');
       setVideoFile({
         file: new File(['test'], 'test.mp4'),
+        source: 'file',
         name: 'test.mp4',
         size: 1024,
         type: 'video/mp4',
