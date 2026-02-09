@@ -7,6 +7,7 @@ import type {
   PlayerState,
   ErrorState,
   ExportState,
+  UrlPreviewState,
 } from '@/types/store';
 import { cleanupFFmpeg } from '@/features/export/utils/trimVideoDispatcher';
 
@@ -18,6 +19,9 @@ interface StoreState {
 
   // 비디오 파일
   videoFile: VideoFile | null;
+
+  // URL 미리보기
+  urlPreview: UrlPreviewState | null;
 
   // 타임라인
   timeline: TimelineState;
@@ -44,6 +48,11 @@ interface StoreActions {
   // 파일 관련
   setVideoFile: (file: VideoFile | null) => void;
   setVideoDuration: (duration: number) => void;
+
+  // URL 미리보기 관련
+  setUrlPreview: (data: Omit<UrlPreviewState, 'inPoint' | 'outPoint'>) => void;
+  setUrlPreviewRange: (inPoint: number, outPoint: number) => void;
+  clearUrlPreview: () => void;
 
   // 타임라인 관련
   setInPoint: (time: number) => void;
@@ -87,6 +96,7 @@ interface StoreActions {
 const initialState: StoreState = {
   phase: 'idle',
   videoFile: null,
+  urlPreview: null,
   timeline: {
     inPoint: 0,
     outPoint: 0,
@@ -139,6 +149,42 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
         },
       });
     }
+  },
+
+  // URL 미리보기 관련
+  setUrlPreview: (data) => {
+    const maxDuration = 600; // 10분 제한
+    set({
+      urlPreview: {
+        ...data,
+        inPoint: 0,
+        outPoint: Math.min(data.duration, maxDuration),
+      },
+      phase: 'url_preview',
+    });
+  },
+
+  setUrlPreviewRange: (inPoint, outPoint) => {
+    const { urlPreview } = get();
+    if (!urlPreview) return;
+    const maxSegment = 600;
+    const constrainedIn = Math.max(0, Math.min(inPoint, urlPreview.duration));
+    const constrainedOut = Math.max(constrainedIn, Math.min(outPoint, urlPreview.duration));
+    // 10분 제한 적용
+    const finalOut = constrainedOut - constrainedIn > maxSegment
+      ? constrainedIn + maxSegment
+      : constrainedOut;
+    set({
+      urlPreview: {
+        ...urlPreview,
+        inPoint: constrainedIn,
+        outPoint: finalOut,
+      },
+    });
+  },
+
+  clearUrlPreview: () => {
+    set({ urlPreview: null, phase: 'idle' });
   },
 
   // 타임라인 관련

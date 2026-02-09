@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import { useFileUpload } from '@/features/upload/hooks/useFileUpload';
+import { UrlInputZone } from '@/features/url-input/components/UrlInputZone';
 
 export function UploadZone() {
   const [isDragging, setIsDragging] = useState(false);
@@ -104,6 +105,8 @@ export function UploadZone() {
       <p className="mt-6 text-[11px] text-[#74808c] opacity-70">
         Supported formats: MP4, WebM, OGG, MOV, AVI, MKV (Max 1GB)
       </p>
+
+      <UrlInputZone />
     </div>
   );
 }

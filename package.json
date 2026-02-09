@@ -12,13 +12,16 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "postinstall": "node scripts/setup-deps.mjs",
+    "setup": "node scripts/setup-deps.mjs"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@ffmpeg/ffmpeg": "^0.12.10",
     "@ffmpeg/util": "^0.12.2",
     "@tailwindcss/postcss": "^4.1.18",
@@ -28,6 +31,7 @@
     "react-dom": "^19.2.3",
     "video.js": "^8.23.4",
     "wavesurfer.js": "^7.12.1",
+    "yt-dlp-wrap": "^2.3.12",
     "zustand": "^5.0.10"
   },
   "devDependencies": {

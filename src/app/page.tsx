@@ -15,6 +15,9 @@ import { EditingSection } from '@/components/EditingSection';
 import { ExportButton } from '@/features/export/components/ExportButton';
 import { ErrorDisplay } from '@/features/export/components/ErrorDisplay';
 
+// URL preview
+import { UrlPreviewSection } from '@/features/url-input/components/UrlPreviewSection';
+
 // Lazy load components only needed during/after export to reduce initial bundle
 const ExportProgress = lazy(() => import('@/features/export/components/ExportProgress').then(m => ({ default: m.ExportProgress })));
 const DownloadButton = lazy(() => import('@/features/export/components/DownloadButton').then(m => ({ default: m.DownloadButton })));
@@ -44,6 +47,7 @@ export default function HomePage() {
           <FileValidationError />
 
           {phase === 'idle' && <UploadZone />}
+          {phase === 'url_preview' && <UrlPreviewSection />}
           <UploadProgress />
           {phase === 'editing' && <EditingSection />}
           <Suspense fallback={null}>

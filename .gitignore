@@ -51,6 +51,9 @@ labels/
 config.json
 views.json
 
+# Downloaded binaries (yt-dlp)
+/.bin
+
 # Test sample videos
 /testsample
 /public/*.mp4

@@ -53,6 +53,7 @@ export function DownloadButton() {
       <div className="flex gap-3 justify-center">
         <button
           onClick={handleDownload}
+          data-testid="download-button"
           className="px-6 py-3 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
         >
           Download Video
@@ -60,6 +61,7 @@ export function DownloadButton() {
 
         <button
           onClick={handleEditAnother}
+          data-testid="edit-another-button"
           className="px-6 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
         >
           Edit Another File

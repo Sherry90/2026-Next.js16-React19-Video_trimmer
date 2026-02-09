@@ -38,6 +38,10 @@ export function ExportButton() {
 
       const outputBlob = await trimVideo({
         inputFile: videoFile.file,
+        source: videoFile.source,
+        streamUrl: videoFile.streamUrl,
+        originalUrl: videoFile.originalUrl,
+        filename: videoFile.name,
         startTime: inPoint,
         endTime: outPoint,
         onProgress: (progress) => {
@@ -84,8 +88,8 @@ export function ExportButton() {
     return null;
   }
 
-  // Check if this video will require FFmpeg download
-  const willDownloadFFmpeg = videoFile && requiresFFmpegDownload(videoFile.file);
+  // Check if this video will require FFmpeg download (only for file sources)
+  const willDownloadFFmpeg = videoFile?.source === 'file' && videoFile.file && requiresFFmpegDownload(videoFile.file);
 
   // Button text based on loading state
   const getButtonText = () => {
@@ -112,6 +116,7 @@ export function ExportButton() {
       className="px-[30px] py-[7px] text-[13px] font-medium text-white bg-[#2962ff] border-none rounded-sm cursor-pointer transition-colors duration-200 hover:bg-[#0041f5] disabled:opacity-50 disabled:cursor-not-allowed"
       disabled={!videoFile || isLoadingFFmpeg}
       title={getButtonTitle()}
+      data-testid="export-button"
     >
       {getButtonText()}
     </button>
