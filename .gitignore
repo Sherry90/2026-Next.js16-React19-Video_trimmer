@@ -58,3 +58,4 @@ views.json
 /testsample
 /public/*.mp4
 /public/.DS_Store
+src/__tests__/e2e/fixtures/*.mp4
