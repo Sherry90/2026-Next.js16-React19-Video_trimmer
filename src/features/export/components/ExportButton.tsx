@@ -39,7 +39,6 @@ export function ExportButton() {
       const outputBlob = await trimVideo({
         inputFile: videoFile.file,
         source: videoFile.source,
-        streamUrl: videoFile.streamUrl,
         originalUrl: videoFile.originalUrl,
         filename: videoFile.name,
         startTime: inPoint,
