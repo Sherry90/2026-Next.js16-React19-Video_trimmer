@@ -28,6 +28,25 @@ npm run test:e2e:ui   # Playwright UI
 
 **Note**: E2E tests require actual video files and are mostly skipped. Unit tests cover core logic comprehensively.
 
+## 키보드 단축키
+
+편집 화면에서 사용 가능한 단축키:
+
+| 키 | 기능 |
+|----|------|
+| **Space** | 재생/일시정지 토글 |
+| **I** | 현재 위치를 In Point로 설정 |
+| **O** | 현재 위치를 Out Point로 설정 |
+| **←** | 1초 뒤로 |
+| **→** | 1초 앞으로 |
+| **Shift + ←** | 0.1초 뒤로 (프레임 단위) |
+| **Shift + →** | 0.1초 앞으로 (프레임 단위) |
+| **Home** | In Point로 점프 |
+| **End** | Out Point로 점프 |
+| **Ctrl + 휠** | 타임라인 줌 (0.1x ~ 10x) |
+
+단축키는 입력 필드 포커스 시 비활성화됩니다.
+
 ## Architecture
 
 ### State Management (Zustand)
@@ -349,6 +368,5 @@ Comprehensive project documentation is organized in `.docs/`:
   - Timeline, major milestones, bug fixes, refactoring
   - URL trimming implementation, Streamlink auto-download
   - Technical lessons learned
-- **`.docs/archive/`** - Historical documents for reference
 
 For current project status and architecture, refer to PROJECT.md. For development history and architectural decisions, refer to HISTORY.md.

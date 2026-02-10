@@ -19,6 +19,102 @@
 
 ---
 
+## 기술 개념 (Technical Concepts)
+
+이 문서에서 사용하는 핵심 기술 용어를 설명합니다.
+
+### 비디오 처리
+
+**MP4Box.js**
+- MP4 파일 구조를 파싱하여 재인코딩 없이 트리밍
+- 장점: 10-20배 빠름, 원본 품질 유지
+- 단점: 키프레임 정확도 (±1-2초)
+
+**Stream Copy**
+- 비디오 데이터를 재인코딩하지 않고 재패키징
+- vs 재인코딩: 품질 손실 없음, 속도 빠름
+- 제약: 키프레임 위치에 의존
+
+**Keyframe (키프레임)**
+- 다른 프레임(P-frame, B-frame)이 참조하는 기준 프레임
+- 트리밍 시작/끝 지점은 가장 가까운 키프레임으로 스냅
+- 일반적으로 1-2초마다 위치
+
+**FFmpeg**
+- 비디오/오디오 변환 도구
+- 프로젝트 사용: 스트림 복사 모드 (`-c copy`)로 정확한 트리밍
+- Fallback: 짧은 클립 정확도 필요 시 사용
+
+**HLS (HTTP Live Streaming)**
+- Apple이 개발한 적응형 비트레이트 스트리밍 프로토콜
+- 세그먼트 단위로 다운로드 (.m3u8 플레이리스트 + .ts 세그먼트)
+- streamlink로 특정 구간 다운로드
+
+### 상태 관리
+
+**Zustand**
+- 최소주의 React 상태 관리 라이브러리
+- Redux 대비: 보일러플레이트 없음, 단순 API
+- 프로젝트: 단일 스토어 패턴 (src/stores/useStore.ts)
+
+**Race Condition**
+- 여러 비동기 이벤트가 동일 상태를 경쟁적으로 업데이트
+- 예: 드래그 이벤트 vs video.timeupdate 이벤트
+- 해결: `isScrubbing` 플래그로 우선순위 제어
+
+**Selector Pattern**
+- Zustand 상태의 특정 슬라이스만 구독
+- `useShallow`로 불필요한 리렌더링 방지
+- 예: `useTimelineState()` (src/stores/selectors.ts)
+
+### 브라우저 API
+
+**COEP (Cross-Origin-Embedder-Policy)**
+- HTTP 헤더로 cross-origin 리소스 격리 정책 제어
+- `credentialless`: SharedArrayBuffer 허용 + CORS 없이 리소스 로드
+- vs `require-corp`: 모든 리소스에 CORP 헤더 필요 (엄격함)
+
+**SharedArrayBuffer**
+- 여러 Web Worker 간 메모리 공유 (멀티스레드)
+- FFmpeg.wasm이 필요 (비디오 처리 성능)
+- 보안: COEP + COOP 헤더 필요
+
+**Object URL**
+- `URL.createObjectURL(blob)`로 Blob을 URL로 변환
+- 메모리 누수 방지: `URL.revokeObjectURL(url)` 필수
+- 생명주기: 생성 → 사용 → 해제 쌍으로 관리
+
+### 아키텍처 패턴
+
+**Dispatcher (디스패처)**
+- 조건에 따라 적절한 구현체 선택
+- 프로젝트: 파일 크기/클립 길이로 MP4Box vs FFmpeg 선택
+- 사용자 선택 불필요, 앱이 자동 판단
+
+**Feature-based Organization**
+- 타입(components/hooks/utils)이 아닌 기능별 폴더 구성
+- 장점: 높은 응집도, 명확한 경계, 삭제 용이
+- 예: `src/features/timeline/` (components, hooks, utils 포함)
+
+**Phase-based Workflow**
+- 상태를 명확한 단계(Phase)로 관리: idle → uploading → editing → processing → completed
+- 각 Phase마다 허용 액션 제한 (FSM 패턴)
+
+### 용어 대조표
+
+| 한국어 | 영어 | 설명 |
+|--------|------|------|
+| 트리밍 | Trimming | 비디오 구간 잘라내기 |
+| 인 포인트 | In Point | 트리밍 시작 지점 (초 단위) |
+| 아웃 포인트 | Out Point | 트리밍 종료 지점 (초 단위) |
+| 플레이헤드 | Playhead | 현재 재생 위치 표시 |
+| 타임라인 | Timeline | 비디오 길이 전체를 시각화한 바 |
+| 핸들 | Handle | In/Out Point를 드래그하는 UI 요소 |
+| 스크러빙 | Scrubbing | 플레이헤드 드래그하여 탐색 |
+| 시킹 | Seeking | 특정 시간으로 점프 |
+
+---
+
 ## 개요
 
 **Video Trimmer**는 서버 업로드 없이 브라우저에서 완전히 동영상을 트리밍할 수 있는 클라이언트 사이드 웹 애플리케이션입니다.
@@ -56,21 +152,23 @@
 
 ### 기능 완성도
 
-**Phase 1-6 (모두 완료):**
+**핵심 기능:**
 - ✅ 프로젝트 설정 (Next.js 16, TypeScript, Turbopack)
-- ✅ 핵심 기능 (업로드, 플레이어, 타임라인, 트리밍, 다운로드)
+- ✅ 로컬 파일 편집 (업로드, 플레이어, 타임라인, 트리밍, 다운로드)
+- ✅ URL 영상 편집 (yt-dlp + streamlink)
 - ✅ 편의 기능 (키보드 단축키, 미리보기, 프레임 단위 탐색)
 - ✅ 고급 기능 (파형, 줌, 잠금, 가장자리 미리보기)
 - ✅ 흐름 완성 (재설정, 오류 재시도)
-- ✅ 테스팅 (92개 유닛 테스트, Playwright 프레임워크)
 
-**Phase 이후 개선 (2026-01-28 ~ 2026-02-11):**
-- ✅ MP4Box 마이그레이션 (10-20배 속도 향상)
+**성능 최적화:**
+- ✅ MP4Box 통합 (10-20배 속도 향상)
 - ✅ FFmpeg 정확도 개선 (±0.5초 → ±0.02초)
 - ✅ 하이브리드 디스패처 (자동 방법 선택)
-- ✅ 6단계 리팩토링 (787줄 감소, -15.6%)
-- ✅ URL 영상 편집 (yt-dlp + streamlink)
-- ✅ Streamlink 자동 다운로드 (postinstall)
+- ✅ 종합 리팩토링 (787줄 감소, -15.6%)
+
+**인프라:**
+- ✅ 자동 의존성 관리 (streamlink, yt-dlp, ffmpeg)
+- ✅ 테스팅 (92개 유닛 테스트, Playwright 프레임워크)
 
 ---
 
@@ -260,31 +358,32 @@ src/features/
 
 **경쟁 조건 방지 패턴**:
 
-```typescript
-// 문제: 드래그 중 비디오 timeupdate 이벤트가 currentTime 덮어씀
+사용자가 플레이헤드를 드래그하는 동안, 비디오 플레이어는 계속 `timeupdate` 이벤트를 발생시킵니다.
+이 두 이벤트가 동시에 `currentTime`을 업데이트하려 하면 플레이헤드가 튀는 현상 발생.
 
-// 해결: isScrubbing 플래그
-interface PlayerState {
-  isScrubbing: boolean;  // 핵심 플래그
-  isSeeking: boolean;
-}
+**해결 방법** (`isScrubbing` 플래그):
 
-// Playhead 드래그
-const handleDragStart = () => {
-  setIsScrubbing(true);  // 비디오 업데이트 비활성화
-};
-const handleDragEnd = () => {
-  setIsScrubbing(false);  // 비디오 업데이트 재활성화
-};
-
-// Video.js timeupdate
-player.on('timeupdate', () => {
-  if (isScrubbing || player.seeking()) {
-    return;  // 사용자 상호작용 중 무시
-  }
-  setCurrentTime(player.currentTime());  // 안전한 업데이트
-});
 ```
+// 드래그 시작
+사용자가 플레이헤드 드래그 시작 → isScrubbing = true
+
+// 드래그 중
+매 프레임마다:
+  IF isScrubbing:
+    플레이헤드 위치만 업데이트 (스토어 X)
+
+// 비디오 이벤트 무시
+video.timeupdate 이벤트 발생 시:
+  IF isScrubbing OR video.seeking:
+    이벤트 무시 (스토어 업데이트 안 함)  // 핵심!
+  ELSE:
+    currentTime 스토어 업데이트
+
+// 드래그 종료
+사용자가 드래그 종료 → isScrubbing = false → 정상 동기화 재개
+```
+
+**구현**: `src/features/timeline/components/Playhead.tsx`, `src/features/player/components/VideoPlayerView.tsx`
 
 **동기화 흐름**:
 - 일반 재생: 비디오 → 스토어 → 타임라인 ✓
@@ -442,38 +541,31 @@ export interface ErrorDetails {
 ### 8. 의존성 관리
 
 **자동 다운로드** (`scripts/setup-deps.mjs`):
-
-```javascript
-// postinstall 훅에서 실행
-async function setupDependencies() {
-  await setupYtdlp();      // .bin/yt-dlp 다운로드
-  await setupStreamlink(); // .bin/streamlink-* 다운로드
-}
-```
+- `npm install` 시 postinstall 훅으로 자동 다운로드
+- 플랫폼별 바이너리 (Windows: .zip, Linux: AppImage, macOS: system)
 
 **경로 해석** (`src/lib/binPaths.ts`):
 
+모든 바이너리는 우선순위에 따라 동적 해석:
+1. 번들 바이너리 (.bin/ 폴더) 확인
+2. 시스템 설치 (PATH) 확인
+3. npm 패키지 폴백
+
+예시 (streamlink):
 ```typescript
-// 우선순위: system > bundled > yt-dlp-wrap
-export function getYtdlpPath(): string {
-  if (hasCommand('yt-dlp')) return 'yt-dlp';           // system
-  if (existsSync('.bin/yt-dlp')) return '.bin/yt-dlp'; // bundled
-  return require('yt-dlp-wrap').default.ytDlpPath;     // npm
-}
-
-// 우선순위: bundled > system
 export function getStreamlinkPath(): string | null {
+  // 1순위: 번들 (.bin/streamlink-linux-x64.AppImage 등)
   const bundled = `.bin/streamlink-${platform}-${arch}`;
-  if (existsSync(bundled)) return bundled;             // bundled
-  if (hasCommand('streamlink')) return 'streamlink';   // system
-  return null;
-}
+  if (existsSync(bundled)) return bundled;
 
-// ffmpeg: 번들 우선
-export function getFfmpegPath(): string {
-  return require('@ffmpeg-installer/ffmpeg').path;     // bundled v4.4
+  // 2순위: 시스템 (brew install streamlink 등)
+  if (hasCommand('streamlink')) return 'streamlink';
+
+  return null;  // 없음
 }
 ```
+
+yt-dlp, ffmpeg도 동일 패턴 사용.
 
 **플랫폼별 전략**:
 - **Windows**: streamlink portable .zip → `adm-zip` 압축 해제
@@ -489,6 +581,28 @@ export function getFfmpegPath(): string {
 - Git 저장소: 10MB 유지 (470MB 증가 방지)
 - 사용자: `npm install` 시 자동 설정
 - 배포: Vercel, Docker 등에서 자동 동작
+
+### 9. 설계 원칙
+
+프로젝트 아키텍처는 다음 원칙을 따릅니다:
+
+**1. Single Responsibility (단일 책임)**
+- 각 컴포넌트/함수는 하나의 명확한 책임만 가짐
+- 예: `TrimHandle`은 핸들 UI와 드래그만, 시간 계산은 utils
+
+**2. Fine-grained Separation (세밀한 분리)**
+- 큰 컴포넌트를 작은 단위로 분해
+- 예: TimelineEditor (182줄) → 64줄 + 4개 하위 컴포넌트/훅
+
+**3. High Cohesion (높은 응집도)**
+- 관련 코드는 가까이 (feature-based organization)
+- 예: `timeline/` 폴더에 components + hooks + utils 모두 포함
+
+**4. Avoid Extreme Separation (극단적 분리 지양)**
+- 지나친 추상화 방지
+- 예: 5줄 유틸은 별도 파일 만들지 않음, 인라인 정의
+
+이 원칙들은 2026-01-30 종합 리팩토링 과정에서 787줄 감소 달성에 기여했습니다.
 
 ---
 
@@ -680,17 +794,12 @@ vercel --prod
 
 ### Docker 배포
 
-```dockerfile
+표준 Node.js 이미지 사용, postinstall 훅이 streamlink/yt-dlp를 자동 다운로드:
+
+```bash
 FROM node:20-alpine
-
-WORKDIR /app
-COPY package*.json ./
 RUN npm ci  # postinstall 자동 실행
-
-COPY . .
 RUN npm run build
-
-EXPOSE 3000
 CMD ["npm", "start"]
 ```
 
@@ -714,9 +823,7 @@ CMD ["npm", "start"]
 ```
 .docs/
 ├── PROJECT.md         # 이 문서 (현재 상태)
-├── HISTORY.md         # 개발 히스토리
-└── archive/
-    └── project-specification.md  # 초기 설계 (참고용)
+└── HISTORY.md         # 개발 히스토리
 ```
 
 **루트 레벨**:
