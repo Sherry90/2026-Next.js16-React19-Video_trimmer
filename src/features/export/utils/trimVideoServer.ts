@@ -4,23 +4,24 @@
  */
 
 interface TrimVideoServerOptions {
-  originalUrl?: string;
-  streamUrl: string;
+  originalUrl: string;
   startTime: number;
   endTime: number;
   filename: string;
   onProgress?: (progress: number) => void;
+  /** Called when the first byte of the response body is received */
+  onResponseStart?: () => void;
 }
 
 export async function trimVideoServer(options: TrimVideoServerOptions): Promise<Blob> {
-  const { originalUrl, streamUrl, startTime, endTime, filename, onProgress } = options;
+  const { originalUrl, startTime, endTime, filename, onProgress, onResponseStart } = options;
 
   onProgress?.(0);
 
   const response = await fetch('/api/video/trim', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ originalUrl, streamUrl, startTime, endTime, filename }),
+    body: JSON.stringify({ originalUrl, startTime, endTime, filename }),
   });
 
   if (!response.ok) {
@@ -39,10 +40,16 @@ export async function trimVideoServer(options: TrimVideoServerOptions): Promise<
   const reader = response.body.getReader();
   const chunks: BlobPart[] = [];
   let receivedBytes = 0;
+  let isFirstChunk = true;
 
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
+
+    if (isFirstChunk) {
+      onResponseStart?.();
+      isFirstChunk = false;
+    }
 
     chunks.push(value);
     receivedBytes += value.length;
