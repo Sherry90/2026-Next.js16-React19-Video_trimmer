@@ -7,6 +7,7 @@ export function DownloadButton() {
   const phase = useStore((state) => state.phase);
   const outputUrl = useStore((state) => state.export.outputUrl);
   const outputFilename = useStore((state) => state.export.outputFilename);
+  const setPhase = useStore((state) => state.setPhase);
   const reset = useStore((state) => state.reset);
 
   const handleDownload = useCallback(() => {
@@ -20,6 +21,10 @@ export function DownloadButton() {
     link.download = outputFilename;
     link.click();
   }, [outputUrl, outputFilename]);
+
+  const handleBackToEdit = useCallback(() => {
+    setPhase('editing');
+  }, [setPhase]);
 
   const handleEditAnother = useCallback(() => {
     reset();
@@ -60,6 +65,14 @@ export function DownloadButton() {
           className="px-6 py-3 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
         >
           Download Video
+        </button>
+
+        <button
+          onClick={handleBackToEdit}
+          data-testid="back-to-edit-button"
+          className="px-6 py-3 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+        >
+          Back to Edit
         </button>
 
         <button
