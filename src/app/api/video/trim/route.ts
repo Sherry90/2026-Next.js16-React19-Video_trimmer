@@ -199,6 +199,8 @@ export async function POST(request: NextRequest) {
     const stat = statSync(tmpFile);
     const fileStream = createReadStream(tmpFile);
 
+    console.log(`[trim] Streaming file: ${stat.size} bytes (${(stat.size / 1024 / 1024).toFixed(2)} MB)`);
+
     const stream = new ReadableStream({
       start(controller) {
         fileStream.on('data', (chunk: Buffer) => {
@@ -219,14 +221,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const encodedFilename = encodeURIComponent(outputFilename);
-
     return new NextResponse(stream, {
       status: 200,
       headers: {
         'Content-Type': 'video/mp4',
         'Content-Length': String(stat.size),
-        'Content-Disposition': `attachment; filename*=UTF-8''${encodedFilename}`,
+        // Content-Disposition 헤더 제거 - fetch API로 읽을 것이므로 불필요
       },
     });
   } catch (error: unknown) {

@@ -53,14 +53,15 @@ export function UrlPreviewSection() {
         filename: `${urlPreview.title || 'video'}.mp4`,
       });
 
-      // Blob -> File -> Object URL -> editing phase
+      // Blob -> Object URL -> editing phase
+      // URL source는 유지하여 Export 시 서버 트리밍 사용
       const filename = `${urlPreview.title || 'video'}.mp4`;
-      const file = new File([blob], filename, { type: 'video/mp4' });
       const objectUrl = URL.createObjectURL(blob);
 
       setVideoFile({
-        file,
-        source: 'file',
+        file: null, // URL source는 File 객체 불필요
+        source: 'url',
+        originalUrl: urlPreview.originalUrl,
         name: filename,
         size: blob.size,
         type: 'video/mp4',
