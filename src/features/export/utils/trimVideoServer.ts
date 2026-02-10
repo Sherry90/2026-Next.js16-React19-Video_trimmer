@@ -25,11 +25,6 @@ export async function trimVideoServer(options: TrimVideoServerOptions): Promise<
     body: JSON.stringify({ originalUrl, startTime, endTime, filename }),
   });
 
-  console.log('[trimVideoServer] Fetch response received');
-  console.log('[trimVideoServer] Content-Type:', response.headers.get('content-type'));
-  console.log('[trimVideoServer] Content-Length:', response.headers.get('content-length'));
-  console.log('[trimVideoServer] Content-Disposition:', response.headers.get('content-disposition'));
-
   if (!response.ok) {
     const errorData = await response.json().catch(() => null);
     throw new Error(errorData?.error || `Server trim failed: ${response.status}`);
