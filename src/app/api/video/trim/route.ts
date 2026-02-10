@@ -57,6 +57,7 @@ async function trimWithStreamlink(
       const streamlinkProc = spawn('streamlink', [
         '--hls-start-offset', formatTime(startTime),
         '--stream-segmented-duration', formatTime(duration),
+        '--stream-segment-threads', '6',  // 병렬 다운로드 (1-10, 기본값 1)
         originalUrl,
         'best',
         '-o', tempFile,
