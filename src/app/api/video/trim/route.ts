@@ -4,7 +4,7 @@ import { createReadStream, unlinkSync, statSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
-import { getFfmpegPath, hasStreamlink } from '@/lib/binPaths';
+import { getFfmpegPath, getStreamlinkPath, hasStreamlink } from '@/lib/binPaths';
 
 /**
  * Format seconds to HH:MM:SS for streamlink
@@ -41,7 +41,8 @@ async function trimWithStreamlink(
   endTime: number,
   outputPath: string,
 ): Promise<boolean> {
-  if (!hasStreamlink()) {
+  const streamlinkBin = getStreamlinkPath();
+  if (!streamlinkBin) {
     return false;
   }
 
@@ -54,14 +55,21 @@ async function trimWithStreamlink(
     console.log(`[trim] Stage 1 - streamlink download: offset=${formatTime(startTime)} duration=${formatTime(duration)}`);
 
     const streamlinkSuccess = await new Promise<boolean>((resolve) => {
-      const streamlinkProc = spawn('streamlink', [
+      const args = [
         '--hls-start-offset', formatTime(startTime),
         '--stream-segmented-duration', formatTime(duration),
         '--stream-segment-threads', '6',  // 병렬 다운로드 (1-10, 기본값 1)
         originalUrl,
         'best',
         '-o', tempFile,
-      ], {
+      ];
+
+      // Linux AppImage: FUSE 없는 환경 대응
+      if (streamlinkBin.endsWith('.AppImage')) {
+        args.unshift('--appimage-extract-and-run');
+      }
+
+      const streamlinkProc = spawn(streamlinkBin, args, {
         stdio: ['ignore', 'pipe', 'pipe'],
       });
 
