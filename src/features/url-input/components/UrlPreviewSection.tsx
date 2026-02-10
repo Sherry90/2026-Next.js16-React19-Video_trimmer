@@ -6,7 +6,6 @@ import { useUrlPreview, useUrlPreviewActions, useProgressActions } from '@/store
 import { trimVideoServer } from '@/features/export/utils/trimVideoServer';
 import { formatDuration } from '@/features/timeline/utils/timeFormatter';
 import { TimeInput } from '@/features/timeline/components/TimeInput';
-import { ProgressBar } from '@/components/ProgressBar';
 
 const MAX_SEGMENT_SECONDS = 600; // 10분
 
@@ -19,7 +18,6 @@ export function UrlPreviewSection() {
   const setErrorAndTransition = useStore((state) => state.setErrorAndTransition);
 
   const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState(0);
 
   const handleInPointChange = useCallback(
     (value: number) => {
@@ -45,20 +43,14 @@ export function UrlPreviewSection() {
     if (!urlPreview) return;
 
     setIsDownloading(true);
-    setDownloadProgress(0);
     setTrimProgress(0);
 
     try {
       const blob = await trimVideoServer({
         originalUrl: urlPreview.originalUrl,
-        streamUrl: urlPreview.streamUrl,
         startTime: urlPreview.inPoint,
         endTime: urlPreview.outPoint,
         filename: `${urlPreview.title || 'video'}.mp4`,
-        onProgress: (progress) => {
-          setDownloadProgress(progress);
-          setTrimProgress(progress);
-        },
       });
 
       // Blob -> File -> Object URL -> editing phase
@@ -147,10 +139,21 @@ export function UrlPreviewSection() {
           {/* Download progress */}
           {isDownloading && (
             <div className="mb-5">
-              <ProgressBar
-                progress={downloadProgress}
-                label="Downloading..."
-              />
+              <div className="w-full">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <p className="text-sm text-gray-300 font-medium">
+                      서버에서 영상 처리 중...
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      영상 길이에 따라 수 분 소요될 수 있습니다
+                    </p>
+                  </div>
+                </div>
+                <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-600 rounded-full animate-pulse-bar" />
+                </div>
+              </div>
             </div>
           )}
 
@@ -161,7 +164,7 @@ export function UrlPreviewSection() {
               disabled={isDownloading || isOverLimit || segmentDuration <= 0}
               className="flex-1 px-4 py-2.5 text-[13px] font-medium text-white bg-[#2962ff] border-none rounded-sm cursor-pointer transition-colors duration-200 hover:bg-[#0041f5] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isDownloading ? 'Downloading...' : 'Download & Edit'}
+              {isDownloading ? 'Processing...' : 'Download & Edit'}
             </button>
             <button
               onClick={clearUrlPreview}
