@@ -36,6 +36,21 @@ export function ExportButton() {
       setTrimProgress(0);
       setFFmpegLoadProgress(0);
 
+      // URL source: 이미 서버에서 트리밍된 파일이므로 재편집 불가
+      // 현재 videoFile.url을 그대로 사용
+      if (videoFile.source === 'url') {
+        console.log('[ExportButton] URL source - using existing trimmed file');
+        const outputUrl = videoFile.url;
+        const outputFilename = generateEditedFilename(videoFile.name);
+
+        console.log('[ExportButton] URL:', outputUrl);
+        console.log('[ExportButton] Filename:', outputFilename);
+
+        setExportResultAndComplete(outputUrl, outputFilename);
+        return;
+      }
+
+      // File source: 클라이언트 트리밍 (MP4Box 또는 FFmpeg)
       const outputBlob = await trimVideo({
         inputFile: videoFile.file,
         source: videoFile.source,
@@ -62,6 +77,10 @@ export function ExportButton() {
       // Blob URL 생성
       const outputUrl = URL.createObjectURL(outputBlob);
       const outputFilename = generateEditedFilename(videoFile.name);
+
+      console.log('[ExportButton] Created Blob URL:', outputUrl);
+      console.log('[ExportButton] Blob size:', outputBlob.size, 'bytes');
+      console.log('[ExportButton] Filename:', outputFilename);
 
       setExportResultAndComplete(outputUrl, outputFilename);
     } catch (error) {

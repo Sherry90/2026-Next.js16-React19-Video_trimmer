@@ -12,6 +12,9 @@ export function DownloadButton() {
   const handleDownload = useCallback(() => {
     if (!outputUrl || !outputFilename) return;
 
+    console.log('[DownloadButton] Downloading:', outputUrl);
+    console.log('[DownloadButton] Filename:', outputFilename);
+
     const link = document.createElement('a');
     link.href = outputUrl;
     link.download = outputFilename;
