@@ -4,7 +4,7 @@
  * Priority: bundled binary > system binary
  * - ffmpeg: @ffmpeg-installer/ffmpeg (bundled)
  * - yt-dlp: yt-dlp-wrap downloads binary on first use
- * - streamlink: system only (pip install)
+ * - streamlink: auto-downloaded to .bin/ (postinstall), system fallback
  */
 
 import { execFileSync } from 'child_process';
@@ -13,6 +13,7 @@ import { join } from 'path';
 
 let _ffmpegPath: string | null = null;
 let _ytdlpPath: string | null = null;
+let _streamlinkPath: string | null = null;
 
 /**
  * Get ffmpeg binary path
@@ -74,15 +75,50 @@ export function getYtdlpPath(): string {
 }
 
 /**
+ * Get streamlink binary path
+ * Priority: bundled binary > system binary
+ */
+export function getStreamlinkPath(): string | null {
+  if (_streamlinkPath) return _streamlinkPath;
+
+  const platform = process.platform;
+  const arch = process.arch;
+  const projectRoot = process.cwd();
+
+  // 1. Check bundled binary
+  let bundledPath: string | undefined;
+
+  if (platform === 'win32') {
+    bundledPath = join(projectRoot, '.bin', 'streamlink-win', 'streamlink.exe');
+  } else if (platform === 'linux') {
+    const archSuffix = arch === 'arm64' ? 'arm64' : 'x64';
+    bundledPath = join(projectRoot, '.bin', `streamlink-linux-${archSuffix}.AppImage`);
+  } else if (platform === 'darwin') {
+    bundledPath = join(projectRoot, '.bin', 'streamlink-macos');
+  }
+
+  if (bundledPath && existsSync(bundledPath)) {
+    _streamlinkPath = bundledPath;
+    return bundledPath;
+  }
+
+  // 2. Check system binary
+  try {
+    execFileSync('which', ['streamlink'], { stdio: 'ignore' });
+    _streamlinkPath = 'streamlink';
+    return 'streamlink';
+  } catch {
+    // Not found
+  }
+
+  return null;
+}
+
+/**
  * Check if streamlink is available
  */
 export function hasStreamlink(): boolean {
-  try {
-    execFileSync('which', ['streamlink'], { stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
-  }
+  return getStreamlinkPath() !== null;
 }
 
 /**
@@ -91,7 +127,7 @@ export function hasStreamlink(): boolean {
 export function checkDependencies(): {
   ffmpeg: { available: boolean; path: string; bundled: boolean };
   ytdlp: { available: boolean; path: string };
-  streamlink: { available: boolean };
+  streamlink: { available: boolean; path: string; bundled: boolean };
 } {
   const ffmpegPath = getFfmpegPath();
   let ffmpegAvailable = false;
@@ -109,9 +145,13 @@ export function checkDependencies(): {
     ytdlpAvailable = true;
   } catch { /* */ }
 
+  const streamlinkPath = getStreamlinkPath();
+  const streamlinkAvailable = streamlinkPath !== null;
+  const streamlinkBundled = streamlinkPath?.includes('.bin') || false;
+
   return {
     ffmpeg: { available: ffmpegAvailable, path: ffmpegPath, bundled: ffmpegBundled },
     ytdlp: { available: ytdlpAvailable, path: ytdlpPath },
-    streamlink: { available: hasStreamlink() },
+    streamlink: { available: streamlinkAvailable, path: streamlinkPath || 'not found', bundled: streamlinkBundled },
   };
 }
