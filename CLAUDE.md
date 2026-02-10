@@ -142,6 +142,36 @@ player.on('timeupdate', () => {
 - Slower, larger bundle, requires SharedArrayBuffer
 - Not actively used but available if needed
 
+### Dependency Bundling
+
+All required binaries are automatically managed:
+
+**ffmpeg**: Bundled via `@ffmpeg-installer/ffmpeg` (v4.4)
+- Installed as npm dependency
+- System ffmpeg as fallback
+
+**yt-dlp**: Auto-downloaded on postinstall
+- Priority: system > `.bin/yt-dlp` (auto-downloaded) > yt-dlp-wrap
+- Downloaded from GitHub releases by `scripts/setup-deps.mjs`
+
+**streamlink**: Auto-downloaded on postinstall
+- Priority: bundled binary > system binary
+- Windows: portable .exe from streamlink/windows-builds
+- Linux: AppImage from streamlink/streamlink-appimage (x64/ARM64)
+- macOS: system only (install via `brew install streamlink`)
+- Downloaded to `.bin/` folder (Git-ignored)
+- `scripts/setup-deps.mjs` runs on postinstall to check/download dependencies
+
+**Binary path resolution**: `src/lib/binPaths.ts`
+- `getFfmpegPath()`: Returns bundled or system ffmpeg
+- `getYtdlpPath()`: Returns system, `.bin/`, or yt-dlp-wrap path
+- `getStreamlinkPath()`: Returns bundled or system streamlink
+- `hasStreamlink()`: Checks if streamlink is available
+- `checkDependencies()`: Returns availability status of all tools
+
+**Build configuration**: `next.config.ts`
+- `serverExternalPackages: ['@ffmpeg-installer/ffmpeg', 'yt-dlp-wrap']` required for Turbopack
+
 ## Important Implementation Details
 
 ### 1. Scrubbing State Management
@@ -311,10 +341,14 @@ Ctrl+휠로 타임라인 줌 조절 가능
 
 Comprehensive project documentation is organized in `.docs/`:
 
-- **`.docs/03-current/PROJECT-STATUS.md`** - Current project status (start here)
-- **`.docs/03-current/ARCHITECTURE.md`** - Detailed technical architecture
-- **`.docs/03-current/FUTURE-IMPROVEMENTS.md`** - Planned enhancements
-- **`.docs/02-history/DEVELOPMENT-HISTORY.md`** - Development history (2026-01-21 ~ 2026-01-30)
-- **`.docs/01-design/`** - Initial design specifications
+- **`.docs/PROJECT.md`** - Complete project documentation (start here)
+  - Overview, current state, architecture, development workflow
+  - Technical stack, video processing, performance characteristics
+  - Deployment, constraints, limitations
+- **`.docs/HISTORY.md`** - Complete development history (2026-01-21 ~ 2026-02-11)
+  - Timeline, major milestones, bug fixes, refactoring
+  - URL trimming implementation, Streamlink auto-download
+  - Technical lessons learned
+- **`.docs/archive/`** - Historical documents for reference
 
-For development history and architectural decisions, refer to the history documents (especially the refactoring document for recent changes).
+For current project status and architecture, refer to PROJECT.md. For development history and architectural decisions, refer to HISTORY.md.
