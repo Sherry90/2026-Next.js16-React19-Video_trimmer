@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { spawn, execFile } from 'child_process';
-import { promisify } from 'util';
+import { spawn, ChildProcess } from 'child_process';
 import { createReadStream, unlinkSync, statSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
-import { getYtdlpPath, getFfmpegPath, hasStreamlink } from '@/lib/binPaths';
-
-const execFileAsync = promisify(execFile);
+import { getFfmpegPath, hasStreamlink } from '@/lib/binPaths';
 
 /**
  * Format seconds to HH:MM:SS for streamlink
@@ -20,40 +17,23 @@ function formatTime(seconds: number): string {
 }
 
 /**
- * Try trimming with yt-dlp --download-sections
- * Works well for YouTube and many other sites
+ * Helper: kill a child process safely
  */
-async function trimWithYtDlp(
-  originalUrl: string,
-  startTime: number,
-  endTime: number,
-  outputPath: string,
-): Promise<boolean> {
+function killProcess(proc: ChildProcess): void {
   try {
-    const ytdlp = getYtdlpPath();
-    const ffmpegPath = getFfmpegPath();
-    await execFileAsync(ytdlp, [
-      '--download-sections', `*${startTime}-${endTime}`,
-      '--force-keyframes-at-cuts',
-      '-f', 'bv*+ba/b',
-      '--merge-output-format', 'mp4',
-      '--no-playlist',
-      '--ffmpeg-location', ffmpegPath,
-      '-o', outputPath,
-      originalUrl,
-    ], {
-      timeout: 300000,
-    });
-    return existsSync(outputPath);
-  } catch (error: any) {
-    console.log('[trim] yt-dlp failed, trying fallback:', error.message?.slice(0, 200));
-    return false;
-  }
+    if (proc.pid && !proc.killed) {
+      proc.kill('SIGTERM');
+    }
+  } catch { /* ignore */ }
 }
 
 /**
- * Fallback: trim with streamlink + ffmpeg
- * Handles HLS streams that ffmpeg 8.0 rejects (e.g., Chzzk .m4v segments)
+ * Streamlink → ffmpeg two-stage trimming (matching cut_video.sh)
+ *
+ * Stage 1: streamlink downloads segment to temp file
+ * Stage 2: ffmpeg resets timestamps with copy codec
+ *
+ * Uses --stream-segmented-duration for accurate segment extraction.
  */
 async function trimWithStreamlink(
   originalUrl: string,
@@ -65,27 +45,67 @@ async function trimWithStreamlink(
     return false;
   }
 
-  const rawPath = outputPath.replace('.mp4', '_raw.mp4');
   const duration = endTime - startTime;
+  const ffmpegPath = getFfmpegPath();
+  const tempFile = join(tmpdir(), `streamlink_temp_${randomUUID()}.mp4`);
 
   try {
-    // Step 1: Download segment with streamlink
-    await execFileAsync('streamlink', [
-      '--hls-start-offset', formatTime(startTime),
-      '--hls-duration', formatTime(duration),
-      originalUrl, 'best',
-      '-o', rawPath,
-      '--force',
-    ], {
-      timeout: 300000,
+    // Stage 1: Download segment with streamlink
+    console.log(`[trim] Stage 1 - streamlink download: offset=${formatTime(startTime)} duration=${formatTime(duration)}`);
+
+    const streamlinkSuccess = await new Promise<boolean>((resolve) => {
+      const streamlinkProc = spawn('streamlink', [
+        '--hls-start-offset', formatTime(startTime),
+        '--stream-segmented-duration', formatTime(duration),
+        originalUrl,
+        'best',
+        '-o', tempFile,
+      ], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+
+      let stderr = '';
+      streamlinkProc.stderr.on('data', (chunk: Buffer) => {
+        stderr += chunk.toString();
+      });
+
+      streamlinkProc.on('error', (err) => {
+        console.log('[trim] streamlink process error:', err.message);
+        resolve(false);
+      });
+
+      streamlinkProc.on('close', (code) => {
+        if (code === 0 && existsSync(tempFile)) {
+          console.log('[trim] Stage 1 - streamlink download succeeded');
+          resolve(true);
+        } else {
+          console.log(`[trim] streamlink exited with code ${code}:`, stderr.slice(0, 300));
+          resolve(false);
+        }
+      });
+
+      // Timeout: 300s for streamlink download
+      const timeout = setTimeout(() => {
+        console.log('[trim] streamlink download timed out after 300s');
+        killProcess(streamlinkProc);
+        resolve(false);
+      }, 300000);
+
+      streamlinkProc.on('close', () => clearTimeout(timeout));
     });
 
-    // Step 2: Fix timestamps with ffmpeg
-    const ffmpegPath = getFfmpegPath();
-    await new Promise<void>((resolve, reject) => {
-      const ffmpeg = spawn(ffmpegPath, [
+    if (!streamlinkSuccess) {
+      try { unlinkSync(tempFile); } catch { /* ignore */ }
+      return false;
+    }
+
+    // Stage 2: Reset timestamps with ffmpeg
+    console.log('[trim] Stage 2 - ffmpeg timestamp reset');
+
+    const ffmpegSuccess = await new Promise<boolean>((resolve) => {
+      const ffmpegProc = spawn(ffmpegPath, [
         '-y',
-        '-i', rawPath,
+        '-i', tempFile,
         '-c', 'copy',
         '-avoid_negative_ts', 'make_zero',
         '-fflags', '+genpts',
@@ -95,58 +115,44 @@ async function trimWithStreamlink(
         stdio: ['ignore', 'pipe', 'pipe'],
       });
 
-      ffmpeg.on('close', (code) => {
-        // Clean up raw file
-        try { unlinkSync(rawPath); } catch { /* ignore */ }
-        if (code === 0) resolve();
-        else reject(new Error(`ffmpeg timestamp fix failed with code ${code}`));
-      });
-      ffmpeg.on('error', reject);
-    });
-
-    return existsSync(outputPath);
-  } catch (error: any) {
-    // Clean up raw file on error
-    try { unlinkSync(rawPath); } catch { /* ignore */ }
-    console.log('[trim] streamlink fallback failed:', error.message?.slice(0, 200));
-    return false;
-  }
-}
-
-/**
- * Last resort: direct ffmpeg trim with stream URL
- */
-async function trimWithFfmpeg(
-  streamUrl: string,
-  startTime: number,
-  endTime: number,
-  outputPath: string,
-): Promise<boolean> {
-  try {
-    const ffmpegPath = getFfmpegPath();
-    await new Promise<void>((resolve, reject) => {
-      const ffmpeg = spawn(ffmpegPath, [
-        '-y',
-        '-ss', String(startTime),
-        '-to', String(endTime),
-        '-i', streamUrl,
-        '-c', 'copy',
-        '-movflags', '+faststart',
-        outputPath,
-      ], {
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
-
       let stderr = '';
-      ffmpeg.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
-      ffmpeg.on('close', (code) => {
-        if (code === 0) resolve();
-        else reject(new Error(`ffmpeg exited with code ${code}`));
+      ffmpegProc.stderr.on('data', (chunk: Buffer) => {
+        stderr += chunk.toString();
       });
-      ffmpeg.on('error', reject);
+
+      ffmpegProc.on('error', (err) => {
+        console.log('[trim] ffmpeg process error:', err.message);
+        resolve(false);
+      });
+
+      ffmpegProc.on('close', (code) => {
+        if (code === 0 && existsSync(outputPath)) {
+          console.log('[trim] Stage 2 - ffmpeg timestamp reset succeeded');
+          resolve(true);
+        } else {
+          console.log(`[trim] ffmpeg exited with code ${code}:`, stderr.slice(0, 300));
+          resolve(false);
+        }
+      });
+
+      // Timeout: 60s for ffmpeg copy
+      const timeout = setTimeout(() => {
+        console.log('[trim] ffmpeg timestamp reset timed out after 60s');
+        killProcess(ffmpegProc);
+        resolve(false);
+      }, 60000);
+
+      ffmpegProc.on('close', () => clearTimeout(timeout));
     });
-    return existsSync(outputPath);
-  } catch {
+
+    // Cleanup temp file
+    try { unlinkSync(tempFile); } catch { /* ignore */ }
+
+    return ffmpegSuccess;
+
+  } catch (error) {
+    try { unlinkSync(tempFile); } catch { /* ignore */ }
+    console.log('[trim] Unexpected error:', error);
     return false;
   }
 }
@@ -156,7 +162,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { originalUrl, streamUrl, startTime, endTime, filename } = body;
+    const { originalUrl, startTime, endTime, filename } = body;
 
     if (startTime == null || endTime == null) {
       return NextResponse.json(
@@ -172,34 +178,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!originalUrl && !streamUrl) {
+    if (!originalUrl) {
       return NextResponse.json(
-        { error: 'originalUrl 또는 streamUrl이 필요합니다' },
+        { error: 'originalUrl이 필요합니다' },
         { status: 400 }
       );
     }
 
     const outputFilename = filename || 'trimmed_video.mp4';
-    let success = false;
-
-    if (originalUrl) {
-      // Try yt-dlp first (works for YouTube, many other sites)
-      success = await trimWithYtDlp(originalUrl, startTime, endTime, tmpFile);
-
-      // Fallback to streamlink (works for HLS sites like Chzzk)
-      if (!success) {
-        success = await trimWithStreamlink(originalUrl, startTime, endTime, tmpFile);
-      }
-    }
-
-    // Last resort: direct ffmpeg with stream URL
-    if (!success && streamUrl) {
-      success = await trimWithFfmpeg(streamUrl, startTime, endTime, tmpFile);
-    }
+    const success = await trimWithStreamlink(originalUrl, startTime, endTime, tmpFile);
 
     if (!success) {
       return NextResponse.json(
-        { error: '트리밍에 실패했습니다. yt-dlp, streamlink, ffmpeg를 확인해주세요.' },
+        { error: 'streamlink 트리밍에 실패했습니다. streamlink 설치를 확인해주세요.' },
         { status: 500 }
       );
     }
@@ -238,10 +229,11 @@ export async function POST(request: NextRequest) {
         'Content-Disposition': `attachment; filename*=UTF-8''${encodedFilename}`,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     try { unlinkSync(tmpFile); } catch { /* ignore */ }
 
-    console.error('[trim] Error:', error.message || error);
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('[trim] Error:', msg);
     return NextResponse.json(
       { error: '트리밍 처리 중 오류가 발생했습니다' },
       { status: 500 }
