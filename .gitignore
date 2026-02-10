@@ -51,7 +51,7 @@ labels/
 config.json
 views.json
 
-# Downloaded binaries (yt-dlp)
+# Downloaded binaries (auto-downloaded by postinstall)
 /.bin
 
 # Test sample videos
