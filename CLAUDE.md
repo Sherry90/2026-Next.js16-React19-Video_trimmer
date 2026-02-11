@@ -384,6 +384,13 @@ Comprehensive project documentation is organized in `.docs/`:
   - URL trimming implementation, Streamlink auto-download
   - Technical lessons learned
 
+### Scripts and References
+
+- **`scripts/`** - Project scripts
+  - `setup-deps.mjs` - Auto-download binaries (yt-dlp, streamlink) on postinstall
+  - `cut_video.sh` - Original shell script reference (디버깅 및 로직 참조용)
+  - `README.md` - Scripts documentation
+
 For current project status and architecture, refer to PROJECT.md. For development history and architectural decisions, refer to HISTORY.md.
 
 ### More Details
