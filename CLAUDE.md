@@ -75,6 +75,7 @@ Single store at `src/stores/useStore.ts` manages all application state:
 ```
 src/features/
 ├── upload/        # File upload, drag-and-drop, validation
+├── url-input/     # URL input, yt-dlp integration
 ├── player/        # Video.js player, context provider, playback controls
 ├── timeline/      # Timeline editor (refactored into focused components)
 │   ├── components/
@@ -271,11 +272,25 @@ Only the video player uses React Context to avoid prop drilling of the video.js 
 ## Development Constraints
 
 ### Supported Formats
-MP4, WebM, OGG, QuickTime (.mov), AVI, MKV
+
+**Core**: MP4, WebM, OGG
+**Apple/QuickTime**: MOV, M4V
+**Microsoft/Windows**: AVI, WMV
+**Matroska**: MKV
+**Streaming/Mobile**: FLV, TS, 3GP, 3G2
+**MPEG variants**: MPEG, MPG
+
+17 formats total (see `src/constants/fileConstraints.ts`)
 
 ### Validation
-- Max file size: 1GB (configurable in `src/constants/file.ts`)
-- Format validation in `src/features/upload/utils/validateFile.ts`
+
+**File size (multi-tier)**:
+- **Recommended max**: 500MB (safe processing)
+- **Warning threshold**: 1GB (caution advised)
+- **Soft max**: 2GB (memory check required)
+- **Hard max**: 5GB (absolute limit)
+
+**Format validation**: `src/features/upload/utils/validateFile.ts`
 
 ### Keyframe Accuracy
 MP4Box trimming finds the nearest keyframe to start time, resulting in 1-2 second accuracy (not frame-accurate). This is a trade-off for fast, no-encoding trimming.
@@ -370,3 +385,9 @@ Comprehensive project documentation is organized in `.docs/`:
   - Technical lessons learned
 
 For current project status and architecture, refer to PROJECT.md. For development history and architectural decisions, refer to HISTORY.md.
+
+### More Details
+
+For complete architecture overview and performance characteristics, see `.docs/PROJECT.md`.
+
+For development history and architectural decisions, see `.docs/HISTORY.md`.
