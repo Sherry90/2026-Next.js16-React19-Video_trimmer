@@ -28,7 +28,11 @@ function killProcess(proc: ChildProcess): void {
 }
 
 /**
- * Streamlink → ffmpeg two-stage trimming (matching cut_video.sh)
+ * Streamlink → ffmpeg two-stage trimming
+ *
+ * Reference: scripts/cut_video.sh (original shell script)
+ * - Line 216: streamlink --hls-start-offset --stream-segmented-duration
+ * - Line 226: ffmpeg -i temp.mp4 -c copy -avoid_negative_ts make_zero
  *
  * Stage 1: streamlink downloads segment to temp file
  * Stage 2: ffmpeg resets timestamps with copy codec
