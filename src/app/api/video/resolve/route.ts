@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { getYtdlpPath, getFfmpegPath } from '@/lib/binPaths';
+import { parseYtdlpError } from '@/lib/apiErrorHandler';
 
 const execFileAsync = promisify(execFile);
 
@@ -109,32 +110,8 @@ export async function POST(request: NextRequest) {
       streamType,
     });
   } catch (error: any) {
-    if (error.code === 'ENOENT') {
-      return NextResponse.json(
-        { error: 'yt-dlp가 설치되어 있지 않습니다. `brew install yt-dlp`로 설치해주세요.' },
-        { status: 500 }
-      );
-    }
-
-    if (error.killed) {
-      return NextResponse.json(
-        { error: '요청 시간이 초과되었습니다' },
-        { status: 504 }
-      );
-    }
-
-    const stderr = error.stderr || '';
-    if (stderr.includes('Unsupported URL')) {
-      return NextResponse.json(
-        { error: '지원하지 않는 URL입니다' },
-        { status: 400 }
-      );
-    }
-
+    const { message, status } = parseYtdlpError(error);
     console.error('[resolve] Error:', error.message || error);
-    return NextResponse.json(
-      { error: '영상 정보를 가져올 수 없습니다' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: message }, { status });
   }
 }
