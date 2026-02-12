@@ -7,6 +7,7 @@ import { randomUUID } from 'crypto';
 import { getFfmpegPath, getStreamlinkPath, hasStreamlink } from '@/lib/binPaths';
 import { formatTimeHHMMSS } from '@/features/timeline/utils/timeFormatter';
 import { runWithTimeout } from '@/lib/processUtils';
+import { handleApiError } from '@/lib/apiErrorHandler';
 
 /**
  * Streamlink → ffmpeg two-stage trimming
@@ -175,12 +176,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: unknown) {
     try { unlinkSync(tmpFile); } catch { /* ignore */ }
-
-    const msg = error instanceof Error ? error.message : String(error);
-    console.error('[trim] Error:', msg);
-    return NextResponse.json(
-      { error: '트리밍 처리 중 오류가 발생했습니다' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'trim', '트리밍 처리 중 오류가 발생했습니다');
   }
 }
