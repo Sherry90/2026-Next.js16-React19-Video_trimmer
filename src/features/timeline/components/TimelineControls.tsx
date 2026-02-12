@@ -14,7 +14,6 @@ interface TimelineControlsProps {
   onOutPointChange: (value: number) => void;
   onInPointLockToggle: () => void;
   onOutPointLockToggle: () => void;
-  onPreviewFull: () => void;
   onPreviewEdges: () => void;
 }
 
@@ -32,7 +31,6 @@ export function TimelineControls({
   onOutPointChange,
   onInPointLockToggle,
   onOutPointLockToggle,
-  onPreviewFull,
   onPreviewEdges,
 }: TimelineControlsProps) {
   return (
@@ -71,11 +69,8 @@ export function TimelineControls({
         </div>
       </div>
 
-      {/* Preview buttons */}
-      <PreviewButtons
-        onPreviewFull={onPreviewFull}
-        onPreviewEdges={onPreviewEdges}
-      />
+      {/* Preview button */}
+      <PreviewButtons onPreviewEdges={onPreviewEdges} />
     </div>
   );
 }
