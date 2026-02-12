@@ -3,12 +3,11 @@
  * Routes to MP4Box (no download) or FFmpeg (lazy load) based on video format
  */
 
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { toBlobURL } from '@ffmpeg/util';
 import { trimVideoMP4Box } from './trimVideoMP4Box';
 import { trimVideoFFmpeg } from './trimVideoFFmpeg';
 import { trimVideoServer } from './trimVideoServer';
 import { getTrimmerType } from './formatDetector';
+import { FFmpegSingleton } from './FFmpegSingleton';
 
 export interface TrimVideoOptions {
   inputFile: File | null;
@@ -24,86 +23,11 @@ export interface TrimVideoOptions {
 }
 
 /**
- * Singleton FFmpeg instance
- * Shared across all FFmpeg trimming operations to avoid re-downloading
- */
-let ffmpegInstance: FFmpeg | null = null;
-let isFFmpegLoading = false;
-let ffmpegLoadPromise: Promise<FFmpeg> | null = null;
-
-/**
  * Cleanup FFmpeg instance and reset state
  * Call this when resetting the application to free up memory
  */
 export function cleanupFFmpeg(): void {
-  if (ffmpegInstance) {
-    // FFmpeg instance doesn't have explicit cleanup, but we can null it
-    ffmpegInstance = null;
-  }
-  isFFmpegLoading = false;
-  ffmpegLoadPromise = null;
-}
-
-/**
- * Load FFmpeg.wasm with progress tracking
- * Uses singleton pattern to load only once per session
- *
- * @param onProgress - Optional callback for load progress (0-100)
- * @returns Loaded FFmpeg instance
- */
-async function loadFFmpeg(onProgress?: (progress: number) => void): Promise<FFmpeg> {
-  // Return existing instance if already loaded
-  if (ffmpegInstance) {
-    return ffmpegInstance;
-  }
-
-  // If already loading, wait for that promise
-  if (isFFmpegLoading && ffmpegLoadPromise) {
-    return ffmpegLoadPromise;
-  }
-
-  // Start loading
-  isFFmpegLoading = true;
-  ffmpegLoadPromise = (async () => {
-    try {
-      onProgress?.(0);
-
-      const ffmpeg = new FFmpeg();
-
-      // Set up logging
-      ffmpeg.on('log', ({ message }) => {
-        console.log('[FFmpeg]', message);
-      });
-
-      // Set up progress callback
-      ffmpeg.on('progress', ({ progress }) => {
-        // progress is 0-1, convert to 0-100
-        onProgress?.(Math.round(progress * 100));
-      });
-
-      // Load FFmpeg core (~20MB download)
-      const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
-
-      await ffmpeg.load({
-        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-      });
-
-      onProgress?.(100);
-
-      ffmpegInstance = ffmpeg;
-      return ffmpeg;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load FFmpeg';
-      console.error('FFmpeg load error:', error);
-      throw new Error(errorMessage);
-    } finally {
-      isFFmpegLoading = false;
-      ffmpegLoadPromise = null;
-    }
-  })();
-
-  return ffmpegLoadPromise;
+  FFmpegSingleton.cleanup();
 }
 
 /**
@@ -155,7 +79,7 @@ export async function trimVideo(options: TrimVideoOptions): Promise<Blob> {
 
     try {
       // Load FFmpeg with progress tracking
-      const ffmpeg = await loadFFmpeg(onFFmpegLoadProgress);
+      const ffmpeg = await FFmpegSingleton.getInstance(onFFmpegLoadProgress);
 
       // Notify that FFmpeg loading is complete
       onFFmpegLoadComplete?.();
