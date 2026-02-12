@@ -5,6 +5,7 @@ import { useStore } from '@/stores/useStore';
 import { useVideoDuration, useTrimPoints, usePlayerActions } from '@/stores/selectors';
 import { useDragHandle } from '@/features/timeline/hooks/useDragHandle';
 import { useVideoPlayerContext } from '@/features/player/context/VideoPlayerContext';
+import { usePlayheadSeek } from '@/features/timeline/hooks/usePlayheadSeek';
 
 export const Playhead = memo(function Playhead() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -13,10 +14,6 @@ export const Playhead = memo(function Playhead() {
   const [draggingPosition, setDraggingPosition] = useState<number | null>(null);
   const draggingPositionRef = useRef<number | null>(null); // For stable closure
   const isDraggingRef = useRef<boolean>(false);
-  const dragEndTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Track final seek target to verify seeked event
-  const finalSeekTargetRef = useRef<number | null>(null);
 
   // Throttle for real-time seeking during drag (100ms)
   const lastSeekTimeRef = useRef<number>(0);
@@ -28,6 +25,7 @@ export const Playhead = memo(function Playhead() {
 
   const { setCurrentTime } = usePlayerActions();
   const { seek, setIsScrubbing, player } = useVideoPlayerContext();
+  const { performSeek } = usePlayheadSeek(player);
 
   // UI works in COORDINATES, not time
   // Memoize position calculation to avoid recalculation on every render
@@ -103,21 +101,12 @@ export const Playhead = memo(function Playhead() {
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
 
-    // Clear any previous timeout
-    if (dragEndTimeoutRef.current) {
-      clearTimeout(dragEndTimeoutRef.current);
-      dragEndTimeoutRef.current = null;
-    }
-
     // Use ref to get latest dragging position (stable closure)
     const finalPosition = draggingPositionRef.current;
 
     if (finalPosition !== null) {
       // Convert position → time ONCE at drag end
       const finalTime = (finalPosition / 100) * duration;
-
-      // Store target for verification
-      finalSeekTargetRef.current = finalTime;
 
       // 1. Update store SYNCHRONOUSLY before seek
       // This ensures store has correct value before any timeupdate
@@ -126,61 +115,20 @@ export const Playhead = memo(function Playhead() {
       // 2. Seek video to final time
       seek(finalTime);
 
-      // 3. Wait for CORRECT seek to complete
-      // Verify it's the right seeked event, not a stale one
-      if (player) {
-        const cleanup = () => {
-          draggingPositionRef.current = null;
-          setDraggingPosition(null);
-          setIsScrubbing(false);
-          finalSeekTargetRef.current = null;
-          if (dragEndTimeoutRef.current) {
-            clearTimeout(dragEndTimeoutRef.current);
-            dragEndTimeoutRef.current = null;
-          }
-        };
-
-        const handleSeeked = () => {
-          // Verify this is the correct seek
-          const currentTime = player.currentTime?.();
-          if (currentTime !== undefined && finalSeekTargetRef.current !== null) {
-            const diff = Math.abs(currentTime - finalSeekTargetRef.current);
-
-            // Only release if we're at the target position (within 0.1s)
-            if (diff < 0.1) {
-              player.off('seeked', handleSeeked);
-              cleanup();
-            }
-            // Otherwise, this is a stale seek - ignore it
-          }
-        };
-
-        player.on('seeked', handleSeeked);
-
-        // Safety fallback timeout - always release after 1000ms
-        dragEndTimeoutRef.current = setTimeout(() => {
-          player.off('seeked', handleSeeked);
-          cleanup();
-        }, 1000);
-      } else {
-        // No player - just use timeout
-        dragEndTimeoutRef.current = setTimeout(() => {
-          draggingPositionRef.current = null;
-          setDraggingPosition(null);
-          setIsScrubbing(false);
-        }, 500);
-      }
+      // 3. Wait for seek to complete with verification
+      performSeek(finalTime, () => {
+        draggingPositionRef.current = null;
+        setDraggingPosition(null);
+        setIsScrubbing(false);
+      });
     } else {
       setIsScrubbing(false);
     }
-  }, [duration, seek, setIsScrubbing, setCurrentTime, player]);
+  }, [duration, seek, setIsScrubbing, setCurrentTime, performSeek]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (dragEndTimeoutRef.current) {
-        clearTimeout(dragEndTimeoutRef.current);
-      }
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
