@@ -3,6 +3,7 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { getYtdlpPath, getFfmpegPath } from '@/lib/binPaths';
 import { parseYtdlpError } from '@/lib/apiErrorHandler';
+import { selectBestFormat } from '@/lib/formatSelector';
 
 const execFileAsync = promisify(execFile);
 
@@ -41,42 +42,10 @@ export async function POST(request: NextRequest) {
 
     const info = JSON.parse(metaJson);
 
-    // Step 2: Find the best muxed (video+audio) format from the JSON
-    // Prioritize: HLS muxed > HTTPS muxed > any muxed
-    let streamUrl: string | null = null;
-    let streamType: 'hls' | 'mp4' = 'mp4';
-
-    if (info.formats && info.formats.length > 0) {
-      const muxedFormats = info.formats.filter(
-        (f: any) => f.vcodec && f.vcodec !== 'none' && f.acodec && f.acodec !== 'none' && f.url
-      );
-
-      if (muxedFormats.length > 0) {
-        // Prefer HLS (small segments, better for proxy streaming), then HTTPS
-        const hlsFormats = muxedFormats
-          .filter((f: any) => f.protocol === 'm3u8' || f.protocol === 'm3u8_native')
-          .sort((a: any, b: any) => (b.tbr || 0) - (a.tbr || 0));
-
-        const httpsFormats = muxedFormats
-          .filter((f: any) => f.protocol === 'https')
-          .sort((a: any, b: any) => (b.tbr || 0) - (a.tbr || 0));
-
-        if (hlsFormats.length > 0) {
-          streamUrl = hlsFormats[0].url;
-          streamType = 'hls';
-        } else if (httpsFormats.length > 0) {
-          streamUrl = httpsFormats[0].url;
-          streamType = 'mp4';
-        } else {
-          streamUrl = muxedFormats[muxedFormats.length - 1].url;
-        }
-      }
-    }
-
-    // Fallback: use top-level url if available
-    if (!streamUrl && info.url) {
-      streamUrl = info.url;
-    }
+    // Step 2: Select best format using format selector
+    const formatSelection = selectBestFormat(info);
+    let streamUrl = formatSelection?.url || null;
+    let streamType = formatSelection?.streamType || 'mp4';
 
     // Last resort: use --get-url to let yt-dlp choose the best format
     if (!streamUrl) {
