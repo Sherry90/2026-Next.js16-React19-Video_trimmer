@@ -1,7 +1,7 @@
 # Video Trimmer - 프로젝트 문서
 
-> **문서 버전**: 2.0
-> **최종 업데이트**: 2026-02-11
+> **문서 버전**: 2.1
+> **최종 업데이트**: 2026-02-12
 
 ---
 
@@ -79,7 +79,7 @@
 **편집 기능**:
 - ✅ **타임라인 편집기**: 핸들 드래그, 플레이헤드, 오디오 파형, 줌 (0.1x-10x)
 - ✅ **키보드 단축키**: Space (재생), I/O (In/Out), 화살표 (1초), Shift+화살표 (0.1초)
-- ✅ **미리보기**: 선택 구간 전체, 가장자리 (처음 5초 + 마지막 5초)
+- ✅ **미리보기**: 가장자리 (처음 5초 + 마지막 5초)
 - ✅ **프레임 단위 탐색**: Shift+화살표로 0.1초 단위 이동
 
 **트리밍 방법**:
@@ -167,59 +167,83 @@ error ←───────────────────────�
 }
 ```
 
-**Selector 패턴** (`src/stores/selectors.ts`):
+**Selector 패턴** (`src/stores/selectors.ts`, `src/stores/selectorFactory.ts`):
 - `useTimelineState()` - 타임라인 데이터
 - `useTimelineActions()` - 타임라인 액션
 - `usePlayerState()` - 플레이어 상태
 - `usePhase()` - 현재 phase
 - `useVideoSource()` - 비디오 소스 타입
 - `useShallow` 사용으로 불필요한 리렌더링 방지
+- **selectorFactory**: 재사용 가능한 selector 생성 패턴
 
 ### 2. 기능별 구조
 
 ```
-src/features/
-├── upload/          # 파일 업로드, 드래그 앤 드롭
-│   ├── components/  UploadZone, UploadProgress
-│   ├── hooks/       useFileUpload
-│   └── utils/       validateFile
+src/
+├── features/
+│   ├── upload/          # 파일 업로드, 드래그 앤 드롭
+│   │   ├── components/  UploadZone, UploadProgress
+│   │   ├── hooks/       useFileUpload
+│   │   └── utils/       validateFile
+│   │
+│   ├── url-input/       # URL 입력 (2026-02-08, 리팩토링 2026-02-12)
+│   │   ├── components/
+│   │   │   ├── UrlInputZone.tsx
+│   │   │   ├── UrlPreviewSection.tsx     (~95줄, 분해됨)
+│   │   │   ├── UrlPreviewCard.tsx        (새로 추가)
+│   │   │   └── UrlPreviewRangeControl.tsx (새로 추가)
+│   │   └── hooks/
+│   │       ├── useUrlInput.ts
+│   │       └── useUrlDownload.ts         (새로 추가)
+│   │
+│   ├── player/          # Video.js 플레이어
+│   │   ├── components/  VideoPlayerView
+│   │   └── context/     VideoPlayerContext
+│   │
+│   ├── timeline/        # 타임라인 에디터 (리팩토링 2026-01-30, 2026-02-12)
+│   │   ├── components/
+│   │   │   ├── TimelineEditor.tsx       (64줄, 오케스트레이터)
+│   │   │   ├── TrimHandle.tsx           (통합 In/Out 핸들)
+│   │   │   ├── Playhead.tsx             (~145줄, seek 로직 분리)
+│   │   │   ├── TimelineControls.tsx
+│   │   │   ├── PreviewButtons.tsx       (Preview Full 제거)
+│   │   │   └── WaveformBackground.tsx
+│   │   ├── hooks/
+│   │   │   ├── useDragHandle.ts
+│   │   │   ├── useKeyboardShortcuts.ts
+│   │   │   ├── usePreviewPlayback.ts
+│   │   │   ├── useTimelineZoom.ts
+│   │   │   └── usePlayheadSeek.ts       (새로 추가)
+│   │   └── utils/
+│   │       ├── timeFormatter.ts
+│   │       └── constrainPosition.ts
+│   │
+│   └── export/          # 내보내기 및 트리밍 (리팩토링 2026-02-12)
+│       ├── components/
+│       │   ├── ExportButton.tsx         (~30줄, 상태 로직 분리)
+│       │   ├── ExportProgress.tsx       (지연 로딩)
+│       │   ├── DownloadButton.tsx       (지연 로딩)
+│       │   └── ErrorDisplay.tsx
+│       ├── hooks/
+│       │   └── useExportState.ts        (새로 추가)
+│       └── utils/
+│           ├── trimVideoDispatcher.ts   (~110줄, FFmpeg 싱글톤 사용)
+│           ├── trimVideoMP4Box.ts       (~190줄, 헬퍼 분리)
+│           ├── trimVideoFFmpeg.ts       (로컬 파일 - 대체)
+│           ├── trimVideoServer.ts       (URL 영상)
+│           ├── mp4boxHelpers.ts         (새로 추가)
+│           └── FFmpegSingleton.ts       (새로 추가)
 │
-├── url-input/       # URL 입력 (2026-02-08)
-│   ├── components/  UrlInputZone
-│   └── hooks/       useUrlInput
+├── lib/                 # 공통 유틸리티 (2026-02-12)
+│   ├── binPaths.ts
+│   ├── processUtils.ts       (새로 추가)
+│   ├── apiErrorHandler.ts    (새로 추가)
+│   └── formatSelector.ts     (새로 추가)
 │
-├── player/          # Video.js 플레이어
-│   ├── components/  VideoPlayerView
-│   └── context/     VideoPlayerContext
-│
-├── timeline/        # 타임라인 에디터 (리팩토링 완료)
-│   ├── components/
-│   │   ├── TimelineEditor.tsx       (64줄, 오케스트레이터)
-│   │   ├── TrimHandle.tsx           (통합 In/Out 핸들)
-│   │   ├── Playhead.tsx             (메모이제이션)
-│   │   ├── TimelineControls.tsx
-│   │   ├── PreviewButtons.tsx
-│   │   └── WaveformBackground.tsx
-│   ├── hooks/
-│   │   ├── useDragHandle.ts
-│   │   ├── useKeyboardShortcuts.ts
-│   │   ├── usePreviewPlayback.ts
-│   │   └── useTimelineZoom.ts
-│   └── utils/
-│       ├── timeFormatter.ts
-│       └── constrainPosition.ts
-│
-└── export/          # 내보내기 및 트리밍
-    ├── components/
-    │   ├── ExportButton.tsx
-    │   ├── ExportProgress.tsx       (지연 로딩)
-    │   ├── DownloadButton.tsx       (지연 로딩)
-    │   └── ErrorDisplay.tsx
-    └── utils/
-        ├── trimVideoDispatcher.ts   (지능적 선택)
-        ├── trimVideoMP4Box.ts       (로컬 파일 - 주요)
-        ├── trimVideoFFmpeg.ts       (로컬 파일 - 대체)
-        └── trimVideoServer.ts       (URL 영상)
+└── stores/              # 상태 관리 (리팩토링 2026-02-12)
+    ├── useStore.ts
+    ├── selectors.ts          (~94줄, 팩토리 패턴 사용)
+    └── selectorFactory.ts    (새로 추가)
 ```
 
 ### 3. 비디오 처리 흐름
