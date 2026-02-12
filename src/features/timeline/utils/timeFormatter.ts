@@ -16,6 +16,17 @@ export function formatTime(seconds: number): string {
 }
 
 /**
+ * 초 단위 시간을 HH:MM:SS 형식으로 변환 (streamlink용)
+ */
+export function formatTimeHHMMSS(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+/**
  * HH:MM:SS.mmm 형식 문자열을 초 단위로 변환
  */
 export function parseTime(timeString: string): number {
