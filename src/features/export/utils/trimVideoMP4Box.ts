@@ -1,5 +1,6 @@
 import { createFile } from 'mp4box';
 import type { ISOFile, Track, Sample, MP4BoxBuffer } from 'mp4box';
+import { filterSamplesByTimeRange, createCompletionDetector } from './mp4boxHelpers';
 
 // Movie type from mp4box
 interface Movie {
@@ -61,64 +62,28 @@ async function parseAndExtractSamples(
     const tracksData = new Map<number, SampleData>();
     let info: Movie;
     let hasResolved = false;
-    let lastSampleTime = Date.now();
-    let completionCheckInterval: NodeJS.Timeout | null = null;
+
+    // Create completion detector
+    const completionDetector = createCompletionDetector(() => {
+      filterAndResolve();
+    });
 
     // Helper function to filter samples and resolve
     const filterAndResolve = () => {
       if (hasResolved) return;
       hasResolved = true;
 
-      // Clear completion check interval
-      if (completionCheckInterval) {
-        clearInterval(completionCheckInterval);
-        completionCheckInterval = null;
-      }
+      completionDetector.cleanup();
 
       if (info && tracksData.size > 0) {
-        // Filter samples by time range
+        // Filter samples by time range using helper
         tracksData.forEach(trackData => {
-          const timescale = trackData.info.timescale;
-          const startDts = Math.floor(startTime * timescale);
-          const endDts = Math.floor(endTime * timescale);
-
-          // Filter samples and find nearest keyframe for start
-          let firstKeyframeIndex = -1;
-          for (let i = 0; i < trackData.samples.length; i++) {
-            const sample = trackData.samples[i];
-            if (sample.is_sync && sample.dts >= startDts) {
-              firstKeyframeIndex = i;
-              break;
-            }
-          }
-
-          // If no keyframe found after start, use first keyframe before start
-          if (firstKeyframeIndex === -1) {
-            for (let i = trackData.samples.length - 1; i >= 0; i--) {
-              const sample = trackData.samples[i];
-              if (sample.is_sync && sample.dts <= startDts) {
-                firstKeyframeIndex = i;
-                break;
-              }
-            }
-          }
-
-          // Find last sample before or at end time
-          let lastSampleIndex = -1;
-          for (let i = trackData.samples.length - 1; i >= 0; i--) {
-            const sample = trackData.samples[i];
-            if (sample.dts <= endDts) {
-              lastSampleIndex = i;
-              break;
-            }
-          }
-
-          // Extract trimmed samples
-          if (firstKeyframeIndex !== -1 && lastSampleIndex !== -1 && firstKeyframeIndex <= lastSampleIndex) {
-            trackData.samples = trackData.samples.slice(firstKeyframeIndex, lastSampleIndex + 1);
-          } else {
-            trackData.samples = [];
-          }
+          trackData.samples = filterSamplesByTimeRange(
+            trackData.samples,
+            trackData.info,
+            startTime,
+            endTime
+          );
         });
 
         resolve({ info, tracksData });
@@ -145,28 +110,20 @@ async function parseAndExtractSamples(
 
       mp4boxfile.start();
 
-      // Start completion check: if no samples received for 150ms, consider complete
-      completionCheckInterval = setInterval(() => {
-        const timeSinceLastSample = Date.now() - lastSampleTime;
-        if (timeSinceLastSample > 150 && tracksData.size > 0) {
-          // No samples for 150ms and we have tracks - likely complete
-          filterAndResolve();
-        }
-      }, 50); // Check every 50ms
+      // Start completion detector
+      completionDetector.start();
     };
 
     mp4boxfile.onSamples = (trackId: number, user: any, samples: Sample[]) => {
       const trackData = tracksData.get(trackId);
       if (trackData) {
         trackData.samples.push(...samples);
-        lastSampleTime = Date.now(); // Update last sample time
+        completionDetector.notifySample();
       }
     };
 
     mp4boxfile.onError = (e: string) => {
-      if (completionCheckInterval) {
-        clearInterval(completionCheckInterval);
-      }
+      completionDetector.cleanup();
       reject(new Error(`MP4 parsing error: ${e}`));
     };
 
@@ -176,11 +133,9 @@ async function parseAndExtractSamples(
     mp4boxfile.appendBuffer(mp4ArrayBuffer);
     mp4boxfile.flush();
 
-    // Safety timeout (5 seconds) as fallback - reduced from 10s
+    // Safety timeout (5 seconds) as fallback
     setTimeout(() => {
-      if (completionCheckInterval) {
-        clearInterval(completionCheckInterval);
-      }
+      completionDetector.cleanup();
       filterAndResolve();
     }, 5000);
   });
