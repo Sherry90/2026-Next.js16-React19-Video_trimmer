@@ -1,22 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { spawn, ChildProcess } from 'child_process';
+import { spawn } from 'child_process';
 import { createReadStream, unlinkSync, statSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { getFfmpegPath, getStreamlinkPath, hasStreamlink } from '@/lib/binPaths';
 import { formatTimeHHMMSS } from '@/features/timeline/utils/timeFormatter';
-
-/**
- * Helper: kill a child process safely
- */
-function killProcess(proc: ChildProcess): void {
-  try {
-    if (proc.pid && !proc.killed) {
-      proc.kill('SIGTERM');
-    }
-  } catch { /* ignore */ }
-}
+import { runWithTimeout } from '@/lib/processUtils';
 
 /**
  * Streamlink → ffmpeg two-stage trimming
@@ -49,53 +39,28 @@ async function trimWithStreamlink(
     // Stage 1: Download segment with streamlink
     console.log(`[trim] Stage 1 - streamlink download: offset=${formatTimeHHMMSS(startTime)} duration=${formatTimeHHMMSS(duration)}`);
 
-    const streamlinkSuccess = await new Promise<boolean>((resolve) => {
-      const args = [
-        '--hls-start-offset', formatTimeHHMMSS(startTime),
-        '--stream-segmented-duration', formatTimeHHMMSS(duration),
-        '--stream-segment-threads', '6',  // 병렬 다운로드 (1-10, 기본값 1)
-        originalUrl,
-        'best',
-        '-o', tempFile,
-      ];
+    const args = [
+      '--hls-start-offset', formatTimeHHMMSS(startTime),
+      '--stream-segmented-duration', formatTimeHHMMSS(duration),
+      '--stream-segment-threads', '6',  // 병렬 다운로드 (1-10, 기본값 1)
+      originalUrl,
+      'best',
+      '-o', tempFile,
+    ];
 
-      // Linux AppImage: FUSE 없는 환경 대응
-      if (streamlinkBin.endsWith('.AppImage')) {
-        args.unshift('--appimage-extract-and-run');
-      }
+    // Linux AppImage: FUSE 없는 환경 대응
+    if (streamlinkBin.endsWith('.AppImage')) {
+      args.unshift('--appimage-extract-and-run');
+    }
 
-      const streamlinkProc = spawn(streamlinkBin, args, {
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
+    const streamlinkProc = spawn(streamlinkBin, args, {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
 
-      let stderr = '';
-      streamlinkProc.stderr.on('data', (chunk: Buffer) => {
-        stderr += chunk.toString();
-      });
-
-      streamlinkProc.on('error', (err) => {
-        console.log('[trim] streamlink process error:', err.message);
-        resolve(false);
-      });
-
-      streamlinkProc.on('close', (code) => {
-        if (code === 0 && existsSync(tempFile)) {
-          console.log('[trim] Stage 1 - streamlink download succeeded');
-          resolve(true);
-        } else {
-          console.log(`[trim] streamlink exited with code ${code}:`, stderr.slice(0, 300));
-          resolve(false);
-        }
-      });
-
-      // Timeout: 300s for streamlink download
-      const timeout = setTimeout(() => {
-        console.log('[trim] streamlink download timed out after 300s');
-        killProcess(streamlinkProc);
-        resolve(false);
-      }, 300000);
-
-      streamlinkProc.on('close', () => clearTimeout(timeout));
+    const streamlinkSuccess = await runWithTimeout(streamlinkProc, {
+      timeoutMs: 300000,
+      logPrefix: '[trim] Stage 1 - streamlink download',
+      onSuccess: (code) => code === 0 && existsSync(tempFile),
     });
 
     if (!streamlinkSuccess) {
@@ -106,47 +71,22 @@ async function trimWithStreamlink(
     // Stage 2: Reset timestamps with ffmpeg
     console.log('[trim] Stage 2 - ffmpeg timestamp reset');
 
-    const ffmpegSuccess = await new Promise<boolean>((resolve) => {
-      const ffmpegProc = spawn(ffmpegPath, [
-        '-y',
-        '-i', tempFile,
-        '-c', 'copy',
-        '-avoid_negative_ts', 'make_zero',
-        '-fflags', '+genpts',
-        '-movflags', '+faststart',
-        outputPath,
-      ], {
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
+    const ffmpegProc = spawn(ffmpegPath, [
+      '-y',
+      '-i', tempFile,
+      '-c', 'copy',
+      '-avoid_negative_ts', 'make_zero',
+      '-fflags', '+genpts',
+      '-movflags', '+faststart',
+      outputPath,
+    ], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
 
-      let stderr = '';
-      ffmpegProc.stderr.on('data', (chunk: Buffer) => {
-        stderr += chunk.toString();
-      });
-
-      ffmpegProc.on('error', (err) => {
-        console.log('[trim] ffmpeg process error:', err.message);
-        resolve(false);
-      });
-
-      ffmpegProc.on('close', (code) => {
-        if (code === 0 && existsSync(outputPath)) {
-          console.log('[trim] Stage 2 - ffmpeg timestamp reset succeeded');
-          resolve(true);
-        } else {
-          console.log(`[trim] ffmpeg exited with code ${code}:`, stderr.slice(0, 300));
-          resolve(false);
-        }
-      });
-
-      // Timeout: 60s for ffmpeg copy
-      const timeout = setTimeout(() => {
-        console.log('[trim] ffmpeg timestamp reset timed out after 60s');
-        killProcess(ffmpegProc);
-        resolve(false);
-      }, 60000);
-
-      ffmpegProc.on('close', () => clearTimeout(timeout));
+    const ffmpegSuccess = await runWithTimeout(ffmpegProc, {
+      timeoutMs: 60000,
+      logPrefix: '[trim] Stage 2 - ffmpeg timestamp reset',
+      onSuccess: (code) => code === 0 && existsSync(outputPath),
     });
 
     // Cleanup temp file
