@@ -2,12 +2,7 @@
  * Browser memory monitoring utilities
  */
 import { formatBytes } from './formatBytes';
-
-// 권장 파일 크기: 500MB
-const RECOMMENDED_FILE_SIZE = 500 * 1024 * 1024; // 500MB in bytes
-
-// 경고 파일 크기: 1GB
-const WARNING_FILE_SIZE = 1024 * 1024 * 1024; // 1GB in bytes
+import { FILE_SIZE } from '@/constants/fileConstraints';
 
 // 메모리 안전 배수 (파일 크기의 3배 메모리 필요)
 const MEMORY_MULTIPLIER = 3;
@@ -50,7 +45,7 @@ export function checkMemoryAvailability(fileSize: number): boolean {
   // Memory API 사용 불가능한 경우, 파일 크기 기반 추정
   if (availableMemory === null) {
     // 1GB 이상 파일은 위험
-    if (fileSize > WARNING_FILE_SIZE) {
+    if (fileSize > FILE_SIZE.WARNING_THRESHOLD) {
       return false;
     }
     // 500MB 이하는 일반적으로 안전
@@ -69,10 +64,10 @@ export function checkMemoryAvailability(fileSize: number): boolean {
 export function getMemoryRecommendation(
   fileSize: number
 ): 'safe' | 'warning' | 'danger' {
-  if (fileSize <= RECOMMENDED_FILE_SIZE) {
+  if (fileSize <= FILE_SIZE.RECOMMENDED_MAX) {
     return 'safe';
   }
-  if (fileSize <= WARNING_FILE_SIZE) {
+  if (fileSize <= FILE_SIZE.WARNING_THRESHOLD) {
     return 'warning';
   }
   return 'danger';

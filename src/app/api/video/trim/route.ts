@@ -5,16 +5,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { getFfmpegPath, getStreamlinkPath, hasStreamlink } from '@/lib/binPaths';
-
-/**
- * Format seconds to HH:MM:SS for streamlink
- */
-function formatTime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
+import { formatTimeHHMMSS } from '@/features/timeline/utils/timeFormatter';
 
 /**
  * Helper: kill a child process safely
@@ -56,12 +47,12 @@ async function trimWithStreamlink(
 
   try {
     // Stage 1: Download segment with streamlink
-    console.log(`[trim] Stage 1 - streamlink download: offset=${formatTime(startTime)} duration=${formatTime(duration)}`);
+    console.log(`[trim] Stage 1 - streamlink download: offset=${formatTimeHHMMSS(startTime)} duration=${formatTimeHHMMSS(duration)}`);
 
     const streamlinkSuccess = await new Promise<boolean>((resolve) => {
       const args = [
-        '--hls-start-offset', formatTime(startTime),
-        '--stream-segmented-duration', formatTime(duration),
+        '--hls-start-offset', formatTimeHHMMSS(startTime),
+        '--stream-segmented-duration', formatTimeHHMMSS(duration),
         '--stream-segment-threads', '6',  // 병렬 다운로드 (1-10, 기본값 1)
         originalUrl,
         'best',
