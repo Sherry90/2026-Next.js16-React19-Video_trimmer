@@ -3,7 +3,7 @@ import { useVideoPlayerContext } from '@/features/player/context/VideoPlayerCont
 
 /**
  * Hook for managing preview playback functionality
- * Provides preview full and preview edges (first 5s + last 5s) capabilities
+ * Provides preview edges (first 5s + last 5s) capability
  */
 export function usePreviewPlayback(inPoint: number, outPoint: number) {
   const previewCheckTimeRef = useRef<(() => void) | null>(null);
@@ -86,7 +86,6 @@ export function usePreviewPlayback(inPoint: number, outPoint: number) {
   }, [player]);
 
   return {
-    handlePreview,
     handlePreviewEdges,
   };
 }

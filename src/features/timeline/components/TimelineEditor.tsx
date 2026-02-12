@@ -32,7 +32,7 @@ export function TimelineEditor() {
   const setOutPointLocked = useStore((state) => state.setOutPointLocked);
 
   // Use custom hooks for preview and zoom functionality
-  const { handlePreview, handlePreviewEdges } = usePreviewPlayback(inPoint, outPoint);
+  const { handlePreviewEdges } = usePreviewPlayback(inPoint, outPoint);
   useTimelineZoom(timelineRef, zoom, setZoom);
 
   return (
@@ -55,7 +55,6 @@ export function TimelineEditor() {
         onOutPointChange={setOutPoint}
         onInPointLockToggle={() => setInPointLocked(!isInPointLocked)}
         onOutPointLockToggle={() => setOutPointLocked(!isOutPointLocked)}
-        onPreviewFull={handlePreview}
         onPreviewEdges={handlePreviewEdges}
       />
     </div>
