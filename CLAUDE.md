@@ -67,33 +67,66 @@ Single store at `src/stores/useStore.ts` manages all application state:
 - State setters include validation (e.g., `setInPoint` constrains between 0 and outPoint)
 - Memory management: `URL.revokeObjectURL()` called on cleanup to prevent leaks
 - Immutable updates using spread operators
-- **Selector pattern** (`src/stores/selectors.ts`): Reusable selectors with `useShallow` for optimized re-renders
+- **Selector pattern** (`src/stores/selectors.ts`, `src/stores/selectorFactory.ts`): Reusable selectors with `useShallow` for optimized re-renders
   - `useTimelineState()`, `useTimelineActions()`, `usePlayerState()`, etc.
+  - **selectorFactory**: Factory functions for creating selectors (`createStateSelector`, `createSimpleSelector`)
 
 ### Feature-Based Organization
 
 ```
-src/features/
-├── upload/        # File upload, drag-and-drop, validation
-├── url-input/     # URL input, yt-dlp integration
-├── player/        # Video.js player, context provider, playback controls
-├── timeline/      # Timeline editor (refactored into focused components)
-│   ├── components/
-│   │   ├── TimelineEditor.tsx      # 64 lines (orchestrator)
-│   │   ├── TrimHandle.tsx          # Unified In/Out handle
-│   │   ├── Playhead.tsx            # Memoized
-│   │   ├── TimelineControls.tsx    # Control grouping
-│   │   ├── PreviewButtons.tsx      # Preview UI
-│   │   └── WaveformBackground.tsx
-│   └── hooks/
-│       ├── usePreviewPlayback.ts   # Preview logic
-│       └── useTimelineZoom.ts      # Zoom logic
-└── export/        # Export button, trimming logic (MP4Box/FFmpeg)
+src/
+├── features/
+│   ├── upload/        # File upload, drag-and-drop, validation
+│   ├── url-input/     # URL input, yt-dlp integration (refactored 2026-02-12)
+│   │   ├── components/
+│   │   │   ├── UrlInputZone.tsx
+│   │   │   ├── UrlPreviewSection.tsx       # ~95 lines (decomposed)
+│   │   │   ├── UrlPreviewCard.tsx          # New: thumbnail & info
+│   │   │   └── UrlPreviewRangeControl.tsx  # New: time inputs
+│   │   └── hooks/
+│   │       ├── useUrlInput.ts
+│   │       └── useUrlDownload.ts           # New: download logic
+│   ├── player/        # Video.js player, context provider, playback controls
+│   ├── timeline/      # Timeline editor (refactored 2026-01-30, 2026-02-12)
+│   │   ├── components/
+│   │   │   ├── TimelineEditor.tsx      # 64 lines (orchestrator)
+│   │   │   ├── TrimHandle.tsx          # Unified In/Out handle
+│   │   │   ├── Playhead.tsx            # ~145 lines (seek logic extracted)
+│   │   │   ├── TimelineControls.tsx    # Control grouping
+│   │   │   ├── PreviewButtons.tsx      # Preview Edges only (Full removed)
+│   │   │   └── WaveformBackground.tsx
+│   │   └── hooks/
+│   │       ├── usePreviewPlayback.ts   # Preview logic
+│   │       ├── useTimelineZoom.ts      # Zoom logic
+│   │       └── usePlayheadSeek.ts      # New: seek verification
+│   └── export/        # Export button, trimming logic (refactored 2026-02-12)
+│       ├── components/
+│       │   └── ExportButton.tsx        # ~30 lines (logic extracted)
+│       ├── hooks/
+│       │   └── useExportState.ts       # New: export state management
+│       └── utils/
+│           ├── trimVideoDispatcher.ts  # ~110 lines (FFmpeg singleton)
+│           ├── trimVideoMP4Box.ts      # ~190 lines (helpers extracted)
+│           ├── trimVideoFFmpeg.ts
+│           ├── trimVideoServer.ts
+│           ├── mp4boxHelpers.ts        # New: sample filtering
+│           └── FFmpegSingleton.ts      # New: singleton pattern
+├── lib/               # Common utilities (new 2026-02-12)
+│   ├── binPaths.ts
+│   ├── processUtils.ts       # New: process management
+│   ├── apiErrorHandler.ts    # New: API error handling
+│   └── formatSelector.ts     # New: yt-dlp format selection
+└── stores/            # State management (refactored 2026-02-12)
+    ├── useStore.ts
+    ├── selectors.ts          # ~94 lines (factory pattern)
+    └── selectorFactory.ts    # New: selector generators
 ```
 
 Each feature has `components/`, `hooks/`, `utils/`, and sometimes `context/`.
 
-**Recent refactoring (2026-01-30)**: TimelineEditor decomposed from 182 lines to 64 lines. InPointHandle/OutPointHandle merged into TrimHandle.
+**Recent refactoring**:
+- **2026-01-30**: TimelineEditor decomposed from 182 lines to 64 lines. InPointHandle/OutPointHandle merged into TrimHandle.
+- **2026-02-12**: 11-item refactoring (Preview Full removed, 11 new utility files/hooks, major component simplification)
 
 ### Video Processing Flow
 

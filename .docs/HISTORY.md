@@ -1,8 +1,8 @@
 # Video Trimmer - 개발 히스토리
 
-> **기간**: 2026-01-21 ~ 2026-02-11 (22일)
-> **주요 변경**: 버그 수정, 아키텍처 전환, 정확도 개선, 기능 확장, 종합 리팩토링, URL 편집 지원
-> **최종 상태**: 프로덕션 준비 완료 (4,252줄, 92개 테스트 통과)
+> **기간**: 2026-01-21 ~ 2026-02-12 (23일)
+> **주요 변경**: 버그 수정, 아키텍처 전환, 정확도 개선, 기능 확장, 종합 리팩토링 (2회), URL 편집 지원
+> **최종 상태**: 프로덕션 준비 완료 (92개 테스트 통과)
 
 ---
 
@@ -38,6 +38,7 @@
 | 2026-01-30 | 6단계 리팩토링 완료 | 787줄 감소 (-15.6%) |
 | 2026-02-08 | URL 트리밍 구현 | yt-dlp + streamlink 통합 |
 | 2026-02-11 | Streamlink 자동 다운로드 | postinstall 바이너리 관리 |
+| 2026-02-12 | 11단계 리팩토링 완료 | 코드 간소화 및 중복 제거 |
 
 ---
 
@@ -551,6 +552,163 @@ RUN npm ci  # postinstall 포함, 추가 apt-get install 불필요
 
 ---
 
+### 8. 코드 간소화 리팩토링
+
+**날짜**: 2026-02-12
+**소요 시간**: ~14시간 (9일 기준, 하루 1.5시간)
+**영향**: 🔵 중대 (코드 품질 개선)
+
+#### 목표
+
+코드 간소화, 중복 제거, 컴포넌트 분해, 유지보수성 향상. 불필요한 기능 제거.
+
+#### 11단계 리팩토링 계획
+
+**Phase 1: Quick Wins** (4개 항목)
+1. Preview Full 기능 제거 (불필요한 기능)
+2. 중복 상수 통합 (FILE_SIZE, formatTime)
+3. 프로세스 관리 유틸리티 추출 (processUtils.ts)
+4. API 에러 처리 통합 (apiErrorHandler.ts)
+
+**Phase 2: Medium Impact** (4개 항목)
+5. Playhead seek 검증 로직 추출 (usePlayheadSeek.ts)
+6. MP4Box 샘플 필터링 로직 분리 (mp4boxHelpers.ts)
+7. UrlPreviewSection 컴포넌트 분해
+8. FFmpeg 싱글톤 관리 클래스화 (FFmpegSingleton.ts)
+
+**Phase 3: High Impact** (3개 항목)
+9. Format selection 로직 추출 (formatSelector.ts)
+10. ExportButton 상태 관리 훅 추출 (useExportState.ts)
+11. Selector 생성기 패턴 도입 (selectorFactory.ts)
+
+#### 주요 변경사항
+
+**새로 생성된 파일** (11개):
+```
+src/lib/
+├── processUtils.ts          # 프로세스 관리 (타임아웃, 종료)
+├── apiErrorHandler.ts       # API 에러 처리 표준화
+└── formatSelector.ts        # yt-dlp 형식 선택
+
+src/features/timeline/hooks/
+└── usePlayheadSeek.ts       # Playhead seek 검증
+
+src/features/export/utils/
+├── mp4boxHelpers.ts         # MP4Box 샘플 필터링
+└── FFmpegSingleton.ts       # FFmpeg 인스턴스 관리
+
+src/features/export/hooks/
+└── useExportState.ts        # Export 버튼 상태 관리
+
+src/features/url-input/components/
+├── UrlPreviewCard.tsx       # 썸네일 및 비디오 정보
+└── UrlPreviewRangeControl.tsx # 시작/종료 시간 입력
+
+src/features/url-input/hooks/
+└── useUrlDownload.ts        # URL 다운로드 로직
+
+src/stores/
+└── selectorFactory.ts       # Selector 생성기
+```
+
+**리팩토링된 파일** (주요 변경):
+- `Playhead.tsx`: 214줄 → ~145줄 (-69줄)
+- `ExportButton.tsx`: 142줄 → ~30줄 (-112줄)
+- `UrlPreviewSection.tsx`: 182줄 → ~95줄 (-87줄)
+- `trimVideoMP4Box.ts`: 258줄 → ~190줄 (-68줄)
+- `trimVideoDispatcher.ts`: 177줄 → ~110줄 (-67줄)
+- `selectors.ts`: 254줄 → ~94줄 (-160줄)
+- `resolve/route.ts`: 140줄 → ~110줄 (-30줄)
+- `trim/route.ts`: 247줄 → ~165줄 (-82줄)
+
+#### 코드 변경량
+
+| 영역 | 추가 | 삭제 | 순변화 |
+|------|------|------|--------|
+| Quick Wins | +310줄 | -120줄 | +190줄 |
+| Medium Impact | +485줄 | -291줄 | +194줄 |
+| High Impact | +432줄 | -231줄 | +201줄 |
+| **총계** | **+1,227줄** | **-912줄** | **+315줄** |
+
+**순증가 이유**: 중복 제거로 감소했지만, 새로운 유틸리티 파일 생성으로 일부 증가.
+그러나 **코드 품질, 재사용성, 유지보수성은 크게 향상**.
+
+#### 불필요한 기능 제거
+
+**Preview Full 제거**:
+- 기존: Preview Full (전체 구간 재생) + Preview Edges (처음/끝 5초)
+- 변경: Preview Edges만 유지
+- 이유: Preview Full은 player의 In Point seek과 동일, 실제 활용성 낮음
+
+**영향**: 23줄 감소, UI 단순화
+
+#### 주요 패턴 도입
+
+**1. 프로세스 유틸리티 패턴**:
+```typescript
+// 이전: trim/route.ts에서 2회 중복 (streamlink + ffmpeg)
+const killProcess = (proc) => { /* ... */ };
+const timeout = setTimeout(() => killProcess(proc), 60000);
+
+// 이후: processUtils.ts로 통합
+runWithTimeout(proc, { timeoutMs: 60000, ... });
+```
+
+**2. Singleton 패턴 (FFmpeg)**:
+```typescript
+// 이전: 함수 기반 싱글톤 (불안정)
+let ffmpegInstance = null;
+async function loadFFmpeg() { /* ... */ }
+
+// 이후: 클래스 기반 싱글톤
+class FFmpegSingleton {
+  private static instance: FFmpeg | null = null;
+  static async getInstance(): Promise<FFmpeg> { /* ... */ }
+}
+```
+
+**3. Factory 패턴 (Selector)**:
+```typescript
+// 이전: 수동 작성 (254줄)
+export function useTimelineState() {
+  return useStore(useShallow((state) => ({ /* ... */ })));
+}
+
+// 이후: 생성기 사용 (~94줄)
+export const useTimelineState = createStateSelector(
+  (state) => ({ /* ... */ })
+);
+```
+
+#### 검증 결과
+
+- ✅ 92개 유닛 테스트 통과
+- ✅ TypeScript 타입 체크 통과
+- ✅ 프로덕션 빌드 성공
+- ✅ E2E 워크플로우 검증 (파일 + URL)
+
+#### Git 워크플로우
+
+**브랜치**: `refactor/code-simplification`
+**커밋**: 11개 (각 항목별 개별 커밋)
+**머지**: Fast-forward merge to main
+
+```bash
+git checkout -b refactor/code-simplification
+# ... 11개 커밋 ...
+git checkout main
+git merge refactor/code-simplification  # Fast-forward
+```
+
+#### 설계 원칙 준수
+
+- ✅ **Single Responsibility**: 각 파일/컴포넌트 하나의 명확한 책임
+- ✅ **DRY**: 중복 코드 제거 (formatTime, 프로세스 관리, 에러 처리)
+- ✅ **High Cohesion**: 관련 코드는 함께 (feature-based)
+- ✅ **Testability**: 순수 함수 추출로 테스트 용이성 향상
+
+---
+
 ## 기술적 교훈
 
 ### 1. 근본 원인 > 증상
@@ -604,6 +762,25 @@ postinstall 훅을 활용한 자동 다운로드로 사용자 편의성과 저�
 
 다운로드 스크립트로 Windows/Linux/macOS 모두 지원. 플랫폼별 예외 처리 (AppImage FUSE, .zip 압축 해제).
 
+### 11. 불필요한 기능 제거의 가치
+
+기능을 추가하는 것만큼 제거하는 것도 중요. Preview Full 제거로 23줄 감소 + UI 단순화 + 사용자 혼란 감소.
+
+**평가 기준**:
+- 실제 사용 빈도
+- 대체 가능성 (기존 기능으로 동일 목적 달성)
+- 유지보수 비용
+
+### 12. 점진적 리팩토링의 재확인
+
+2번의 대규모 리팩토링 (2026-01-30, 2026-02-12) 모두 동일한 전략 사용:
+- 작은 원자적 커밋
+- 위험도 기반 순서
+- 매 단계 테스트
+- 개별 브랜치 작업
+
+결과: **제로 리그레션**, 모든 테스트 통과.
+
 ---
 
 ## 성능 메트릭 변화
@@ -646,55 +823,78 @@ postinstall 훅을 활용한 자동 다운로드로 사용자 편의성과 저�
 2026-02-11  remove: 불필요 콘솔로그 삭제
 ```
 
+### 코드 간소화 리팩토링 (2026-02-12)
+
+```
+2026-02-12  refactor: Preview Full 기능 제거
+2026-02-12  refactor: 중복 상수 통합
+2026-02-12  refactor: 프로세스 관리 유틸리티 추출
+2026-02-12  refactor: API 에러 처리 통합
+2026-02-12  refactor: Playhead seek 검증 로직 추출
+2026-02-12  refactor: MP4Box 샘플 필터링 로직 분리
+2026-02-12  refactor: UrlPreviewSection 컴포넌트 분해
+2026-02-12  refactor: FFmpeg 싱글톤 관리 클래스화
+2026-02-12  refactor: Format selection 로직 추출
+2026-02-12  refactor: ExportButton 상태 관리 훅 추출
+2026-02-12  refactor: Selector 생성기 패턴 도입
+```
+
 ---
 
 ## 프로젝트 통계
 
-**개발 기간**: 2026-01-20 ~ 2026-02-11 (22일)
+**개발 기간**: 2026-01-20 ~ 2026-02-12 (23일)
 
 **총 코드 변경**:
-- Phase 1-6: 787줄 감소
-- URL 기능: ~600줄 추가
-- 최종: 4,252줄
+- Phase 1-6 리팩토링 (2026-01-30): 787줄 감소
+- URL 기능 (2026-02-08): ~600줄 추가
+- Phase 1-11 리팩토링 (2026-02-12): +315줄 (순증가, 유틸리티 추가)
 
 **테스트**:
 - 유닛 테스트: 90 → 92개 (100% 통과)
 - E2E 테스트: 프레임워크 구성 완료
 
-**주요 마일스톤**: 7개
+**주요 마일스톤**: 8개
 
 **버그 수정**: 3개 (Playhead snap-back, MP4Box race condition, URL export)
 
 **신규 기능**: 5개 (MP4Box, 하이브리드, URL 편집, 자동 다운로드, 뒤로가기)
 
+**리팩토링**: 2회 (2026-01-30: 787줄 감소, 2026-02-12: 11개 항목 완료)
+
 ---
 
 ## 결론
 
-Video Trimmer는 22일 동안 다음을 달성했습니다:
+Video Trimmer는 23일 동안 다음을 달성했습니다:
 
 - ✅ 핵심 기능 구현 및 최적화
 - ✅ 중대 버그 수정 (race condition 2건)
 - ✅ 성능 20배 향상 (MP4Box)
 - ✅ 정확도 25배 향상 (FFmpeg)
-- ✅ 코드 15.6% 감소 (리팩토링)
+- ✅ 코드 품질 개선 (2회 리팩토링: 787줄 감소 + 11개 항목 완료)
 - ✅ URL 영상 편집 지원 (신규 기능)
 - ✅ 의존성 자동 관리 (사용자 경험 개선)
 - ✅ 프로덕션 준비 완료
 
 **핵심 성과**:
-> 빠르고 (MP4Box), 정확하고 (FFmpeg fallback), 확장 가능하고 (URL 지원), 사용하기 쉬운 (자동 설정) 비디오 편집 앱
+> 빠르고 (MP4Box), 정확하고 (FFmpeg fallback), 확장 가능하고 (URL 지원), 유지보수 쉬운 (코드 간소화), 사용하기 쉬운 (자동 설정) 비디오 편집 앱
 
 **기술적 선택의 핵심**:
 - 하이브리드 접근 (MP4Box + FFmpeg)
 - 자동 의존성 관리 (postinstall)
-- 점진적 리팩토링 (6단계)
+- 점진적 리팩토링 (2회: 6단계 + 11단계)
 - 근본 원인 해결 (race condition)
+- 불필요한 기능 제거 (Preview Full)
+
+**리팩토링 성과**:
+- 2026-01-30: 787줄 감소 (15.6%)
+- 2026-02-12: 11개 유틸리티/훅 추출, 컴포넌트 간소화
 
 **프로젝트는 프로덕션 배포 준비가 완료되었습니다.**
 
 ---
 
-**문서 버전**: 1.0
-**마지막 업데이트**: 2026-02-11
+**문서 버전**: 1.1
+**마지막 업데이트**: 2026-02-12
 **다음 검토**: 주요 마일스톤 후
