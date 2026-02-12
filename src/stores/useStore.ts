@@ -13,7 +13,7 @@ import { cleanupFFmpeg } from '@/features/export/utils/trimVideoDispatcher';
 
 // ==================== 스토어 상태 ====================
 
-interface StoreState {
+export interface StoreState {
   // 앱 단계
   phase: AppPhase;
 

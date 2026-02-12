@@ -1,253 +1,109 @@
 /**
  * Reusable Zustand store selectors
  *
- * These hooks provide convenient access to store state and actions,
- * reducing boilerplate and improving performance with proper equality checks.
+ * Uses factory functions to reduce boilerplate while maintaining type safety.
  */
 
-import { useStore } from './useStore';
-import { useShallow } from 'zustand/react/shallow';
-import type { TimelineState, PlayerState, ProcessingState } from '@/types/store';
+import { createStateSelector, createSimpleSelector } from './selectorFactory';
 
-// ==================== Timeline Selectors ====================
+// Timeline Selectors
+export const useTimelineState = createStateSelector((state) => ({
+  inPoint: state.timeline.inPoint,
+  outPoint: state.timeline.outPoint,
+  playhead: state.timeline.playhead,
+  isInPointLocked: state.timeline.isInPointLocked,
+  isOutPointLocked: state.timeline.isOutPointLocked,
+  zoom: state.timeline.zoom,
+}));
 
-/**
- * Get all timeline state values
- * Uses shallow equality to prevent unnecessary re-renders
- */
-export function useTimelineState() {
-  return useStore(
-    useShallow((state) => ({
-      inPoint: state.timeline.inPoint,
-      outPoint: state.timeline.outPoint,
-      playhead: state.timeline.playhead,
-      isInPointLocked: state.timeline.isInPointLocked,
-      isOutPointLocked: state.timeline.isOutPointLocked,
-      zoom: state.timeline.zoom,
-    }))
-  );
-}
+export const useTimelineActions = createStateSelector((state) => ({
+  setInPoint: state.setInPoint,
+  setOutPoint: state.setOutPoint,
+  setPlayhead: state.setPlayhead,
+  setInPointLocked: state.setInPointLocked,
+  setOutPointLocked: state.setOutPointLocked,
+  setZoom: state.setZoom,
+  resetTimeline: state.resetTimeline,
+}));
 
-/**
- * Get timeline actions only (never causes re-renders)
- */
-export function useTimelineActions() {
-  return useStore(
-    useShallow((state) => ({
-      setInPoint: state.setInPoint,
-      setOutPoint: state.setOutPoint,
-      setPlayhead: state.setPlayhead,
-      setInPointLocked: state.setInPointLocked,
-      setOutPointLocked: state.setOutPointLocked,
-      setZoom: state.setZoom,
-      resetTimeline: state.resetTimeline,
-    }))
-  );
-}
+export const useTrimPoints = createStateSelector((state) => ({
+  inPoint: state.timeline.inPoint,
+  outPoint: state.timeline.outPoint,
+}));
 
-/**
- * Get specific trim points (common pattern)
- */
-export function useTrimPoints() {
-  return useStore(
-    useShallow((state) => ({
-      inPoint: state.timeline.inPoint,
-      outPoint: state.timeline.outPoint,
-    }))
-  );
-}
+// Video File Selectors
+export const useVideoFile = createSimpleSelector((state) => state.videoFile);
+export const useVideoUrl = createSimpleSelector((state) => state.videoFile?.url);
+export const useVideoDuration = createSimpleSelector((state) => state.videoFile?.duration ?? 0);
+export const useVideoSource = createSimpleSelector((state) => state.videoFile?.source);
+export const useStreamUrl = createSimpleSelector((state) => state.videoFile?.streamUrl);
 
-// ==================== Video File Selectors ====================
+// Player Selectors
+export const usePlayerState = createStateSelector((state) => ({
+  isPlaying: state.player.isPlaying,
+  currentTime: state.player.currentTime,
+  volume: state.player.volume,
+  isMuted: state.player.isMuted,
+  isScrubbing: state.player.isScrubbing,
+}));
 
-/**
- * Get video file (returns null if not loaded)
- */
-export function useVideoFile() {
-  return useStore((state) => state.videoFile);
-}
+export const usePlayerActions = createStateSelector((state) => ({
+  setIsPlaying: state.setIsPlaying,
+  setCurrentTime: state.setCurrentTime,
+  setVolume: state.setVolume,
+  setIsMuted: state.setIsMuted,
+  setIsScrubbing: state.setIsScrubbing,
+}));
 
-/**
- * Get video URL (common pattern)
- */
-export function useVideoUrl() {
-  return useStore((state) => state.videoFile?.url);
-}
+export const useCurrentTime = createSimpleSelector((state) => state.player.currentTime);
 
-/**
- * Get video duration (defaults to 0 if not available)
- */
-export function useVideoDuration() {
-  return useStore((state) => state.videoFile?.duration ?? 0);
-}
+// URL Preview Selectors
+export const useUrlPreview = createSimpleSelector((state) => state.urlPreview);
 
-/**
- * Get video source type ('file' | 'url' | undefined)
- */
-export function useVideoSource() {
-  return useStore((state) => state.videoFile?.source);
-}
+export const useUrlPreviewActions = createStateSelector((state) => ({
+  setUrlPreview: state.setUrlPreview,
+  setUrlPreviewRange: state.setUrlPreviewRange,
+  clearUrlPreview: state.clearUrlPreview,
+}));
 
-/**
- * Get stream URL for URL sources
- */
-export function useStreamUrl() {
-  return useStore((state) => state.videoFile?.streamUrl);
-}
+// Phase & Processing Selectors
+export const usePhase = createSimpleSelector((state) => state.phase);
 
-// ==================== Player Selectors ====================
+export const useProcessing = createStateSelector((state) => ({
+  uploadProgress: state.processing.uploadProgress,
+  trimProgress: state.processing.trimProgress,
+  waveformProgress: state.processing.waveformProgress,
+}));
 
-/**
- * Get all player state values
- */
-export function usePlayerState() {
-  return useStore(
-    useShallow((state) => ({
-      isPlaying: state.player.isPlaying,
-      currentTime: state.player.currentTime,
-      volume: state.player.volume,
-      isMuted: state.player.isMuted,
-      isScrubbing: state.player.isScrubbing,
-    }))
-  );
-}
+export const useUploadProgress = createSimpleSelector((state) => state.processing.uploadProgress);
+export const useTrimProgress = createSimpleSelector((state) => state.processing.trimProgress);
+export const useWaveformProgress = createSimpleSelector((state) => state.processing.waveformProgress);
 
-/**
- * Get player actions only
- */
-export function usePlayerActions() {
-  return useStore(
-    useShallow((state) => ({
-      setIsPlaying: state.setIsPlaying,
-      setCurrentTime: state.setCurrentTime,
-      setVolume: state.setVolume,
-      setIsMuted: state.setIsMuted,
-      setIsScrubbing: state.setIsScrubbing,
-    }))
-  );
-}
+// Error & Export Selectors
+export const useError = createStateSelector((state) => ({
+  errorMessage: state.error.errorMessage,
+  errorCode: state.error.errorCode,
+}));
 
-/**
- * Get current playback time (common pattern)
- */
-export function useCurrentTime() {
-  return useStore((state) => state.player.currentTime);
-}
+export const useExportState = createStateSelector((state) => ({
+  outputUrl: state.export.outputUrl,
+  outputFilename: state.export.outputFilename,
+}));
 
-// ==================== URL Preview Selectors ====================
+// Common Actions
+export const useCommonActions = createStateSelector((state) => ({
+  setPhase: state.setPhase,
+  setError: state.setError,
+  clearError: state.clearError,
+  setExportResult: state.setExportResult,
+  clearExportResult: state.clearExportResult,
+  reset: state.reset,
+  setErrorAndTransition: state.setErrorAndTransition,
+  setExportResultAndComplete: state.setExportResultAndComplete,
+}));
 
-/**
- * Get URL preview state
- */
-export function useUrlPreview() {
-  return useStore((state) => state.urlPreview);
-}
-
-/**
- * Get URL preview actions
- */
-export function useUrlPreviewActions() {
-  return useStore(
-    useShallow((state) => ({
-      setUrlPreview: state.setUrlPreview,
-      setUrlPreviewRange: state.setUrlPreviewRange,
-      clearUrlPreview: state.clearUrlPreview,
-    }))
-  );
-}
-
-// ==================== Phase & Processing Selectors ====================
-
-/**
- * Get current app phase
- */
-export function usePhase() {
-  return useStore((state) => state.phase);
-}
-
-/**
- * Get all processing progress values
- */
-export function useProcessing() {
-  return useStore(
-    useShallow((state) => ({
-      uploadProgress: state.processing.uploadProgress,
-      trimProgress: state.processing.trimProgress,
-      waveformProgress: state.processing.waveformProgress,
-    }))
-  );
-}
-
-/**
- * Get specific progress value
- */
-export function useUploadProgress() {
-  return useStore((state) => state.processing.uploadProgress);
-}
-
-export function useTrimProgress() {
-  return useStore((state) => state.processing.trimProgress);
-}
-
-export function useWaveformProgress() {
-  return useStore((state) => state.processing.waveformProgress);
-}
-
-// ==================== Error & Export Selectors ====================
-
-/**
- * Get error state
- */
-export function useError() {
-  return useStore(
-    useShallow((state) => ({
-      errorMessage: state.error.errorMessage,
-      errorCode: state.error.errorCode,
-    }))
-  );
-}
-
-/**
- * Get export result
- */
-export function useExportState() {
-  return useStore(
-    useShallow((state) => ({
-      outputUrl: state.export.outputUrl,
-      outputFilename: state.export.outputFilename,
-    }))
-  );
-}
-
-// ==================== Common Actions ====================
-
-/**
- * Get frequently used actions (phase, error, export)
- */
-export function useCommonActions() {
-  return useStore(
-    useShallow((state) => ({
-      setPhase: state.setPhase,
-      setError: state.setError,
-      clearError: state.clearError,
-      setExportResult: state.setExportResult,
-      clearExportResult: state.clearExportResult,
-      reset: state.reset,
-      // Combined actions
-      setErrorAndTransition: state.setErrorAndTransition,
-      setExportResultAndComplete: state.setExportResultAndComplete,
-    }))
-  );
-}
-
-/**
- * Get progress setters
- */
-export function useProgressActions() {
-  return useStore(
-    useShallow((state) => ({
-      setUploadProgress: state.setUploadProgress,
-      setTrimProgress: state.setTrimProgress,
-      setWaveformProgress: state.setWaveformProgress,
-    }))
-  );
-}
+export const useProgressActions = createStateSelector((state) => ({
+  setUploadProgress: state.setUploadProgress,
+  setTrimProgress: state.setTrimProgress,
+  setWaveformProgress: state.setWaveformProgress,
+}));
