@@ -1,10 +1,10 @@
-const {
+import {
   parseFlexibleDuration,
   parseStreamlinkProgressLine,
   parseFFmpegProgress,
   StreamlinkProgressParser,
   FFmpegProgressTracker,
-} = require('../../lib/progressParser');
+} from '@/lib/progressParser';
 
 describe('progressParser', () => {
   it('parses clock duration and unit duration', () => {
