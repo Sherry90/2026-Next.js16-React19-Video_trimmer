@@ -1,7 +1,9 @@
-const { createServer } = require('http');
-const { parse } = require('url');
-const next = require('next');
-const { Server } = require('socket.io');
+import { createServer } from 'https';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { parse } from 'url';
+import next from 'next';
+import { Server } from 'socket.io';
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
@@ -14,10 +16,16 @@ const handle = app.getRequestHandler();
 console.log('[Server] Preparing Next.js...');
 
 app.prepare().then(() => {
-  console.log('[Server] Next.js ready, creating HTTP server...');
+  console.log('[Server] Next.js ready, creating HTTPS server...');
 
-  // HTTP 서버 생성
-  const httpServer = createServer(async (req: any, res: any) => {
+  // HTTPS 인증서 로드
+  const httpsOptions = {
+    key: readFileSync(join(process.cwd(), 'certificates', 'localhost-key.pem')),
+    cert: readFileSync(join(process.cwd(), 'certificates', 'localhost.pem')),
+  };
+
+  // HTTPS 서버 생성
+  const httpsServer = createServer(httpsOptions, async (req: any, res: any) => {
     try {
       const parsedUrl = parse(req.url, true);
       await handle(req, res, parsedUrl);
@@ -30,9 +38,9 @@ app.prepare().then(() => {
 
   // Socket.IO 서버 통합
   console.log('[Server] Initializing Socket.IO...');
-  const io = new Server(httpServer, {
+  const io = new Server(httpsServer, {
     cors: {
-      origin: dev ? [`http://localhost:${port}`, `http://127.0.0.1:${port}`] : false,
+      origin: dev ? [`https://localhost:${port}`, `https://127.0.0.1:${port}`] : false,
       methods: ['GET', 'POST'],
       credentials: true,
     },
@@ -47,13 +55,13 @@ app.prepare().then(() => {
     console.log('> Socket.IO server initialized');
   });
 
-  httpServer
+  httpsServer
     .once('error', (err: any) => {
-      console.error('[Server] HTTP server error:', err);
+      console.error('[Server] HTTPS server error:', err);
       process.exit(1);
     })
     .listen(port, hostname, () => {
-      console.log(`> Ready on http://${hostname}:${port}`);
+      console.log(`> Ready on https://${hostname}:${port}`);
       console.log(`> Socket.IO server initialized`);
     });
 }).catch((err: any) => {
