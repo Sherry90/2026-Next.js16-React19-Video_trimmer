@@ -17,11 +17,11 @@ app.prepare().then(() => {
   console.log('[Server] Next.js ready, creating HTTP server...');
 
   // HTTP 서버 생성
-  const httpServer = createServer(async (req, res) => {
+  const httpServer = createServer(async (req: any, res: any) => {
     try {
       const parsedUrl = parse(req.url, true);
       await handle(req, res, parsedUrl);
-    } catch (err) {
+    } catch (err: any) {
       console.error('[Server] Error occurred handling', req.url, err);
       res.statusCode = 500;
       res.end('internal server error');
@@ -42,10 +42,13 @@ app.prepare().then(() => {
 
   console.log('[Server] Loading Socket.IO handlers...');
   // Socket.IO handlers 로드
-  require('./src/lib/socketHandlers')(io);
+  import('./src/lib/socketHandlers').then((mod) => {
+    mod.default(io);
+    console.log('> Socket.IO server initialized');
+  });
 
   httpServer
-    .once('error', (err) => {
+    .once('error', (err: any) => {
       console.error('[Server] HTTP server error:', err);
       process.exit(1);
     })
@@ -53,7 +56,7 @@ app.prepare().then(() => {
       console.log(`> Ready on http://${hostname}:${port}`);
       console.log(`> Socket.IO server initialized`);
     });
-}).catch((err) => {
+}).catch((err: any) => {
   console.error('[Server] Failed to prepare Next.js:', err);
   process.exit(1);
 });
