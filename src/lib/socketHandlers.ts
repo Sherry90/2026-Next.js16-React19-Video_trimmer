@@ -115,7 +115,7 @@ export default function setupSocketHandlers(io: any) {
           '--loglevel', 'debug',
           '--progress=force',
           '--hls-start-offset', formatTimeHHMMSS(startTime),
-          '--stream-segmented-duration', formatTimeHHMMSS(segmentDuration),
+          '--hls-duration', formatTimeHHMMSS(segmentDuration),
           '--stream-segment-threads', '6',
           url, 'best', '-o', tempFile,
         ];
