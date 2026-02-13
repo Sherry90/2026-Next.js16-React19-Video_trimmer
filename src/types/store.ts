@@ -16,6 +16,7 @@ export interface UrlPreviewState {
   streamType: 'hls' | 'mp4';
   inPoint: number;
   outPoint: number;
+  tbr: number | null; // Total bitrate (kbps)
 }
 
 export interface VideoFile {
@@ -46,6 +47,8 @@ export interface ProcessingState {
   uploadProgress: number;     // 0-100
   trimProgress: number;       // 0-100
   waveformProgress: number;   // Phase 4, 0-100
+  downloadPhase: 'downloading' | 'processing' | 'completed' | null; // Socket.IO download phase
+  downloadMessage: string | null;   // Socket.IO download message
 }
 
 export interface PlayerState {

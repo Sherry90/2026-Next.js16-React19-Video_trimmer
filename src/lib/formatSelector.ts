@@ -8,6 +8,7 @@
 export interface FormatSelection {
   url: string;
   streamType: 'hls' | 'mp4';
+  tbr: number | null; // Total bitrate (kbps)
 }
 
 /**
@@ -44,30 +45,40 @@ export function selectBestFormat(ytdlpInfo: any): FormatSelection | null {
         .filter((f: any) => f.protocol === 'https')
         .sort((a: any, b: any) => (b.tbr || 0) - (a.tbr || 0));
 
+      let selectedFormat: any = null;
       if (hlsFormats.length > 0) {
-        streamUrl = hlsFormats[0].url;
+        selectedFormat = hlsFormats[0];
+        streamUrl = selectedFormat.url;
         streamType = 'hls';
       } else if (httpsFormats.length > 0) {
-        streamUrl = httpsFormats[0].url;
+        selectedFormat = httpsFormats[0];
+        streamUrl = selectedFormat.url;
         streamType = 'mp4';
       } else {
         // Fallback to any muxed format
-        streamUrl = muxedFormats[muxedFormats.length - 1].url;
+        selectedFormat = muxedFormats[muxedFormats.length - 1];
+        streamUrl = selectedFormat.url;
+      }
+
+      // streamUrl is guaranteed to be non-null here
+      if (streamUrl) {
+        return {
+          url: streamUrl,
+          streamType,
+          tbr: selectedFormat?.tbr || null,
+        };
       }
     }
   }
 
   // Step 2: Fallback to top-level url if available
-  if (!streamUrl && ytdlpInfo.url) {
-    streamUrl = ytdlpInfo.url;
+  if (ytdlpInfo.url) {
+    return {
+      url: ytdlpInfo.url,
+      streamType: 'mp4',
+      tbr: ytdlpInfo.tbr || null,
+    };
   }
 
-  if (!streamUrl) {
-    return null;
-  }
-
-  return {
-    url: streamUrl,
-    streamType,
-  };
+  return null;
 }
