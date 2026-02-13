@@ -21,7 +21,10 @@ export function useSocketDownload() {
 
   // Socket.IO 연결 초기화
   useEffect(() => {
+    // HTTPS 환경에서는 wss:// 사용
     const socket = io({
+      path: '/socket.io',
+      secure: true, // HTTPS/WSS 사용
       transports: ['websocket', 'polling'], // WebSocket 우선, HTTP long-polling 폴백
       reconnection: true,
       reconnectionAttempts: 5,
