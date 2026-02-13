@@ -82,12 +82,25 @@ export function useSocketDownload() {
           activeJobIdRef.current = data.jobId;
         }
 
+        // Phase별 가중치 적용하여 전체 진행률 계산 (역행 방지)
+        let overallProgress: number;
+        if (data.phase === 'downloading') {
+          // downloading: 0-90%로 매핑
+          overallProgress = Math.round(data.progress * 0.9);
+        } else if (data.phase === 'processing') {
+          // processing: 90-100%로 매핑
+          overallProgress = Math.round(90 + data.progress * 0.1);
+        } else {
+          // completed
+          overallProgress = 100;
+        }
+
         console.log(
-          `[Socket.IO Client] Phase: ${data.phase}, Progress: ${data.progress}% (${Math.round(
+          `[Socket.IO Client] Phase: ${data.phase}, Raw: ${data.progress}%, Overall: ${overallProgress}% (${Math.round(
             data.processedSeconds ?? 0
           )}/${Math.round(data.totalSeconds ?? 0)}s)`
         );
-        setTrimProgress(data.progress);
+        setTrimProgress(overallProgress);
 
         // Phase별 메시지
         const phaseMessages = {
