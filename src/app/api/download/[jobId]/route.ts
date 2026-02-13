@@ -1,43 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createReadStream, unlinkSync, statSync, existsSync } from 'fs';
+import { getJob, deleteJob } from '@/lib/downloadJob';
 
 /**
  * GET /api/download/[jobId]
  *
- * Socket.IO로 완료된 파일 다운로드
+ * 완료된 파일 다운로드
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ jobId: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
   const { jobId } = await params;
 
   try {
-    // server.js의 io instance에서 job 정보 가져오기
-    // HACK: global로 접근 (socketHandlers에서 설정)
-    const job = (global as any).__socketIO_jobs?.get(jobId);
+    const job = getJob(jobId);
 
     if (!job) {
-      return NextResponse.json(
-        { error: 'Job을 찾을 수 없습니다' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Job을 찾을 수 없습니다' }, { status: 404 });
     }
 
     if (job.status !== 'completed') {
-      return NextResponse.json(
-        { error: 'Job이 아직 완료되지 않았습니다' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Job이 아직 완료되지 않았습니다' }, { status: 400 });
     }
 
     const { outputPath } = job;
 
-    if (!existsSync(outputPath)) {
-      return NextResponse.json(
-        { error: '파일을 찾을 수 없습니다' },
-        { status: 404 }
-      );
+    if (!outputPath || !existsSync(outputPath)) {
+      return NextResponse.json({ error: '파일을 찾을 수 없습니다' }, { status: 404 });
     }
 
     // Stream the output file
@@ -55,8 +42,7 @@ export async function GET(
           controller.close();
           // Cleanup after download
           try {
-            unlinkSync(outputPath);
-            (global as any).__socketIO_jobs?.delete(jobId);
+            deleteJob(jobId);
           } catch (error) {
             console.error('[download] Cleanup error:', error);
           }
@@ -64,17 +50,19 @@ export async function GET(
         fileStream.on('error', (err) => {
           controller.error(err);
           try {
-            unlinkSync(outputPath);
-            (global as any).__socketIO_jobs?.delete(jobId);
-          } catch { /* ignore */ }
+            deleteJob(jobId);
+          } catch {
+            /* ignore */
+          }
         });
       },
       cancel() {
         fileStream.destroy();
         try {
-          unlinkSync(outputPath);
-          (global as any).__socketIO_jobs?.delete(jobId);
-        } catch { /* ignore */ }
+          deleteJob(jobId);
+        } catch {
+          /* ignore */
+        }
       },
     });
 

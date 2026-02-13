@@ -3,7 +3,6 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { parse } from 'url';
 import next from 'next';
-import { Server } from 'socket.io';
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
@@ -36,25 +35,6 @@ app.prepare().then(() => {
     }
   });
 
-  // Socket.IO 서버 통합
-  console.log('[Server] Initializing Socket.IO...');
-  const io = new Server(httpsServer, {
-    cors: {
-      origin: dev ? [`https://localhost:${port}`, `https://127.0.0.1:${port}`] : false,
-      methods: ['GET', 'POST'],
-      credentials: true,
-    },
-    transports: ['websocket', 'polling'],
-    allowEIO3: true,
-  });
-
-  console.log('[Server] Loading Socket.IO handlers...');
-  // Socket.IO handlers 로드
-  import('./src/lib/socketHandlers').then((mod) => {
-    mod.default(io);
-    console.log('> Socket.IO server initialized');
-  });
-
   httpsServer
     .once('error', (err: any) => {
       console.error('[Server] HTTPS server error:', err);
@@ -62,7 +42,6 @@ app.prepare().then(() => {
     })
     .listen(port, hostname, () => {
       console.log(`> Ready on https://${hostname}:${port}`);
-      console.log(`> Socket.IO server initialized`);
     });
 }).catch((err: any) => {
   console.error('[Server] Failed to prepare Next.js:', err);
