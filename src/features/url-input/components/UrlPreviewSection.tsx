@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 import { useUrlPreview, useUrlPreviewActions } from '@/stores/selectors';
 import { UrlPreviewCard } from './UrlPreviewCard';
 import { UrlPreviewRangeControl } from './UrlPreviewRangeControl';
-import { useSocketDownload } from '../hooks/useSocketDownload';
+import { useStreamDownload } from '../hooks/useStreamDownload';
 import { useStore } from '@/stores/useStore';
 
 const MAX_SEGMENT_SECONDS = 600; // 10분
@@ -12,7 +12,7 @@ const MAX_SEGMENT_SECONDS = 600; // 10분
 export function UrlPreviewSection() {
   const urlPreview = useUrlPreview();
   const { setUrlPreviewRange, clearUrlPreview } = useUrlPreviewActions();
-  const { handleDownload, isDownloading } = useSocketDownload();
+  const { handleDownload, isDownloading } = useStreamDownload();
   const trimProgress = useStore((state) => state.processing.trimProgress);
   const downloadMessage = useStore((state) => state.processing.downloadMessage);
   const downloadPhase = useStore((state) => state.processing.downloadPhase);
