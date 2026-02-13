@@ -67,6 +67,7 @@ interface StoreActions {
   setUploadProgress: (progress: number) => void;
   setTrimProgress: (progress: number) => void;
   setWaveformProgress: (progress: number) => void;
+  setDownloadStage: (phase: 'downloading' | 'processing' | 'completed' | null, message?: string) => void;
 
   // 플레이어 관련
   setIsPlaying: (playing: boolean) => void;
@@ -109,6 +110,8 @@ const initialState: StoreState = {
     uploadProgress: 0,
     trimProgress: 0,
     waveformProgress: 0,
+    downloadPhase: null,
+    downloadMessage: null,
   },
   player: {
     isPlaying: false,
@@ -269,6 +272,15 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
   setWaveformProgress: (progress) =>
     set((state) => ({
       processing: { ...state.processing, waveformProgress: progress },
+    })),
+
+  setDownloadStage: (phase, message) =>
+    set((state) => ({
+      processing: {
+        ...state.processing,
+        downloadPhase: phase,
+        downloadMessage: message ?? null,
+      },
     })),
 
   // 플레이어 관련
