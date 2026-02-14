@@ -1,8 +1,8 @@
 # Video Trimmer - 개발 히스토리
 
-> **기간**: 2026-01-21 ~ 2026-02-12 (23일)
-> **주요 변경**: 버그 수정, 아키텍처 전환, 정확도 개선, 기능 확장, 종합 리팩토링 (2회), URL 편집 지원
-> **최종 상태**: 프로덕션 준비 완료 (92개 테스트 통과)
+> **기간**: 2026-01-21 ~ 2026-02-14 (25일)
+> **주요 변경**: 버그 수정, 아키텍처 전환, 정확도 개선, 기능 확장, 종합 리팩토링 (3회), URL 편집 지원, SSE 마이그레이션
+> **최종 상태**: 프로덕션 준비 완료 (119개 테스트 통과)
 
 ---
 
@@ -39,6 +39,7 @@
 | 2026-02-08 | URL 트리밍 구현 | yt-dlp + streamlink 통합 |
 | 2026-02-11 | Streamlink 자동 다운로드 | postinstall 바이너리 관리 |
 | 2026-02-12 | 11단계 리팩토링 완료 | 코드 간소화 및 중복 제거 |
+| 2026-02-14 | SSE 마이그레이션 | Socket.IO 제거, 번들 100KB 감소 |
 
 ---
 
@@ -709,6 +710,139 @@ git merge refactor/code-simplification  # Fast-forward
 
 ---
 
+### 9. SSE 마이그레이션 및 리팩토링
+
+**날짜**: 2026-02-14
+**영향**: 번들 크기 감소, 타입 안전성 강화, 코드 간소화
+
+#### 배경
+
+Socket.IO를 사용한 URL 다운로드 진행 상황 전송:
+- **문제점**:
+  - 양방향 통신 불필요 (서버 → 클라이언트만 필요)
+  - 큰 번들 크기 (socket.io + socket.io-client ~100KB)
+  - 21개 의존성 추가
+  - HTTP/2 미활용
+
+#### 해결 방법
+
+**Phase 1: Socket.IO → SSE 마이그레이션**
+
+1. **Server-Sent Events 도입**:
+   ```typescript
+   // Before: Socket.IO
+   io.on('connection', (socket) => { ... });
+   socket.emit('progress', data);
+
+   // After: SSE
+   controller.enqueue(`data: ${JSON.stringify(data)}\n\n`);
+   ```
+
+2. **API 구조 변경**:
+   - `POST /api/download/start` → jobId 반환
+   - `GET /api/download/stream/[jobId]` → SSE 스트림
+   - `GET /api/download/[jobId]` → 완료된 파일 다운로드
+
+3. **EventSource onerror 문제 해결**:
+   - **문제**: 정상 완료 시에도 onerror 발생 (서버가 먼저 스트림 종료)
+   - **해결**: complete 이벤트 수신 즉시 클라이언트가 EventSource 종료
+   ```typescript
+   // 클라이언트가 서버보다 먼저 종료 → onerror 방지
+   eventSource.close();
+   eventSourceRef.current = null;
+
+   // 이후 fetch()로 파일 다운로드
+   fetch(`/api/download/${jobId}`).then(...);
+   ```
+
+**Phase 2: 타입 안전성 강화**
+
+4. **SSE 이벤트 타입 정의** (`src/types/sse.ts`):
+   ```typescript
+   // Discriminated Union
+   type SSEEvent = SSEProgressEvent | SSECompleteEvent | SSEErrorEvent;
+
+   interface SSEProgressEvent {
+     type: 'progress';
+     phase: 'downloading' | 'processing' | 'completed';
+     progress: number;
+   }
+   ```
+
+5. **유틸리티 함수 분리** (`src/features/url-input/utils/sseProgressUtils.ts`):
+   ```typescript
+   // 가중치 상수 추출
+   const PHASE_WEIGHTS = {
+     DOWNLOADING: 0.9,  // 0-90%
+     PROCESSING: 0.1,   // 90-100%
+   };
+
+   // 진행률 계산
+   calculateOverallProgress(phase, progress): number
+
+   // 메시지 생성
+   getPhaseMessage(phase, processedSeconds, totalSeconds): string
+   ```
+
+**Phase 3: 코드 간소화**
+
+6. **이벤트 핸들러 분리**:
+   - `handleProgressEvent()` - progress 처리
+   - `handleCompleteEvent()` - complete 처리
+   - `handleErrorEvent()` - error 처리
+   - `handleConnectionError()` - 연결 에러 처리
+
+7. **테스트 간소화**:
+   - 불필요한 테스트 제거 (상수, edge case, 과도한 세밀함)
+   - 26개 → 9개 (-65%)
+   - 핵심 기능 검증 테스트만 유지
+
+#### 결과
+
+**번들 크기**:
+- Socket.IO 의존성 제거: **-100KB**
+- 총 의존성 감소: **-21 packages**
+
+**코드 품질**:
+- 타입 안전성: Discriminated Union으로 강화
+- 가독성: 192줄 함수 → 명확한 핸들러 분리
+- 테스트: 136개 → 119개 (핵심만 유지)
+
+**성능**:
+- 네이티브 HTTP/2 지원
+- 더 간단한 프로토콜 (단방향 스트리밍)
+
+**새로운 파일**:
+```
+src/
+├── types/
+│   └── sse.ts                          # SSE 타입 정의
+├── features/url-input/
+│   ├── hooks/
+│   │   └── useStreamDownload.ts        # 리팩토링된 훅
+│   └── utils/
+│       └── sseProgressUtils.ts         # 진행률 유틸리티
+└── __tests__/unit/
+    └── sseProgressUtils.test.ts        # 9개 테스트
+```
+
+#### 커밋
+
+```
+7b45476 refactor: 불필요한 테스트 케이스 제거
+68c400d refactor: SSE 다운로드 훅 및 유틸리티 리팩토링
+8064d06 feat: Socket.IO를 SSE로 마이그레이션하여 번들 크기 감소
+```
+
+#### 교훈
+
+1. **적절한 도구 선택**: 양방향 통신이 필요 없으면 SSE가 Socket.IO보다 적합
+2. **EventSource 정상 종료**: 클라이언트가 서버보다 먼저 종료해야 onerror 방지
+3. **테스트 최소화**: 실제 사용 사례만 검증, edge case 과도하게 테스트하지 말 것
+4. **점진적 개선**: 마이그레이션 → 타입 강화 → 리팩토링 순서로 진행
+
+---
+
 ## 기술적 교훈
 
 ### 1. 근본 원인 > 증상
@@ -851,50 +985,55 @@ postinstall 훅을 활용한 자동 다운로드로 사용자 편의성과 저�
 - Phase 1-11 리팩토링 (2026-02-12): +315줄 (순증가, 유틸리티 추가)
 
 **테스트**:
-- 유닛 테스트: 90 → 92개 (100% 통과)
+- 유닛 테스트: 90 → 136 → 119개 (불필요한 테스트 제거)
 - E2E 테스트: 프레임워크 구성 완료
 
-**주요 마일스톤**: 8개
+**주요 마일스톤**: 9개
 
-**버그 수정**: 3개 (Playhead snap-back, MP4Box race condition, URL export)
+**버그 수정**: 4개 (Playhead snap-back, MP4Box race condition, URL export, EventSource onerror)
 
 **신규 기능**: 5개 (MP4Box, 하이브리드, URL 편집, 자동 다운로드, 뒤로가기)
 
-**리팩토링**: 2회 (2026-01-30: 787줄 감소, 2026-02-12: 11개 항목 완료)
+**리팩토링**: 3회 (2026-01-30: 787줄 감소, 2026-02-12: 11개 항목 완료, 2026-02-14: SSE 마이그레이션)
+
+**번들 최적화**: Socket.IO 제거로 100KB 감소, 21개 의존성 제거
 
 ---
 
 ## 결론
 
-Video Trimmer는 23일 동안 다음을 달성했습니다:
+Video Trimmer는 25일 동안 다음을 달성했습니다:
 
 - ✅ 핵심 기능 구현 및 최적화
-- ✅ 중대 버그 수정 (race condition 2건)
+- ✅ 중대 버그 수정 (race condition 2건, EventSource 1건)
 - ✅ 성능 20배 향상 (MP4Box)
 - ✅ 정확도 25배 향상 (FFmpeg)
-- ✅ 코드 품질 개선 (2회 리팩토링: 787줄 감소 + 11개 항목 완료)
+- ✅ 코드 품질 개선 (3회 리팩토링: 787줄 감소 + 11개 항목 + SSE 마이그레이션)
 - ✅ URL 영상 편집 지원 (신규 기능)
 - ✅ 의존성 자동 관리 (사용자 경험 개선)
+- ✅ 번들 크기 최적화 (100KB 감소, 21개 의존성 제거)
 - ✅ 프로덕션 준비 완료
 
 **핵심 성과**:
-> 빠르고 (MP4Box), 정확하고 (FFmpeg fallback), 확장 가능하고 (URL 지원), 유지보수 쉬운 (코드 간소화), 사용하기 쉬운 (자동 설정) 비디오 편집 앱
+> 빠르고 (MP4Box), 정확하고 (FFmpeg fallback), 확장 가능하고 (URL 지원), 유지보수 쉬운 (코드 간소화), 사용하기 쉬운 (자동 설정), 가벼운 (SSE) 비디오 편집 앱
 
 **기술적 선택의 핵심**:
 - 하이브리드 접근 (MP4Box + FFmpeg)
 - 자동 의존성 관리 (postinstall)
-- 점진적 리팩토링 (2회: 6단계 + 11단계)
-- 근본 원인 해결 (race condition)
-- 불필요한 기능 제거 (Preview Full)
+- 점진적 리팩토링 (3회: 6단계 + 11단계 + SSE)
+- 근본 원인 해결 (race condition, EventSource onerror)
+- 불필요한 기능 제거 (Preview Full, Socket.IO)
+- 적절한 도구 선택 (SSE > Socket.IO)
 
 **리팩토링 성과**:
 - 2026-01-30: 787줄 감소 (15.6%)
 - 2026-02-12: 11개 유틸리티/훅 추출, 컴포넌트 간소화
+- 2026-02-14: SSE 마이그레이션, 타입 강화, 번들 100KB 감소
 
 **프로젝트는 프로덕션 배포 준비가 완료되었습니다.**
 
 ---
 
-**문서 버전**: 1.1
-**마지막 업데이트**: 2026-02-12
+**문서 버전**: 1.2
+**마지막 업데이트**: 2026-02-14
 **다음 검토**: 주요 마일스톤 후
