@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { formatTime, parseTime } from '@/features/timeline/utils/timeFormatter';
 
 interface TimeInputProps {
@@ -53,9 +53,11 @@ export function TimeInput({
   );
 
   // value가 변경되면 input도 업데이트 (focus 중이 아닐 때만)
-  if (!isFocused && inputValue !== formatTime(value)) {
-    setInputValue(formatTime(value));
-  }
+  useEffect(() => {
+    if (!isFocused && inputValue !== formatTime(value)) {
+      setInputValue(formatTime(value));
+    }
+  }, [value, isFocused, inputValue]);
 
   return (
     <div className="flex items-center gap-2">
