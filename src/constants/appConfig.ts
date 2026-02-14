@@ -57,7 +57,50 @@ export const APP_CONFIG = {
     /** Segment 최대 다운로드 시간 (초) */
     SEGMENT_MAX_TIME_SEC: 30,
   },
+
+  /**
+   * 시간 변환 관련 설정
+   */
+  TIME: {
+    /** 1분 = 60초 */
+    SECONDS_PER_MINUTE: 60,
+    /** 1시간 = 3600초 */
+    SECONDS_PER_HOUR: 3600,
+    /** 1초 = 1000밀리초 */
+    MILLISECONDS_PER_SECOND: 1000,
+  },
+
+  /**
+   * UI 타이밍 관련 설정
+   */
+  UI: {
+    /** Waveform 초기화 지연 시간 (ms) */
+    WAVEFORM_INIT_DELAY_MS: 100,
+    /** Waveform 줌 debounce 지연 시간 (ms) */
+    WAVEFORM_ZOOM_DEBOUNCE_MS: 100,
+    /** 타임라인 줌 스텝 */
+    TIMELINE_ZOOM_STEP: 0.1,
+  },
+
+  /**
+   * 미리보기 재생 관련 설정
+   */
+  PLAYBACK: {
+    /** 긴 세그먼트 기준 (초) - 이 값 이상이면 Preview Edges 적용 */
+    PREVIEW_LONG_SEGMENT_THRESHOLD_SEC: 10,
+    /** Preview Edges 재생 길이 (초) */
+    PREVIEW_EDGE_DURATION_SEC: 5,
+  },
+
+  /**
+   * 폴링 간격 관련 설정
+   */
+  POLLING: {
+    /** 다운로드 진행률 체크 간격 (ms) */
+    PROGRESS_CHECK_INTERVAL_MS: 200,
+  },
 } as const;
 
 // 타입 안전성을 위한 개별 export
-export const { TIMELINE, URL_INPUT, PROCESS, EXPORT, PROGRESS } = APP_CONFIG;
+export const { TIMELINE, URL_INPUT, PROCESS, EXPORT, PROGRESS, TIME, UI, PLAYBACK, POLLING } =
+  APP_CONFIG;

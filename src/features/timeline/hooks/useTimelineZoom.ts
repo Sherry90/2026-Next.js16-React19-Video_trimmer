@@ -1,4 +1,5 @@
 import { useEffect, RefObject } from 'react';
+import { UI } from '@/constants/appConfig';
 
 /**
  * Hook for managing timeline zoom functionality with Ctrl+wheel
@@ -17,7 +18,7 @@ export function useTimelineZoom(
       if (!event.ctrlKey) return;
 
       event.preventDefault();
-      const zoomDelta = event.deltaY > 0 ? -0.1 : 0.1;
+      const zoomDelta = event.deltaY > 0 ? -UI.TIMELINE_ZOOM_STEP : UI.TIMELINE_ZOOM_STEP;
       const newZoom = zoom + zoomDelta;
       setZoom(newZoom);
     };
