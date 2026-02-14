@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useRef } from 'react';
-import type { HandleType } from '@/types/timeline';
+import type { HandleType } from '@/types/types';
 
 interface UseDragHandleOptions {
   onDragStart?: (handleType: HandleType, startX: number) => void;
