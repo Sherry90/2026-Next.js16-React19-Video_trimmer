@@ -6,7 +6,7 @@ import { FFmpegProgressTracker, getFileDuration } from './progressParser';
 import { getFfmpegPath, getStreamlinkPath } from './binPaths';
 import { formatTimeHHMMSS } from '@/features/timeline/utils/timeFormatter';
 import { runWithTimeout } from './processUtils';
-import { PROCESS } from '@/constants/appConfig';
+import { PROCESS, EXPORT } from '@/constants/appConfig';
 import type { SSEProgressEvent, SSECompleteEvent, SSEErrorEvent } from '@/types/sse';
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
@@ -109,7 +109,7 @@ export async function startDownloadJob(
   const segmentDuration = endTime - startTime;
   let totalSeconds = Math.max(1, segmentDuration);
 
-  const estimatedBitrate = tbr || 2500;
+  const estimatedBitrate = tbr || EXPORT.DEFAULT_BITRATE_KBPS;
   const estimatedBytes = ((estimatedBitrate * 1024) / 8) * segmentDuration;
   console.log(`[SSE] Estimated: ${(estimatedBytes / 1024 / 1024).toFixed(1)} MB (${estimatedBitrate} kbps)`);
 
