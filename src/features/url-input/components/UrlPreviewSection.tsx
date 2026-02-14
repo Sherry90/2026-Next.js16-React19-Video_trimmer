@@ -4,21 +4,24 @@ import { useCallback } from 'react';
 import { useUrlPreview, useUrlPreviewActions } from '@/stores/selectors';
 import { UrlPreviewCard } from './UrlPreviewCard';
 import { UrlPreviewRangeControl } from './UrlPreviewRangeControl';
-import { useUrlDownload } from '../hooks/useUrlDownload';
-
-const MAX_SEGMENT_SECONDS = 600; // 10분
+import { useStreamDownload } from '../hooks/useStreamDownload';
+import { useStore } from '@/stores/useStore';
+import { TIMELINE } from '@/constants/appConfig';
 
 export function UrlPreviewSection() {
   const urlPreview = useUrlPreview();
   const { setUrlPreviewRange, clearUrlPreview } = useUrlPreviewActions();
-  const { handleDownload, isDownloading } = useUrlDownload();
+  const { handleDownload, isDownloading } = useStreamDownload();
+  const trimProgress = useStore((state) => state.processing.trimProgress);
+  const downloadMessage = useStore((state) => state.processing.downloadMessage);
+  const downloadPhase = useStore((state) => state.processing.downloadPhase);
 
   const handleInPointChange = useCallback(
     (value: number) => {
       if (!urlPreview) return;
       // Start 변경 시: outPoint가 새 Start보다 작거나 같으면 자동으로 Start + 10분으로 조정
       const newOut = value >= urlPreview.outPoint
-        ? Math.min(value + MAX_SEGMENT_SECONDS, urlPreview.duration)
+        ? Math.min(value + TIMELINE.MAX_SEGMENT_DURATION_SECONDS, urlPreview.duration)
         : urlPreview.outPoint;
       setUrlPreviewRange(value, newOut);
     },
@@ -41,7 +44,7 @@ export function UrlPreviewSection() {
   if (!urlPreview) return null;
 
   const segmentDuration = urlPreview.outPoint - urlPreview.inPoint;
-  const isOverLimit = segmentDuration > MAX_SEGMENT_SECONDS;
+  const isOverLimit = segmentDuration > TIMELINE.MAX_SEGMENT_DURATION_SECONDS;
 
   return (
     <div className="w-full max-w-2xl mx-auto p-6">
@@ -50,14 +53,14 @@ export function UrlPreviewSection() {
           title={urlPreview.title}
           thumbnail={urlPreview.thumbnail}
           duration={urlPreview.duration}
-          maxDuration={MAX_SEGMENT_SECONDS}
+          maxDuration={TIMELINE.MAX_SEGMENT_DURATION_SECONDS}
         />
 
         <UrlPreviewRangeControl
           inPoint={urlPreview.inPoint}
           outPoint={urlPreview.outPoint}
           duration={urlPreview.duration}
-          maxSegment={MAX_SEGMENT_SECONDS}
+          maxSegment={TIMELINE.MAX_SEGMENT_DURATION_SECONDS}
           onInPointChange={handleInPointChange}
           onOutPointChange={handleOutPointChange}
         />
@@ -66,19 +69,33 @@ export function UrlPreviewSection() {
         <div className="p-5 pt-0">
           {isDownloading && (
             <div className="mb-5">
-              <div className="w-full">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <p className="text-sm text-gray-300 font-medium">
-                      서버에서 영상 처리 중...
+              <div className="w-full space-y-2">
+                {/* Phase indicator */}
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-medium text-gray-200">
+                      {downloadPhase === 'downloading' && '다운로드 중...'}
+                      {downloadPhase === 'processing' && '처리 중...'}
+                      {downloadPhase === 'completed' && '완료!'}
+                      {!downloadPhase && '준비 중...'}
                     </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      영상 길이에 따라 수 분 소요될 수 있습니다
+                    <p className="text-xs text-gray-400">
+                      {downloadMessage || '서버에서 영상 처리 중...'}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-semibold text-blue-500">
+                      {Math.round(trimProgress)}%
                     </p>
                   </div>
                 </div>
+
+                {/* Progress bar */}
                 <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-600 rounded-full animate-pulse-bar" />
+                  <div
+                    className="h-full bg-blue-600 rounded-full transition-all duration-300"
+                    style={{ width: `${trimProgress}%` }}
+                  />
                 </div>
               </div>
             </div>

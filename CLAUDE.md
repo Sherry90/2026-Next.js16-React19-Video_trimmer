@@ -77,15 +77,17 @@ Single store at `src/stores/useStore.ts` manages all application state:
 src/
 ├── features/
 │   ├── upload/        # File upload, drag-and-drop, validation
-│   ├── url-input/     # URL input, yt-dlp integration (refactored 2026-02-12)
+│   ├── url-input/     # URL input, yt-dlp integration (refactored 2026-02-12, SSE 2026-02-14)
 │   │   ├── components/
 │   │   │   ├── UrlInputZone.tsx
 │   │   │   ├── UrlPreviewSection.tsx       # ~95 lines (decomposed)
 │   │   │   ├── UrlPreviewCard.tsx          # New: thumbnail & info
 │   │   │   └── UrlPreviewRangeControl.tsx  # New: time inputs
-│   │   └── hooks/
-│   │       ├── useUrlInput.ts
-│   │       └── useUrlDownload.ts           # New: download logic
+│   │   ├── hooks/
+│   │   │   ├── useUrlInput.ts
+│   │   │   └── useStreamDownload.ts        # SSE-based download (refactored)
+│   │   └── utils/
+│   │       └── sseProgressUtils.ts         # Progress calculation & messages
 │   ├── player/        # Video.js player, context provider, playback controls
 │   ├── timeline/      # Timeline editor (refactored 2026-01-30, 2026-02-12)
 │   │   ├── components/
@@ -115,7 +117,13 @@ src/
 │   ├── binPaths.ts
 │   ├── processUtils.ts       # New: process management
 │   ├── apiErrorHandler.ts    # New: API error handling
-│   └── formatSelector.ts     # New: yt-dlp format selection
+│   ├── formatSelector.ts     # New: yt-dlp format selection
+│   └── downloadJob.ts        # New: SSE download job management
+├── types/             # TypeScript type definitions (expanded 2026-02-14)
+│   ├── store.ts
+│   ├── video.ts
+│   ├── timeline.ts
+│   └── sse.ts                # New: SSE event types
 └── stores/            # State management (refactored 2026-02-12)
     ├── useStore.ts
     ├── selectors.ts          # ~94 lines (factory pattern)
@@ -127,6 +135,7 @@ Each feature has `components/`, `hooks/`, `utils/`, and sometimes `context/`.
 **Recent refactoring**:
 - **2026-01-30**: TimelineEditor decomposed from 182 lines to 64 lines. InPointHandle/OutPointHandle merged into TrimHandle.
 - **2026-02-12**: 11-item refactoring (Preview Full removed, 11 new utility files/hooks, major component simplification)
+- **2026-02-14**: SSE migration (Socket.IO removed, -100KB bundle, -21 packages), type safety (Discriminated Union), utility extraction (sseProgressUtils.ts)
 
 ### Video Processing Flow
 
@@ -332,9 +341,10 @@ MP4Box trimming finds the nearest keyframe to start time, resulting in 1-2 secon
 
 ### Unit Tests (Vitest)
 Comprehensive coverage of:
-- Utility functions (timeFormatter, constrainPosition, validateFile)
+- Utility functions (timeFormatter, constrainPosition, validateFile, sseProgressUtils)
 - Zustand store logic (all state management)
-- 92 tests passing (updated after refactoring)
+- SSE progress calculation and messaging
+- 119 tests passing (updated 2026-02-14, streamlined from 136)
 
 ### E2E Tests (Playwright)
 Framework configured with test skeletons:

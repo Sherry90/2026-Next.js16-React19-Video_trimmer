@@ -1,15 +1,16 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { useStore } from '@/stores/useStore';
 import { useCommonActions, useProgressActions } from '@/stores/selectors';
 import { trimVideo } from '@/features/export/utils/trimVideoDispatcher';
 import { generateEditedFilename } from '@/features/export/utils/generateFilename';
 import { requiresFFmpegDownload } from '@/features/export/utils/formatDetector';
+import { useFFmpegLoader } from './useFFmpegLoader';
 import type { VideoFile } from '@/types/store';
 
 /**
  * Export 버튼 상태 관리 훅
  *
- * Export 로직, FFmpeg 로딩 상태, 버튼 텍스트/타이틀 관리
+ * Export 로직, 버튼 텍스트/타이틀 관리
  */
 export function useExportState(
   videoFile: VideoFile | null,
@@ -20,9 +21,8 @@ export function useExportState(
     useCommonActions();
   const { setTrimProgress } = useProgressActions();
 
-  // FFmpeg loading state (only for non-MP4 formats)
-  const [isLoadingFFmpeg, setIsLoadingFFmpeg] = useState(false);
-  const [ffmpegLoadProgress, setFFmpegLoadProgress] = useState(0);
+  // FFmpeg loading state (delegated to separate hook)
+  const ffmpegLoader = useFFmpegLoader();
 
   const handleExport = useCallback(async () => {
     if (!videoFile) {
@@ -33,7 +33,6 @@ export function useExportState(
     try {
       setPhase('processing');
       setTrimProgress(0);
-      setFFmpegLoadProgress(0);
 
       // URL source: already trimmed on server, use existing file
       if (videoFile.source === 'url') {
@@ -61,17 +60,7 @@ export function useExportState(
         onProgress: (progress) => {
           setTrimProgress(progress);
         },
-        onFFmpegLoadStart: () => {
-          setIsLoadingFFmpeg(true);
-          setFFmpegLoadProgress(0);
-        },
-        onFFmpegLoadProgress: (progress) => {
-          setFFmpegLoadProgress(progress);
-        },
-        onFFmpegLoadComplete: () => {
-          setIsLoadingFFmpeg(false);
-          setFFmpegLoadProgress(100);
-        },
+        ...ffmpegLoader.handlers,
       });
 
       // Create Blob URL
@@ -117,18 +106,18 @@ export function useExportState(
     requiresFFmpegDownload(videoFile.file);
 
   // Button text based on loading state
-  const buttonText = isLoadingFFmpeg
-    ? `Loading FFmpeg... ${ffmpegLoadProgress}%`
+  const buttonText = ffmpegLoader.isLoading
+    ? `Loading FFmpeg... ${ffmpegLoader.progress}%`
     : 'Export';
 
   // Button title (tooltip) based on state
-  const buttonTitle = isLoadingFFmpeg
-    ? `Downloading FFmpeg (20MB)... ${ffmpegLoadProgress}%`
+  const buttonTitle = ffmpegLoader.isLoading
+    ? `Downloading FFmpeg (20MB)... ${ffmpegLoader.progress}%`
     : willDownloadFFmpeg
     ? 'This format requires downloading FFmpeg (20MB, one-time)'
     : undefined;
 
-  const isDisabled = !videoFile || isLoadingFFmpeg;
+  const isDisabled = !videoFile || ffmpegLoader.isLoading;
 
   return {
     buttonText,

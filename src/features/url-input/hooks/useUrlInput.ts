@@ -43,6 +43,7 @@ export function useUrlInput() {
         streamUrl: data.url,
         streamType: data.streamType || 'mp4',
         originalUrl: trimmedUrl,
+        tbr: data.tbr || null, // Total bitrate (kbps)
       });
     } catch {
       setError('서버에 연결할 수 없습니다');

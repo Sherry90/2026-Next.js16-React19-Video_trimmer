@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { getYtdlpPath, getFfmpegPath } from '@/lib/binPaths';
-import { parseYtdlpError } from '@/lib/apiErrorHandler';
+import { parseYtdlpError } from '@/lib/apiUtils';
 import { selectBestFormat } from '@/lib/formatSelector';
 
 const execFileAsync = promisify(execFile);
@@ -77,6 +77,7 @@ export async function POST(request: NextRequest) {
       url: streamUrl,
       ext: 'mp4',
       streamType,
+      tbr: formatSelection?.tbr || null, // Total bitrate (kbps)
     });
   } catch (error: any) {
     const { message, status } = parseYtdlpError(error);

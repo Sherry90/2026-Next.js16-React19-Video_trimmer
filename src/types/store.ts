@@ -1,3 +1,5 @@
+import type { DownloadPhase } from './sse';
+
 export type AppPhase =
   | 'idle'           // 초기 상태
   | 'uploading'      // 파일 업로드 중
@@ -16,6 +18,7 @@ export interface UrlPreviewState {
   streamType: 'hls' | 'mp4';
   inPoint: number;
   outPoint: number;
+  tbr: number | null; // Total bitrate (kbps)
 }
 
 export interface VideoFile {
@@ -46,6 +49,8 @@ export interface ProcessingState {
   uploadProgress: number;     // 0-100
   trimProgress: number;       // 0-100
   waveformProgress: number;   // Phase 4, 0-100
+  downloadPhase: DownloadPhase | null; // SSE download phase
+  downloadMessage: string | null;   // SSE download message
 }
 
 export interface PlayerState {

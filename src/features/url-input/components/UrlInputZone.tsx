@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { useUrlInput } from '@/features/url-input/hooks/useUrlInput';
+import { URL_INPUT } from '@/constants/appConfig';
 
 export function UrlInputZone() {
   const [url, setUrl] = useState('');
@@ -34,7 +35,7 @@ export function UrlInputZone() {
           // Valid URL pasted - auto submit after a short delay
           setTimeout(() => {
             handleUrlSubmit(pastedText.trim());
-          }, 100);
+          }, URL_INPUT.DEBOUNCE_MS);
         } catch {
           // Not a valid URL, just let it paste normally
         }
