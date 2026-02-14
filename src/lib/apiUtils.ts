@@ -17,7 +17,7 @@ export function parseYtdlpError(error: any): {
   if (error.code === 'ENOENT') {
     return {
       message:
-        'yt-dlp가 설치되어 있지 않습니다. `brew install yt-dlp`로 설치해주세요.',
+        '영상 처리 도구(yt-dlp)를 찾을 수 없습니다. 앱이 올바르게 설치되지 않았을 수 있습니다.',
       status: 500,
     };
   }
