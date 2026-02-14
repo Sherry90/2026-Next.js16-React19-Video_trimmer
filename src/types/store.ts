@@ -1,3 +1,5 @@
+import type { DownloadPhase } from './sse';
+
 export type AppPhase =
   | 'idle'           // 초기 상태
   | 'uploading'      // 파일 업로드 중
@@ -47,8 +49,8 @@ export interface ProcessingState {
   uploadProgress: number;     // 0-100
   trimProgress: number;       // 0-100
   waveformProgress: number;   // Phase 4, 0-100
-  downloadPhase: 'downloading' | 'processing' | 'completed' | null; // Socket.IO download phase
-  downloadMessage: string | null;   // Socket.IO download message
+  downloadPhase: DownloadPhase | null; // SSE download phase
+  downloadMessage: string | null;   // SSE download message
 }
 
 export interface PlayerState {
