@@ -5,6 +5,7 @@ import { join } from 'path';
 import { FFmpegProgressTracker, getFileDuration } from './progressParser';
 import { getFfmpegPath, getStreamlinkPath } from './binPaths';
 import { formatTimeHHMMSS } from '@/features/timeline/utils/timeFormatter';
+import { runWithTimeout } from './processUtils';
 import type { SSEProgressEvent, SSECompleteEvent, SSEErrorEvent } from '@/types/sse';
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
@@ -13,26 +14,6 @@ function safeUnlink(path: string): void {
   try {
     if (path && existsSync(path)) unlinkSync(path);
   } catch {}
-}
-
-function runProcessWithTimeout(proc: any, timeoutMs: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    let settled = false;
-    const settle = (result: boolean) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeoutId);
-      resolve(result);
-    };
-
-    const timeoutId = setTimeout(() => {
-      proc.kill('SIGKILL');
-      settle(false);
-    }, timeoutMs);
-
-    proc.on('close', (code: number) => settle(code === 0));
-    proc.on('error', () => settle(false));
-  });
 }
 
 // Server-side event types (extends SSE types with jobId)
@@ -227,7 +208,7 @@ export async function startDownloadJob(
     }, 200);
 
     const streamlinkSuccess = await (async () => {
-      const result = await runProcessWithTimeout(streamlinkProc, 300000);
+      const result = await runWithTimeout(streamlinkProc, 300000);
       clearInterval(progressInterval);
       streamlinkProc.stderr?.removeAllListeners('data');
 
@@ -298,7 +279,7 @@ export async function startDownloadJob(
       }
     });
 
-    const ffmpegSuccess = await runProcessWithTimeout(ffmpegProc, 60000);
+    const ffmpegSuccess = await runWithTimeout(ffmpegProc, 60000);
 
     safeUnlink(tempFile);
 
