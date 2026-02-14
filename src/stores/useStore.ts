@@ -10,6 +10,12 @@ import type {
   UrlPreviewState,
 } from '@/types/store';
 import { cleanupFFmpeg } from '@/features/export/utils/trimVideoDispatcher';
+import {
+  constrainInPoint,
+  constrainOutPoint,
+  constrainPlayhead,
+  constrainZoom,
+} from './constraintUtils';
 
 // ==================== 스토어 상태 ====================
 
@@ -67,6 +73,11 @@ interface StoreActions {
   setUploadProgress: (progress: number) => void;
   setTrimProgress: (progress: number) => void;
   setWaveformProgress: (progress: number) => void;
+  /**
+   * 다운로드 단계(phase) 및 메시지 설정
+   * 참고: "stage"와 "phase"는 같은 의미 (다운로드 진행 단계)
+   */
+  setDownloadStage: (phase: 'downloading' | 'processing' | 'completed' | null, message?: string) => void;
 
   // 플레이어 관련
   setIsPlaying: (playing: boolean) => void;
@@ -109,6 +120,8 @@ const initialState: StoreState = {
     uploadProgress: 0,
     trimProgress: 0,
     waveformProgress: 0,
+    downloadPhase: null,
+    downloadMessage: null,
   },
   player: {
     isPlaying: false,
@@ -191,7 +204,7 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
   setInPoint: (time) => {
     const { timeline } = get();
     if (timeline.isInPointLocked) return;
-    const constrainedTime = Math.max(0, Math.min(time, timeline.outPoint));
+    const constrainedTime = constrainInPoint(time, timeline.outPoint);
     set({
       timeline: {
         ...timeline,
@@ -205,7 +218,7 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
     const { timeline, videoFile } = get();
     if (timeline.isOutPointLocked) return;
     const maxTime = videoFile?.duration ?? 0;
-    const constrainedTime = Math.max(timeline.inPoint, Math.min(time, maxTime));
+    const constrainedTime = constrainOutPoint(time, timeline.inPoint, maxTime);
     set({
       timeline: {
         ...timeline,
@@ -217,10 +230,7 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
 
   setPlayhead: (time) => {
     const { timeline } = get();
-    const constrainedTime = Math.max(
-      timeline.inPoint,
-      Math.min(time, timeline.outPoint)
-    );
+    const constrainedTime = constrainPlayhead(time, timeline.inPoint, timeline.outPoint);
     set({
       timeline: { ...timeline, playhead: constrainedTime },
     });
@@ -238,7 +248,7 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
 
   setZoom: (zoom) =>
     set((state) => ({
-      timeline: { ...state.timeline, zoom: Math.max(0.1, Math.min(zoom, 10)) },
+      timeline: { ...state.timeline, zoom: constrainZoom(zoom) },
     })),
 
   resetTimeline: () => {
@@ -269,6 +279,25 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
   setWaveformProgress: (progress) =>
     set((state) => ({
       processing: { ...state.processing, waveformProgress: progress },
+    })),
+
+  /**
+   * 다운로드 단계 및 메시지 설정
+   *
+   * 용어 설명:
+   * - "phase" (단계): 다운로드 프로세스의 현재 단계 ('downloading' | 'processing' | 'completed')
+   * - "message": 사용자에게 표시할 진행 상태 메시지
+   *
+   * 참고: 함수 이름은 "setDownloadStage"이지만, 실제로는 downloadPhase와 downloadMessage를 설정합니다.
+   *       "stage"와 "phase"는 같은 의미로 사용됩니다 (다운로드 진행 단계).
+   */
+  setDownloadStage: (phase, message) =>
+    set((state) => ({
+      processing: {
+        ...state.processing,
+        downloadPhase: phase,
+        downloadMessage: message ?? null,
+      },
     })),
 
   // 플레이어 관련

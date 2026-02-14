@@ -3,11 +3,12 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "tsx server.ts",
+    "dev:next-only": "next dev --turbopack",
     "dev:https": "next dev --turbopack --experimental-https",
     "dev:tunnel": "next dev --turbopack & cloudflared tunnel --url http://localhost:3000",
     "build": "next build",
-    "start": "next start",
+    "start": "NODE_ENV=production tsx server.ts",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "test": "vitest",
@@ -53,6 +54,7 @@
     "jsdom": "^27.4.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   }

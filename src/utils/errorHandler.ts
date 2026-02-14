@@ -1,4 +1,4 @@
-import type { AppError, ErrorCode } from '@/types/error';
+import type { AppError, ErrorCode } from '@/types/types';
 
 /**
  * Single source of truth for error definitions

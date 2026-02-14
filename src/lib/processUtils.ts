@@ -31,10 +31,17 @@ export interface ProcessTimeoutOptions {
  * stderr 수집, 타임아웃 처리, 성공/실패 판정을 자동화
  *
  * @param proc - Child process
- * @param options - Configuration options
+ * @param timeoutMsOrOptions - Timeout in ms (simple mode) or configuration options (advanced mode)
  * @returns Promise<boolean> - true if successful
  *
  * @example
+ * Simple mode (assumes success on exit code 0):
+ * ```typescript
+ * const proc = spawn('command', ['args']);
+ * const success = await runWithTimeout(proc, 60000);
+ * ```
+ *
+ * Advanced mode (custom success check):
  * ```typescript
  * const proc = spawn('command', ['args']);
  * const success = await runWithTimeout(proc, {
@@ -46,12 +53,30 @@ export interface ProcessTimeoutOptions {
  */
 export function runWithTimeout(
   proc: ChildProcess,
-  options: ProcessTimeoutOptions
+  timeoutMsOrOptions: number | ProcessTimeoutOptions
 ): Promise<boolean> {
+  // Convert simple timeout to full options
+  const options: ProcessTimeoutOptions =
+    typeof timeoutMsOrOptions === 'number'
+      ? {
+          timeoutMs: timeoutMsOrOptions,
+          logPrefix: '[Process]',
+          onSuccess: (code) => code === 0,
+        }
+      : timeoutMsOrOptions;
+
   const { timeoutMs, logPrefix, onSuccess } = options;
 
   return new Promise((resolve) => {
     let stderr = '';
+    let settled = false;
+
+    const settle = (result: boolean) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      resolve(result);
+    };
 
     proc.stderr?.on('data', (chunk: Buffer) => {
       stderr += chunk.toString();
@@ -59,29 +84,27 @@ export function runWithTimeout(
 
     proc.on('error', (err) => {
       console.log(`${logPrefix} process error:`, err.message);
-      resolve(false);
+      settle(false);
     });
 
     proc.on('close', (code) => {
       if (onSuccess(code, stderr)) {
         console.log(`${logPrefix} succeeded`);
-        resolve(true);
+        settle(true);
       } else {
         console.log(
           `${logPrefix} exited with code ${code}:`,
           stderr.slice(0, 300)
         );
-        resolve(false);
+        settle(false);
       }
     });
 
     // Timeout
     const timeout = setTimeout(() => {
       console.log(`${logPrefix} timed out after ${timeoutMs}ms`);
-      killProcess(proc);
-      resolve(false);
+      proc.kill('SIGKILL');
+      settle(false);
     }, timeoutMs);
-
-    proc.on('close', () => clearTimeout(timeout));
   });
 }

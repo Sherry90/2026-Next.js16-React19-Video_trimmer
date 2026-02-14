@@ -54,6 +54,9 @@ views.json
 # Downloaded binaries (auto-downloaded by postinstall)
 /.bin
 
+# HTTPS certificates (local dev only)
+/certificates
+
 # Test sample videos
 /testsample
 /public/*.mp4

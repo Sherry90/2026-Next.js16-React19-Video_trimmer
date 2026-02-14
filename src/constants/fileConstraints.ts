@@ -1,4 +1,4 @@
-import type { VideoConstraints } from '@/types/video';
+import type { VideoConstraints } from '@/types/types';
 
 // File size thresholds (multi-tier validation)
 export const FILE_SIZE = {
