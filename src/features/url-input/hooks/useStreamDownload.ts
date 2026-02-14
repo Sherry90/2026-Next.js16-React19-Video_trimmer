@@ -42,6 +42,19 @@ export function useStreamDownload() {
       console.log('[SSE Client] Range:', urlPreview.inPoint, '-', urlPreview.outPoint);
 
       /**
+       * 공통 에러 핸들러
+       */
+      const handleError = (message: string, eventSource?: EventSource) => {
+        setErrorAndTransition(message, 'DOWNLOAD_ERROR');
+        setIsDownloading(false);
+        setDownloadStage(null);
+        if (eventSource) {
+          eventSource.close();
+          eventSourceRef.current = null;
+        }
+      };
+
+      /**
        * Progress 이벤트 핸들러
        */
       const handleProgressEvent = (data: SSEProgressEvent) => {
@@ -98,10 +111,9 @@ export function useStreamDownload() {
           })
           .catch((error) => {
             const errorMessage = error instanceof Error ? error.message : '파일 다운로드에 실패했습니다';
-            setErrorAndTransition(errorMessage, 'DOWNLOAD_ERROR');
+            handleError(errorMessage);
           })
           .finally(() => {
-            setIsDownloading(false);
             // eventSource는 이미 닫힘
           });
       };
@@ -111,11 +123,7 @@ export function useStreamDownload() {
        */
       const handleErrorEvent = (data: SSEErrorEvent, eventSource: EventSource) => {
         console.error('[SSE Client] Download error:', data.message);
-        setErrorAndTransition(data.message, 'DOWNLOAD_ERROR');
-        setIsDownloading(false);
-        setDownloadStage(null);
-        eventSource.close();
-        eventSourceRef.current = null;
+        handleError(data.message, eventSource);
       };
 
       /**
@@ -129,11 +137,7 @@ export function useStreamDownload() {
         }
 
         console.error('[SSE Client] EventSource connection error');
-        setErrorAndTransition('서버 연결이 끊어졌습니다', 'NETWORK_ERROR');
-        setIsDownloading(false);
-        setDownloadStage(null);
-        eventSource.close();
-        eventSourceRef.current = null;
+        handleError('서버 연결이 끊어졌습니다', eventSource);
       };
 
       try {
@@ -194,9 +198,7 @@ export function useStreamDownload() {
 
         console.error('[SSE Client] Failed to start download:', error);
         const errorMessage = error instanceof Error ? error.message : '다운로드 시작에 실패했습니다';
-        setErrorAndTransition(errorMessage, 'DOWNLOAD_ERROR');
-        setIsDownloading(false);
-        setDownloadStage(null);
+        handleError(errorMessage);
       }
     },
     [setTrimProgress, setDownloadStage, setVideoFile, setPhase, setErrorAndTransition]
