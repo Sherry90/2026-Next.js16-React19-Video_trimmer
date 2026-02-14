@@ -6,8 +6,7 @@ import { UrlPreviewCard } from './UrlPreviewCard';
 import { UrlPreviewRangeControl } from './UrlPreviewRangeControl';
 import { useStreamDownload } from '../hooks/useStreamDownload';
 import { useStore } from '@/stores/useStore';
-
-const MAX_SEGMENT_SECONDS = 600; // 10분
+import { TIMELINE } from '@/constants/appConfig';
 
 export function UrlPreviewSection() {
   const urlPreview = useUrlPreview();
@@ -22,7 +21,7 @@ export function UrlPreviewSection() {
       if (!urlPreview) return;
       // Start 변경 시: outPoint가 새 Start보다 작거나 같으면 자동으로 Start + 10분으로 조정
       const newOut = value >= urlPreview.outPoint
-        ? Math.min(value + MAX_SEGMENT_SECONDS, urlPreview.duration)
+        ? Math.min(value + TIMELINE.MAX_SEGMENT_DURATION_SECONDS, urlPreview.duration)
         : urlPreview.outPoint;
       setUrlPreviewRange(value, newOut);
     },
@@ -45,7 +44,7 @@ export function UrlPreviewSection() {
   if (!urlPreview) return null;
 
   const segmentDuration = urlPreview.outPoint - urlPreview.inPoint;
-  const isOverLimit = segmentDuration > MAX_SEGMENT_SECONDS;
+  const isOverLimit = segmentDuration > TIMELINE.MAX_SEGMENT_DURATION_SECONDS;
 
   return (
     <div className="w-full max-w-2xl mx-auto p-6">
@@ -54,14 +53,14 @@ export function UrlPreviewSection() {
           title={urlPreview.title}
           thumbnail={urlPreview.thumbnail}
           duration={urlPreview.duration}
-          maxDuration={MAX_SEGMENT_SECONDS}
+          maxDuration={TIMELINE.MAX_SEGMENT_DURATION_SECONDS}
         />
 
         <UrlPreviewRangeControl
           inPoint={urlPreview.inPoint}
           outPoint={urlPreview.outPoint}
           duration={urlPreview.duration}
-          maxSegment={MAX_SEGMENT_SECONDS}
+          maxSegment={TIMELINE.MAX_SEGMENT_DURATION_SECONDS}
           onInPointChange={handleInPointChange}
           onOutPointChange={handleOutPointChange}
         />

@@ -6,6 +6,7 @@ import { FFmpegProgressTracker, getFileDuration } from './progressParser';
 import { getFfmpegPath, getStreamlinkPath } from './binPaths';
 import { formatTimeHHMMSS } from '@/features/timeline/utils/timeFormatter';
 import { runWithTimeout } from './processUtils';
+import { PROCESS } from '@/constants/appConfig';
 import type { SSEProgressEvent, SSECompleteEvent, SSEErrorEvent } from '@/types/sse';
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
@@ -208,7 +209,7 @@ export async function startDownloadJob(
     }, 200);
 
     const streamlinkSuccess = await (async () => {
-      const result = await runWithTimeout(streamlinkProc, 300000);
+      const result = await runWithTimeout(streamlinkProc, PROCESS.STREAMLINK_TIMEOUT_MS);
       clearInterval(progressInterval);
       streamlinkProc.stderr?.removeAllListeners('data');
 
@@ -279,7 +280,7 @@ export async function startDownloadJob(
       }
     });
 
-    const ffmpegSuccess = await runWithTimeout(ffmpegProc, 60000);
+    const ffmpegSuccess = await runWithTimeout(ffmpegProc, PROCESS.FFMPEG_TIMEOUT_MS);
 
     safeUnlink(tempFile);
 
