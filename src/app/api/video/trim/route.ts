@@ -7,7 +7,7 @@ import { randomUUID } from 'crypto';
 import { getFfmpegPath, getStreamlinkPath, hasStreamlink } from '@/lib/binPaths';
 import { formatTimeHHMMSS } from '@/features/timeline/utils/timeFormatter';
 import { runWithTimeout } from '@/lib/processUtils';
-import { handleApiError } from '@/lib/apiErrorHandler';
+import { validateTrimRequest, handleApiError } from '@/lib/apiUtils';
 
 /**
  * Streamlink → ffmpeg two-stage trimming
@@ -107,29 +107,14 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { originalUrl, startTime, endTime, filename } = body;
 
-    if (startTime == null || endTime == null) {
-      return NextResponse.json(
-        { error: 'startTime, endTime이 필요합니다' },
-        { status: 400 }
-      );
+    // 파라미터 검증
+    const validation = validateTrimRequest(body);
+    if (!validation.valid) {
+      return NextResponse.json({ error: validation.error }, { status: validation.status });
     }
 
-    if (endTime <= startTime) {
-      return NextResponse.json(
-        { error: 'endTime은 startTime보다 커야 합니다' },
-        { status: 400 }
-      );
-    }
-
-    if (!originalUrl) {
-      return NextResponse.json(
-        { error: 'originalUrl이 필요합니다' },
-        { status: 400 }
-      );
-    }
-
+    const { originalUrl, startTime, endTime, filename } = validation.data;
     const outputFilename = filename || 'trimmed_video.mp4';
     const success = await trimWithStreamlink(originalUrl, startTime, endTime, tmpFile);
 
