@@ -6,7 +6,7 @@ import { FFmpegProgressTracker, getFileDuration } from './progressParser';
 import { getFfmpegPath, getStreamlinkPath } from './binPaths';
 import { formatTimeHHMMSS } from '@/features/timeline/utils/timeFormatter';
 import { runWithTimeout } from './processUtils';
-import { PROCESS, EXPORT } from '@/constants/appConfig';
+import { PROCESS, EXPORT, POLLING } from '@/constants/appConfig';
 import type { SSEProgressEvent, SSECompleteEvent, SSEErrorEvent } from '@/types/sse';
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
@@ -206,7 +206,7 @@ export async function startDownloadJob(
           lastLoggedProgress = rounded;
         }
       } catch {}
-    }, 200);
+    }, POLLING.PROGRESS_CHECK_INTERVAL_MS);
 
     const streamlinkSuccess = await (async () => {
       const result = await runWithTimeout(streamlinkProc, PROCESS.STREAMLINK_TIMEOUT_MS);

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useVideoPlayerContext } from '@/features/player/context/VideoPlayerContext';
+import { PLAYBACK } from '@/constants/appConfig';
 
 /**
  * Hook for managing preview playback functionality
@@ -33,12 +34,12 @@ export function usePreviewPlayback(inPoint: number, outPoint: number) {
     const segmentDuration = outPoint - inPoint;
 
     // For short segments, just play the full thing
-    if (segmentDuration < 10) {
+    if (segmentDuration < PLAYBACK.PREVIEW_LONG_SEGMENT_THRESHOLD_SEC) {
       handlePreview();
       return;
     }
 
-    const firstSegmentEnd = inPoint + 5;
+    const firstSegmentEnd = inPoint + PLAYBACK.PREVIEW_EDGE_DURATION_SEC;
     let isTransitioning = false;
 
     // Start playback from beginning
@@ -54,7 +55,7 @@ export function usePreviewPlayback(inPoint: number, outPoint: number) {
       const currentTime = player.currentTime();
       if (currentTime !== undefined && currentTime >= firstSegmentEnd && !isTransitioning) {
         isTransitioning = true;
-        const secondSegmentStart = outPoint - 5;
+        const secondSegmentStart = outPoint - PLAYBACK.PREVIEW_EDGE_DURATION_SEC;
         player.pause();
         seek(secondSegmentStart);
 

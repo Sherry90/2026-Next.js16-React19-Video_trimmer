@@ -1,11 +1,13 @@
+import { TIME } from '@/constants/appConfig';
+
 /**
  * 초 단위 시간을 HH:MM:SS.mmm 형식으로 변환
  */
 export function formatTime(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-  const milliseconds = Math.floor((seconds % 1) * 1000);
+  const hours = Math.floor(seconds / TIME.SECONDS_PER_HOUR);
+  const minutes = Math.floor((seconds % TIME.SECONDS_PER_HOUR) / TIME.SECONDS_PER_MINUTE);
+  const secs = Math.floor(seconds % TIME.SECONDS_PER_MINUTE);
+  const milliseconds = Math.floor((seconds % 1) * TIME.MILLISECONDS_PER_SECOND);
 
   const hoursStr = hours.toString().padStart(2, '0');
   const minutesStr = minutes.toString().padStart(2, '0');
@@ -19,9 +21,9 @@ export function formatTime(seconds: number): string {
  * 초 단위 시간을 HH:MM:SS 형식으로 변환 (streamlink용)
  */
 export function formatTimeHHMMSS(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
+  const hours = Math.floor(seconds / TIME.SECONDS_PER_HOUR);
+  const minutes = Math.floor((seconds % TIME.SECONDS_PER_HOUR) / TIME.SECONDS_PER_MINUTE);
+  const secs = Math.floor(seconds % TIME.SECONDS_PER_MINUTE);
 
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
@@ -50,15 +52,20 @@ export function parseTime(timeString: string): number {
     return 0;
   }
 
-  return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000;
+  return (
+    hours * TIME.SECONDS_PER_HOUR +
+    minutes * TIME.SECONDS_PER_MINUTE +
+    seconds +
+    milliseconds / TIME.MILLISECONDS_PER_SECOND
+  );
 }
 
 /**
  * 간단한 시간 표시 (MM:SS)
  */
 export function formatSimpleTime(seconds: number): string {
-  const minutes = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
+  const minutes = Math.floor(seconds / TIME.SECONDS_PER_MINUTE);
+  const secs = Math.floor(seconds % TIME.SECONDS_PER_MINUTE);
 
   const minutesStr = minutes.toString().padStart(2, '0');
   const secsStr = secs.toString().padStart(2, '0');
@@ -71,9 +78,9 @@ export function formatSimpleTime(seconds: number): string {
  * 1시간 미만일 경우 MM:SS, 1시간 이상일 경우 HH:MM:SS 형식 사용
  */
 export function formatDuration(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
+  const hours = Math.floor(seconds / TIME.SECONDS_PER_HOUR);
+  const minutes = Math.floor((seconds % TIME.SECONDS_PER_HOUR) / TIME.SECONDS_PER_MINUTE);
+  const secs = Math.floor(seconds % TIME.SECONDS_PER_MINUTE);
 
   if (hours > 0) {
     return `${hours}:${minutes.toString().padStart(2, '0')}:${secs

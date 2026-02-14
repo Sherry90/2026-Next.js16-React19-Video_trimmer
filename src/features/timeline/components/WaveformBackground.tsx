@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import { useStore } from '@/stores/useStore';
+import { UI } from '@/constants/appConfig';
 
 export function WaveformBackground() {
   const waveformRef = useRef<HTMLDivElement>(null);
@@ -80,7 +81,7 @@ export function WaveformBackground() {
     };
 
     // Use setTimeout to ensure DOM is ready
-    const timer = setTimeout(initializeWaveSurfer, 100);
+    const timer = setTimeout(initializeWaveSurfer, UI.WAVEFORM_INIT_DELAY_MS);
 
     return () => {
       clearTimeout(timer);
@@ -100,7 +101,7 @@ export function WaveformBackground() {
       if (wavesurferRef.current) {
         wavesurferRef.current.zoom(zoom * 10);
       }
-    }, 100);
+    }, UI.WAVEFORM_ZOOM_DEBOUNCE_MS);
 
     return () => {
       clearTimeout(debounceTimer);
