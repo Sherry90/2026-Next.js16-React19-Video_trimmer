@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import type { ProcessError } from '@/types/process';
 
 /**
  * yt-dlp 명령 에러 파싱
@@ -9,7 +10,7 @@ import { NextResponse } from 'next/server';
  * @param error - yt-dlp 실행 에러 객체
  * @returns 에러 메시지와 HTTP 상태 코드
  */
-export function parseYtdlpError(error: any): {
+export function parseYtdlpError(error: ProcessError): {
   message: string;
   status: number;
 } {
@@ -102,11 +103,14 @@ export interface TrimRequestParams {
  * @returns 검증 결과 (성공 시 파싱된 데이터, 실패 시 에러 정보)
  */
 export function validateTrimRequest(
-  body: any
+  body: unknown
 ):
   | { valid: true; data: TrimRequestParams }
   | { valid: false; error: string; status: number } {
-  const { originalUrl, startTime, endTime, filename } = body;
+  if (typeof body !== 'object' || body === null) {
+    return { valid: false, error: '유효하지 않은 요청입니다', status: 400 };
+  }
+  const { originalUrl, startTime, endTime, filename } = body as Record<string, unknown>;
 
   if (!originalUrl || typeof originalUrl !== 'string' || !originalUrl.trim()) {
     return { valid: false, error: '유효하지 않은 URL입니다', status: 400 };
@@ -149,11 +153,14 @@ export interface DownloadRequestParams {
  * @returns 검증 결과 (성공 시 파싱된 데이터, 실패 시 에러 정보)
  */
 export function validateDownloadRequest(
-  body: any
+  body: unknown
 ):
   | { valid: true; data: DownloadRequestParams }
   | { valid: false; error: string; status: number } {
-  const { url, startTime, endTime, filename, tbr } = body;
+  if (typeof body !== 'object' || body === null) {
+    return { valid: false, error: '유효하지 않은 요청입니다', status: 400 };
+  }
+  const { url, startTime, endTime, filename, tbr } = body as Record<string, unknown>;
 
   if (!url || typeof url !== 'string' || !url.trim()) {
     return { valid: false, error: '유효하지 않은 URL입니다', status: 400 };

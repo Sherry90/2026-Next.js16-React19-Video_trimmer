@@ -4,6 +4,7 @@ import { promisify } from 'util';
 import { getYtdlpPath, getFfmpegPath } from '@/lib/binPaths';
 import { parseYtdlpError } from '@/lib/apiUtils';
 import { selectBestFormat } from '@/lib/formatSelector';
+import { toProcessError } from '@/types/process';
 
 const execFileAsync = promisify(execFile);
 
@@ -79,9 +80,10 @@ export async function POST(request: NextRequest) {
       streamType,
       tbr: formatSelection?.tbr || null, // Total bitrate (kbps)
     });
-  } catch (error: any) {
-    const { message, status } = parseYtdlpError(error);
-    console.error('[resolve] Error:', error.message || error);
+  } catch (error: unknown) {
+    const processError = toProcessError(error);
+    const { message, status } = parseYtdlpError(processError);
+    console.error('[resolve] Error:', processError.message);
     return NextResponse.json({ error: message }, { status });
   }
 }

@@ -3,6 +3,7 @@
  */
 import { formatBytes } from './formatBytes';
 import { FILE_SIZE } from '@/constants/fileConstraints';
+import { hasMemoryAPI } from '@/types/browser';
 
 // 메모리 안전 배수 (파일 크기의 3배 메모리 필요)
 const MEMORY_MULTIPLIER = 3;
@@ -11,11 +12,7 @@ const MEMORY_MULTIPLIER = 3;
  * Check if browser's memory API is available
  */
 export function isMemoryAPIAvailable(): boolean {
-  return !!(
-    typeof performance !== 'undefined' &&
-    'memory' in performance &&
-    performance.memory
-  );
+  return typeof performance !== 'undefined' && hasMemoryAPI(performance);
 }
 
 /**
@@ -23,11 +20,11 @@ export function isMemoryAPIAvailable(): boolean {
  * Returns memory in bytes, or null if API is not available
  */
 export function getAvailableMemory(): number | null {
-  if (!isMemoryAPIAvailable()) {
+  if (typeof performance === 'undefined' || !hasMemoryAPI(performance)) {
     return null;
   }
 
-  const memory = (performance as any).memory;
+  const memory = performance.memory;
   const usedMemory = memory.usedJSHeapSize;
   const totalMemory = memory.jsHeapSizeLimit;
 
