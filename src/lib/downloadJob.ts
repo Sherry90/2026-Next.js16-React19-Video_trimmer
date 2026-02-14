@@ -182,7 +182,7 @@ export async function startDownloadJob(
     const streamlinkProc = spawn(streamlinkBin, streamlinkArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
     let streamlinkStderr = '';
 
-    streamlinkProc.stderr?.on('data', (chunk: any) => {
+    streamlinkProc.stderr?.on('data', (chunk: Buffer) => {
       streamlinkStderr += chunk.toString();
     });
 
@@ -268,7 +268,7 @@ export async function startDownloadJob(
     const ffmpegTracker = new FFmpegProgressTracker(segmentDuration);
     let lastFFmpegLog = -1;
 
-    ffmpegProc.stderr?.on('data', (chunk: any) => {
+    ffmpegProc.stderr?.on('data', (chunk: Buffer) => {
       const progress = ffmpegTracker.pushChunk(chunk);
       updateProgress(progress, 'processing');
 

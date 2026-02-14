@@ -235,10 +235,10 @@ class FFmpegProgressTracker {
     this.progress = Math.max(this.progress, calculateProgress(this.processedSeconds, this.totalDuration));
   }
 
-  pushChunk(chunk: any): number {
+  pushChunk(chunk: Buffer | string): number {
     if (chunk == null) return this.progress;
 
-    this.buffer += chunk.toString();
+    this.buffer += typeof chunk === 'string' ? chunk : chunk.toString();
     const lines = this.buffer.split(/[\r\n]+/);
     this.buffer = lines.pop() || '';
 
