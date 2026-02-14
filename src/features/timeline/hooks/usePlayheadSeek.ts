@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type Player from 'video.js/dist/types/player';
+import { TIMELINE } from '@/constants/appConfig';
 
 /**
  * Playhead seek 검증 훅
@@ -40,7 +41,7 @@ export function usePlayheadSeek(player: Player | null) {
     (targetTime: number, onComplete: () => void) => {
       if (!player) {
         // No player - just use timeout fallback
-        setTimeout(onComplete, 500);
+        setTimeout(onComplete, TIMELINE.SEEK_FALLBACK_TIMEOUT_MS);
         return;
       }
 
@@ -71,11 +72,11 @@ export function usePlayheadSeek(player: Player | null) {
 
       player.on('seeked', handleSeeked);
 
-      // Safety fallback timeout - always release after 1000ms
+      // Safety fallback timeout - always release after seek verification timeout
       timeoutRef.current = setTimeout(() => {
         player.off('seeked', handleSeeked);
         cleanup();
-      }, 1000);
+      }, TIMELINE.SEEK_VERIFICATION_TIMEOUT_MS);
     },
     [player]
   );

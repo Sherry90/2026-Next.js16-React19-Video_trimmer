@@ -16,6 +16,10 @@ export const APP_CONFIG = {
     MAX_ZOOM: 10,
     /** Playhead 이동 throttle 지연 시간 (ms) */
     PLAYHEAD_SEEK_THROTTLE_MS: 50,
+    /** Seek 확인 타임아웃 (ms) */
+    SEEK_VERIFICATION_TIMEOUT_MS: 1000,
+    /** Seek fallback 타임아웃 (ms) */
+    SEEK_FALLBACK_TIMEOUT_MS: 500,
   },
 
   /**
@@ -35,7 +39,25 @@ export const APP_CONFIG = {
     /** FFmpeg 프로세스 타임아웃 (ms) - 1분 */
     FFMPEG_TIMEOUT_MS: 60000,
   },
+
+  /**
+   * 내보내기 관련 설정
+   */
+  EXPORT: {
+    /** 기본 비트레이트 (kbps) */
+    DEFAULT_BITRATE_KBPS: 2500,
+  },
+
+  /**
+   * 진행률 계산 관련 설정
+   */
+  PROGRESS: {
+    /** Segment 최소 다운로드 시간 (초) */
+    SEGMENT_MIN_TIME_SEC: 0.5,
+    /** Segment 최대 다운로드 시간 (초) */
+    SEGMENT_MAX_TIME_SEC: 30,
+  },
 } as const;
 
 // 타입 안전성을 위한 개별 export
-export const { TIMELINE, URL_INPUT, PROCESS } = APP_CONFIG;
+export const { TIMELINE, URL_INPUT, PROCESS, EXPORT, PROGRESS } = APP_CONFIG;

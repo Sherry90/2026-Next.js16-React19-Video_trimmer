@@ -2,6 +2,7 @@ import { spawn, execSync } from 'child_process';
 import { existsSync } from 'fs';
 import { dirname, join } from 'path';
 import { getFfmpegPath } from './binPaths.cjs';
+import { PROGRESS } from '@/constants/appConfig';
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 const stripAnsi = (input: string): string => typeof input === 'string' ? input.replace(/\x1B\[[0-9;]*[A-Za-z]/g, '') : '';
@@ -150,7 +151,7 @@ class StreamlinkProgressParser {
     const now = Date.now();
     const segmentDownloadTime = (now - this.lastSegmentTime) / 1000;
 
-    if (segmentDownloadTime >= 0.5 && segmentDownloadTime <= 30) {
+    if (segmentDownloadTime >= PROGRESS.SEGMENT_MIN_TIME_SEC && segmentDownloadTime <= PROGRESS.SEGMENT_MAX_TIME_SEC) {
       this.totalSegmentDuration += segmentDownloadTime;
       this.segmentCount++;
       this.avgSegmentDuration = this.totalSegmentDuration / this.segmentCount;
