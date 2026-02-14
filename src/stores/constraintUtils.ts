@@ -1,3 +1,5 @@
+import { TIMELINE } from '@/constants/appConfig';
+
 /**
  * Store 제약 조건 유틸리티
  *
@@ -34,8 +36,8 @@ export function constrainPlayhead(
 }
 
 /**
- * Zoom 제약: 0.1과 10 사이로 제한
+ * Zoom 제약: MIN_ZOOM과 MAX_ZOOM 사이로 제한
  */
 export function constrainZoom(zoom: number): number {
-  return Math.max(0.1, Math.min(zoom, 10));
+  return Math.max(TIMELINE.MIN_ZOOM, Math.min(zoom, TIMELINE.MAX_ZOOM));
 }

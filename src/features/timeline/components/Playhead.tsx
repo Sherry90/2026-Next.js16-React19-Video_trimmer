@@ -6,6 +6,7 @@ import { useVideoDuration, useTrimPoints, usePlayerActions } from '@/stores/sele
 import { useDragHandle } from '@/features/timeline/hooks/useDragHandle';
 import { useVideoPlayerContext } from '@/features/player/context/VideoPlayerContext';
 import { usePlayheadSeek } from '@/features/timeline/hooks/usePlayheadSeek';
+import { TIMELINE } from '@/constants/appConfig';
 
 export const Playhead = memo(function Playhead() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -15,9 +16,9 @@ export const Playhead = memo(function Playhead() {
   const draggingPositionRef = useRef<number | null>(null); // For stable closure
   const isDraggingRef = useRef<boolean>(false);
 
-  // Throttle for real-time seeking during drag (100ms)
+  // Throttle for real-time seeking during drag
   const lastSeekTimeRef = useRef<number>(0);
-  const seekThrottleDelay = 50; // ms
+  const seekThrottleDelay = TIMELINE.PLAYHEAD_SEEK_THROTTLE_MS;
 
   const currentTime = useStore((state) => state.player.currentTime);
   const duration = useVideoDuration();
