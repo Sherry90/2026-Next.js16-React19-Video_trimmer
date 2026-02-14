@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { spawn } from 'child_process';
-import { createReadStream, unlinkSync, statSync, existsSync } from 'fs';
+import { unlinkSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
@@ -8,6 +8,7 @@ import { getFfmpegPath, getStreamlinkPath, hasStreamlink } from '@/lib/binPaths'
 import { formatTimeHHMMSS } from '@/features/timeline/utils/timeFormatter';
 import { runWithTimeout } from '@/lib/processUtils';
 import { validateTrimRequest, handleApiError } from '@/lib/apiUtils';
+import { streamFile } from '@/lib/streamUtils';
 
 /**
  * Streamlink → ffmpeg two-stage trimming
@@ -126,37 +127,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Stream the output file
-    const stat = statSync(tmpFile);
-    const fileStream = createReadStream(tmpFile);
+    console.log('[trim] Streaming file to client...');
 
-    console.log(`[trim] Streaming file: ${stat.size} bytes (${(stat.size / 1024 / 1024).toFixed(2)} MB)`);
-
-    const stream = new ReadableStream({
-      start(controller) {
-        fileStream.on('data', (chunk: Buffer) => {
-          controller.enqueue(new Uint8Array(chunk));
-        });
-        fileStream.on('end', () => {
-          controller.close();
-          try { unlinkSync(tmpFile); } catch { /* ignore */ }
-        });
-        fileStream.on('error', (err) => {
-          controller.error(err);
-          try { unlinkSync(tmpFile); } catch { /* ignore */ }
-        });
+    return streamFile({
+      filePath: tmpFile,
+      contentType: 'video/mp4',
+      onStreamEnd: () => {
+        try {
+          unlinkSync(tmpFile);
+        } catch {
+          /* ignore */
+        }
       },
-      cancel() {
-        fileStream.destroy();
-        try { unlinkSync(tmpFile); } catch { /* ignore */ }
-      },
-    });
-
-    return new NextResponse(stream, {
-      status: 200,
-      headers: {
-        'Content-Type': 'video/mp4',
-        'Content-Length': String(stat.size),
-        // Content-Disposition 헤더 제거 - fetch API로 읽을 것이므로 불필요
+      onStreamError: (err) => {
+        console.error('[trim] Stream error:', err);
+        try {
+          unlinkSync(tmpFile);
+        } catch {
+          /* ignore */
+        }
       },
     });
   } catch (error: unknown) {
