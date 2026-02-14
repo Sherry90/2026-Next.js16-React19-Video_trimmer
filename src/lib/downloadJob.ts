@@ -3,8 +3,9 @@ import { unlinkSync, existsSync, writeFileSync, promises as fsPromises } from 'f
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { FFmpegProgressTracker, getFileDuration } from './progressParser';
-import { getFfmpegPath, getStreamlinkPath } from './binPaths.cjs';
+import { getFfmpegPath, getStreamlinkPath } from './binPaths';
 import { formatTimeHHMMSS } from '@/features/timeline/utils/timeFormatter';
+import type { SSEProgressEvent, SSECompleteEvent, SSEErrorEvent } from '@/types/sse';
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 
@@ -34,29 +35,11 @@ function runProcessWithTimeout(proc: any, timeoutMs: number): Promise<boolean> {
   });
 }
 
-// Event types
-type ProgressEvent = {
-  type: 'progress';
-  jobId: string;
-  progress: number;
-  processedSeconds: number;
-  totalSeconds: number;
-  phase: 'downloading' | 'processing' | 'completed';
-};
-
-type CompleteEvent = {
-  type: 'complete';
-  jobId: string;
-  filename: string;
-};
-
-type ErrorEvent = {
-  type: 'error';
-  jobId: string;
-  message: string;
-};
-
-type JobEvent = ProgressEvent | CompleteEvent | ErrorEvent;
+// Server-side event types (extends SSE types with jobId)
+type JobProgressEvent = SSEProgressEvent & { jobId: string; processedSeconds: number; totalSeconds: number };
+type JobCompleteEvent = SSECompleteEvent & { jobId: string; filename: string };
+type JobErrorEvent = SSEErrorEvent & { jobId: string };
+type JobEvent = JobProgressEvent | JobCompleteEvent | JobErrorEvent;
 
 type JobListener = (event: JobEvent) => void;
 

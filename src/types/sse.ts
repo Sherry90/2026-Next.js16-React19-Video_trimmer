@@ -3,11 +3,16 @@
  */
 
 /**
+ * 다운로드 단계 타입
+ */
+export type DownloadPhase = 'downloading' | 'processing' | 'completed';
+
+/**
  * SSE 진행 상태 이벤트
  */
 export interface SSEProgressEvent {
   type: 'progress';
-  phase: 'downloading' | 'processing' | 'completed';
+  phase: DownloadPhase;
   progress: number; // 0-100
   processedSeconds?: number;
   totalSeconds?: number;
