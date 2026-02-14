@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createReadStream, unlinkSync, statSync, existsSync } from 'fs';
+import { existsSync } from 'fs';
 import { getJob, deleteJob } from '@/lib/downloadJob';
+import { streamFile } from '@/lib/streamUtils';
 
 /**
  * GET /api/download/[jobId]
@@ -28,49 +29,26 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Stream the output file
-    const stat = statSync(outputPath);
-    const fileStream = createReadStream(outputPath);
+    console.log('[download] Streaming file to client...');
 
-    console.log(`[download] Streaming file: ${stat.size} bytes (${(stat.size / 1024 / 1024).toFixed(2)} MB)`);
-
-    const stream = new ReadableStream({
-      start(controller) {
-        fileStream.on('data', (chunk: Buffer) => {
-          controller.enqueue(new Uint8Array(chunk));
-        });
-        fileStream.on('end', () => {
-          controller.close();
-          // Cleanup after download
-          try {
-            deleteJob(jobId);
-          } catch (error) {
-            console.error('[download] Cleanup error:', error);
-          }
-        });
-        fileStream.on('error', (err) => {
-          controller.error(err);
-          try {
-            deleteJob(jobId);
-          } catch {
-            /* ignore */
-          }
-        });
+    return streamFile({
+      filePath: outputPath,
+      contentType: 'video/mp4',
+      onStreamEnd: async () => {
+        // Cleanup after download
+        try {
+          deleteJob(jobId);
+        } catch (error) {
+          console.error('[download] Cleanup error:', error);
+        }
       },
-      cancel() {
-        fileStream.destroy();
+      onStreamError: (err) => {
+        console.error('[download] Stream error:', err);
         try {
           deleteJob(jobId);
         } catch {
           /* ignore */
         }
-      },
-    });
-
-    return new NextResponse(stream, {
-      status: 200,
-      headers: {
-        'Content-Type': 'video/mp4',
-        'Content-Length': String(stat.size),
       },
     });
   } catch (error: unknown) {
