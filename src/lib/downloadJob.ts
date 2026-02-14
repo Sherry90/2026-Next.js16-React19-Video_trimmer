@@ -7,9 +7,8 @@ import { getFfmpegPath, getStreamlinkPath } from './binPaths';
 import { formatTimeHHMMSS } from '@/features/timeline/utils/timeFormatter';
 import { runWithTimeout } from './processUtils';
 import { PROCESS, EXPORT, POLLING } from '@/constants/appConfig';
+import { clamp } from '@/utils/mathUtils';
 import type { SSEProgressEvent, SSECompleteEvent, SSEErrorEvent } from '@/types/sse';
-
-const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 
 function safeUnlink(path: string): void {
   try {

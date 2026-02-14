@@ -3,15 +3,11 @@ import { existsSync } from 'fs';
 import { dirname, join } from 'path';
 import { getFfmpegPath } from './binPaths.cjs';
 import { PROGRESS } from '@/constants/appConfig';
-
-const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
-const stripAnsi = (input: string): string => typeof input === 'string' ? input.replace(/\x1B\[[0-9;]*[A-Za-z]/g, '') : '';
+import { clamp, toPercentage } from '@/utils/mathUtils';
+import { stripAnsi } from '@/utils/stringUtils';
 
 function calculateProgress(processedSeconds: number, totalDuration: number): number {
-  if (!Number.isFinite(processedSeconds) || processedSeconds < 0 || !Number.isFinite(totalDuration) || totalDuration <= 0) {
-    return 0;
-  }
-  return clamp((processedSeconds / totalDuration) * 100, 0, 100);
+  return toPercentage(processedSeconds, totalDuration);
 }
 
 function parseClockDuration(value: string): number | null {
