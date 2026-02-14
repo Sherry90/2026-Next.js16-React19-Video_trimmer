@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { startDownloadJob } from '@/lib/downloadJob';
+import { validateDownloadRequest, handleApiError } from '@/lib/apiUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,12 +15,14 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { url, startTime, endTime, filename, tbr } = body;
 
     // 파라미터 검증
-    if (!url?.trim() || typeof startTime !== 'number' || typeof endTime !== 'number' || endTime <= startTime) {
-      return NextResponse.json({ error: '유효하지 않은 파라미터' }, { status: 400 });
+    const validation = validateDownloadRequest(body);
+    if (!validation.valid) {
+      return NextResponse.json({ error: validation.error }, { status: validation.status });
     }
+
+    const { url, startTime, endTime, filename, tbr } = validation.data;
 
     // JobID 생성
     const jobId = randomUUID();
@@ -35,10 +38,6 @@ export async function POST(request: NextRequest) {
     // JobID 즉시 반환
     return NextResponse.json({ jobId });
   } catch (error) {
-    console.error('[SSE] Failed to start download:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : '다운로드 시작에 실패했습니다' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'download/start', '다운로드 시작에 실패했습니다');
   }
 }
