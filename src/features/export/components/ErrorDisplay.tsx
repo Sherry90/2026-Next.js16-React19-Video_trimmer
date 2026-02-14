@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useStore } from '@/stores/useStore';
-import type { AppError } from '@/types/error';
+import type { AppError } from '@/types/types';
 
 interface ErrorDisplayProps {
   error?: AppError | null;
@@ -30,7 +30,7 @@ export function ErrorDisplay({
     // Convert old error format to new AppError format
     // Validate error code or use UNKNOWN
     const errorCode = storeError.errorCode as any;
-    const validErrorCode: import('@/types/error').ErrorCode =
+    const validErrorCode: import('@/types/types').ErrorCode =
       errorCode === 'MEMORY_INSUFFICIENT' ||
       errorCode === 'CODEC_UNSUPPORTED' ||
       errorCode === 'FILE_CORRUPTED' ||
