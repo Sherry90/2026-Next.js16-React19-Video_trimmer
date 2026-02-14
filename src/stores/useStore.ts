@@ -10,6 +10,12 @@ import type {
   UrlPreviewState,
 } from '@/types/store';
 import { cleanupFFmpeg } from '@/features/export/utils/trimVideoDispatcher';
+import {
+  constrainInPoint,
+  constrainOutPoint,
+  constrainPlayhead,
+  constrainZoom,
+} from './constraintUtils';
 
 // ==================== 스토어 상태 ====================
 
@@ -194,7 +200,7 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
   setInPoint: (time) => {
     const { timeline } = get();
     if (timeline.isInPointLocked) return;
-    const constrainedTime = Math.max(0, Math.min(time, timeline.outPoint));
+    const constrainedTime = constrainInPoint(time, timeline.outPoint);
     set({
       timeline: {
         ...timeline,
@@ -208,7 +214,7 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
     const { timeline, videoFile } = get();
     if (timeline.isOutPointLocked) return;
     const maxTime = videoFile?.duration ?? 0;
-    const constrainedTime = Math.max(timeline.inPoint, Math.min(time, maxTime));
+    const constrainedTime = constrainOutPoint(time, timeline.inPoint, maxTime);
     set({
       timeline: {
         ...timeline,
@@ -220,10 +226,7 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
 
   setPlayhead: (time) => {
     const { timeline } = get();
-    const constrainedTime = Math.max(
-      timeline.inPoint,
-      Math.min(time, timeline.outPoint)
-    );
+    const constrainedTime = constrainPlayhead(time, timeline.inPoint, timeline.outPoint);
     set({
       timeline: { ...timeline, playhead: constrainedTime },
     });
@@ -241,7 +244,7 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
 
   setZoom: (zoom) =>
     set((state) => ({
-      timeline: { ...state.timeline, zoom: Math.max(0.1, Math.min(zoom, 10)) },
+      timeline: { ...state.timeline, zoom: constrainZoom(zoom) },
     })),
 
   resetTimeline: () => {
