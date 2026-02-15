@@ -59,7 +59,12 @@
       "Bash(open:*)",
       "Bash(ps:*)",
       "Bash(/tmp/test_script.js << 'EOF'\n// Fill end time and click download\ndocument.querySelector\\('[value=\"00:00:00.000\"]'\\).value = \"00:01:00.000\";\ndocument.querySelector\\('[value=\"00:00:00.000\"]'\\).dispatchEvent\\(new Event\\('input', { bubbles: true }\\)\\);\ndocument.querySelector\\('[value=\"00:00:00.000\"]'\\).dispatchEvent\\(new Event\\('blur', { bubbles: true }\\)\\);\nsetTimeout\\(\\(\\) => {\n  const downloadBtn = Array.from\\(document.querySelectorAll\\('button'\\)\\).find\\(b => b.textContent.includes\\('Download'\\)\\);\n  if \\(downloadBtn && !downloadBtn.disabled\\) {\n    downloadBtn.click\\(\\);\n    console.log\\('Download started!'\\);\n  }\n}, 1000\\);\nEOF)",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "mcp__jetbrains__list_directory_tree",
+      "mcp__jetbrains__get_file_text_by_path",
+      "mcp__jetbrains__search_in_files_by_text",
+      "Bash(test:*)",
+      "Bash(git mv:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
