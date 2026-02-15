@@ -1,11 +1,7 @@
 /**
- * 시간 값을 최소값과 최대값 사이로 제한
+ * 시간 값을 최소값과 최대값 사이로 제한 (내부 헬퍼)
  */
-export function constrainTime(
-  time: number,
-  min: number,
-  max: number
-): number {
+function constrainTime(time: number, min: number, max: number): number {
   return Math.max(min, Math.min(time, max));
 }
 
