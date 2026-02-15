@@ -3,7 +3,7 @@ import {
   formatTime,
   parseTime,
   formatSimpleTime,
-} from '@/features/timeline/utils/timeFormatter';
+} from '@/utils/timeFormatter';
 
 describe('timeFormatter', () => {
   describe('formatTime', () => {

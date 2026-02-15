@@ -5,9 +5,9 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { getFfmpegPath, getStreamlinkPath, hasStreamlink } from '@/lib/binPaths';
-import { formatTimeHHMMSS } from '@/features/timeline/utils/timeFormatter';
+import { formatTimeHHMMSS } from '@/utils/timeFormatter';
 import { runWithTimeout } from '@/lib/processUtils';
-import { validateTrimRequest, handleApiError } from '@/lib/apiUtils';
+import { validateTrimRequest, handleApiError } from '@/utils/apiUtils';
 import { streamFile } from '@/lib/streamUtils';
 
 /**
