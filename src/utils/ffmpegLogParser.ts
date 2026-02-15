@@ -1,7 +1,7 @@
 /**
  * FFmpeg log parsing utilities for accurate progress tracking
  */
-import { formatDuration } from '@/features/timeline/utils/timeFormatter';
+import { formatDuration } from '@/utils/timeFormatter';
 
 export interface FFmpegProgress {
   processedTime: number; // seconds

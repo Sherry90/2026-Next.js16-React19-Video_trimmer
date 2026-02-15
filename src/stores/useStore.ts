@@ -9,7 +9,7 @@ import type {
   ExportState,
   UrlPreviewState,
 } from '@/types/store';
-import { cleanupFFmpeg } from '@/features/export/utils/trimVideoDispatcher';
+import { runAllCleanups } from '@/lib/cleanup';
 import {
   constrainInPoint,
   constrainOutPoint,
@@ -352,8 +352,8 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
     if (exportState.outputUrl) {
       URL.revokeObjectURL(exportState.outputUrl);
     }
-    // Clean up FFmpeg singleton to free memory
-    cleanupFFmpeg();
+    // Run all registered cleanup functions
+    runAllCleanups();
     set(initialState);
   },
 

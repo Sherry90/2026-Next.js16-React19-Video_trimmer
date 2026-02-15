@@ -8,6 +8,7 @@ import { trimVideoFFmpeg } from './trimVideoFFmpeg';
 import { trimVideoServer } from './trimVideoServer';
 import { getTrimmerType } from './formatDetector';
 import { FFmpegSingleton } from './FFmpegSingleton';
+import { registerCleanup } from '@/lib/cleanup';
 
 export interface TrimVideoOptions {
   inputFile: File | null;
@@ -29,6 +30,9 @@ export interface TrimVideoOptions {
 export function cleanupFFmpeg(): void {
   FFmpegSingleton.cleanup();
 }
+
+// 모듈 로드 시 cleanup 자동 등록 (의존성 역전)
+registerCleanup(cleanupFFmpeg);
 
 /**
  * Main entry point for video trimming

@@ -4,7 +4,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { FFmpegProgressTracker, getFileDuration } from './progressParser';
 import { getFfmpegPath, getStreamlinkPath } from './binPaths';
-import { formatTimeHHMMSS } from '@/features/timeline/utils/timeFormatter';
+import { formatTimeHHMMSS } from '@/utils/timeFormatter';
 import { runWithTimeout } from './processUtils';
 import { PROCESS, EXPORT, POLLING } from '@/constants/appConfig';
 import { clamp } from '@/utils/mathUtils';

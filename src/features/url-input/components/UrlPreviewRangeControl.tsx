@@ -1,6 +1,6 @@
 'use client';
 
-import { formatDuration } from '@/features/timeline/utils/timeFormatter';
+import { formatDuration } from '@/utils/timeFormatter';
 import { TimeInput } from '@/features/timeline/components/TimeInput';
 
 interface UrlPreviewRangeControlProps {

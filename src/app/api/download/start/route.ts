@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { startDownloadJob } from '@/lib/downloadJob';
-import { validateDownloadRequest, handleApiError } from '@/lib/apiUtils';
+import { validateDownloadRequest, handleApiError } from '@/utils/apiUtils';
 
 export const dynamic = 'force-dynamic';
 
