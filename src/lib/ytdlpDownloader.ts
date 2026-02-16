@@ -72,14 +72,21 @@ export function buildYtdlpArgs(params: {
     timeRange,
     '-f',
     formatSpec,
+    '--external-downloader',
+    'aria2c',
+    '--downloader-args',
+    'aria2c:-x 16 -s 16 -k 1M --console-log-level=warn --summary-interval=0', // 16개 연결, 16개 분할, 1MB 청크, 로그 최소화
     '-N',
-    '6', // 병렬 다운로드 6개 스레드 (치지직과 동일)
+    '6', // dash/hls 프래그먼트용 (일반 HTTP에는 효과 없음)
+    '--progress',
+    '--newline',
+    '--progress-template',
+    'download:[download] %(progress.downloaded_bytes)s/%(progress.total_bytes)s at %(progress.speed)s ETA %(progress.eta)s',
     '--ffmpeg-location',
     getFfmpegPath(), // 번들된 FFmpeg 사용
     '--merge-output-format',
     'mp4', // 최종 출력을 mp4 컨테이너로 강제 (webm 확장자 추가 방지)
     '--no-playlist',
-    '--newline', // 진행률 라인 버퍼링
     '-o',
     outputPath,
     url,
