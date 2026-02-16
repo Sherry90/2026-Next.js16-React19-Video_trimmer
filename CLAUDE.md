@@ -113,12 +113,16 @@ src/
 │           ├── trimVideoServer.ts
 │           ├── mp4boxHelpers.ts        # New: sample filtering
 │           └── FFmpegSingleton.ts      # New: singleton pattern
-├── lib/               # Common utilities (new 2026-02-12)
+├── lib/               # Common utilities (new 2026-02-12, expanded 2026-02-15)
 │   ├── binPaths.ts
-│   ├── processUtils.ts       # New: process management
-│   ├── apiErrorHandler.ts    # New: API error handling
-│   ├── formatSelector.ts     # New: yt-dlp format selection
-│   └── downloadJob.ts        # New: SSE download job management
+│   ├── processUtils.ts          # Process management
+│   ├── apiErrorHandler.ts       # API error handling
+│   ├── formatSelector.ts        # yt-dlp format/quality selection (1080p preferred)
+│   ├── progressParser.ts        # Progress parsers (Streamlink, yt-dlp, FFmpeg)
+│   ├── platformDetector.ts      # Platform detection (domain-based)
+│   ├── downloadJob.ts           # Download orchestrator (Strategy Pattern)
+│   ├── streamlinkDownloader.ts  # Chzzk downloader (Streamlink-based)
+│   └── ytdlpDownloader.ts       # YouTube/generic downloader (yt-dlp-based)
 ├── types/             # TypeScript type definitions (expanded 2026-02-14)
 │   ├── store.ts
 │   ├── video.ts
@@ -136,6 +140,7 @@ Each feature has `components/`, `hooks/`, `utils/`, and sometimes `context/`.
 - **2026-01-30**: TimelineEditor decomposed from 182 lines to 64 lines. InPointHandle/OutPointHandle merged into TrimHandle.
 - **2026-02-12**: 11-item refactoring (Preview Full removed, 11 new utility files/hooks, major component simplification)
 - **2026-02-14**: SSE migration (Socket.IO removed, -100KB bundle, -21 packages), type safety (Discriminated Union), utility extraction (sseProgressUtils.ts)
+- **2026-02-15**: YouTube support via Strategy Pattern (platformDetector, yt-dlp downloader, 1080p quality, parallel download)
 
 ### Video Processing Flow
 
@@ -215,6 +220,8 @@ All required binaries are automatically managed:
 **yt-dlp**: Auto-downloaded on postinstall
 - Priority: system > `.bin/yt-dlp` (auto-downloaded) > yt-dlp-wrap
 - Downloaded from GitHub releases by `scripts/setup-deps.mjs`
+- **Version requirement**: >= 2022.06.22.1 (for `--download-sections` support)
+- Used for YouTube and generic platforms
 
 **streamlink**: Auto-downloaded on postinstall
 - Priority: bundled binary > system binary
@@ -233,6 +240,34 @@ All required binaries are automatically managed:
 
 **Build configuration**: `next.config.ts`
 - `serverExternalPackages: ['@ffmpeg-installer/ffmpeg', 'yt-dlp-wrap']` required for Turbopack
+
+### URL Download Strategy
+
+**Platform Detection** (`src/lib/platformDetector.ts`):
+- Domain-based detection: `chzzk.naver.com` → Chzzk, `youtube.com`/`youtu.be` → YouTube, others → Generic
+- Strategy selection: Chzzk → Streamlink, YouTube/Generic → yt-dlp
+
+**Chzzk (Streamlink)** (`src/lib/streamlinkDownloader.ts`):
+- Two-phase process:
+  1. `streamlink --hls-start-offset + --hls-duration + --stream-segment-threads 6` → temp file
+  2. `ffmpeg -avoid_negative_ts make_zero -c copy` → final file
+- Quality: `best` (hardcoded)
+- Progress: file size polling + segment count estimation
+- Parallel download: 6 threads
+
+**YouTube (yt-dlp)** (`src/lib/ytdlpDownloader.ts`):
+- Two-phase process (same pattern as Chzzk):
+  1. `yt-dlp --download-sections "*START-END" -f "bestvideo[height<=?1080]+bestaudio/best" -N 6` → temp file
+  2. `ffmpeg -avoid_negative_ts make_zero -c copy` → final file
+- Quality: 1080p preferred with flexible fallback (`height<=?1080`, `?` allows fallback)
+- Progress: real-time percentage parsing from `--newline` output (more accurate)
+- Parallel download: 6 threads (same as Chzzk, using `-N 6`)
+- FFmpeg location: `--ffmpeg-location` points to bundled ffmpeg
+
+**Common patterns**:
+- Fast-fail error handling (no fallbacks, clear error messages)
+- SSE (Server-Sent Events) for real-time progress
+- Phase-based progress: downloading (0-90%) → processing (90-100%)
 
 ## Important Implementation Details
 
