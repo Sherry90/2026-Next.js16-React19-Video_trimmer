@@ -37,9 +37,9 @@ export function useStreamDownload() {
 
       const filename = `${urlPreview.title || 'video'}.mp4`;
 
-      console.log('[SSE Client] Starting download...');
-      console.log('[SSE Client] URL:', urlPreview.originalUrl);
-      console.log('[SSE Client] Range:', urlPreview.inPoint, '-', urlPreview.outPoint);
+      // console.log('[SSE Client] Starting download...');
+      // console.log('[SSE Client] URL:', urlPreview.originalUrl);
+      // console.log('[SSE Client] Range:', urlPreview.inPoint, '-', urlPreview.outPoint);
 
       /**
        * 공통 에러 핸들러
@@ -61,11 +61,11 @@ export function useStreamDownload() {
         const overallProgress = calculateOverallProgress(data.phase, data.progress);
         const message = getPhaseMessage(data.phase, data.processedSeconds, data.totalSeconds);
 
-        console.log(
-          `[SSE Client] Phase: ${data.phase}, Raw: ${data.progress}%, Overall: ${overallProgress}% (${Math.round(
-            data.processedSeconds ?? 0
-          )}/${Math.round(data.totalSeconds ?? 0)}s)`
-        );
+        // console.log(
+        //   `[SSE Client] Phase: ${data.phase}, Raw: ${data.progress}%, Overall: ${overallProgress}% (${Math.round(
+        //     data.processedSeconds ?? 0
+        //   )}/${Math.round(data.totalSeconds ?? 0)}s)`
+        // );
 
         setTrimProgress(overallProgress);
         setDownloadStage(data.phase, message);
@@ -132,7 +132,7 @@ export function useStreamDownload() {
       const handleConnectionError = (eventSource: EventSource) => {
         // EventSource가 이미 닫혔으면 무시 (정상 종료 후 발생한 onerror)
         if (!eventSourceRef.current) {
-          console.log('[SSE Client] Stream closed (already handled)');
+          // console.log('[SSE Client] Stream closed (already handled)');
           return;
         }
 
@@ -169,18 +169,18 @@ export function useStreamDownload() {
 
         // 2. SSE 스트림 연결
         const streamUrl = `/api/download/stream/${jobId}`;
-        console.log('[SSE Client] 🔌 Creating EventSource for:', streamUrl);
+        // console.log('[SSE Client] 🔌 Creating EventSource for:', streamUrl);
         const eventSource = new EventSource(streamUrl);
-        console.log('[SSE Client] 🔌 EventSource created, readyState:', eventSource.readyState); // 0=CONNECTING, 1=OPEN, 2=CLOSED
+        // console.log('[SSE Client] 🔌 EventSource created, readyState:', eventSource.readyState); // 0=CONNECTING, 1=OPEN, 2=CLOSED
         eventSourceRef.current = eventSource;
 
         // EventSource 연결 성공 감지
         eventSource.addEventListener('open', () => {
-          console.log('[SSE Client] ✅ EventSource connected successfully');
+          // console.log('[SSE Client] ✅ EventSource connected successfully');
         });
 
         eventSource.onmessage = (event) => {
-          console.log('[SSE Client] 📨 Received message:', event.data);
+          // console.log('[SSE Client] 📨 Received message:', event.data);
 
           try {
             const data: SSEEvent = JSON.parse(event.data);

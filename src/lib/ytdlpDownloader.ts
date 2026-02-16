@@ -129,7 +129,7 @@ export async function downloadWithYtdlp(
       return;
     }
 
-    console.log(`[SSE] ${phase}: ${roundedProgress}% (${processedSeconds.toFixed(2)}s)`);
+    // console.log(`[SSE] ${phase}: ${roundedProgress}% (${processedSeconds.toFixed(2)}s)`);
 
     emitEvent(jobId, {
       type: 'progress',
@@ -160,12 +160,12 @@ export async function downloadWithYtdlp(
       throw new Error('yt-dlp이 설치되어 있지 않습니다');
     }
 
-    console.log('[DEBUG] yt-dlp binary path:', ytdlpBin);
+    // console.log('[DEBUG] yt-dlp binary path:', ytdlpBin);
 
     // ===== PHASE 1: yt-dlp 구간 다운로드 =====
-    console.log(
-      `[SSE] Phase 1 (Downloading) - yt-dlp segment download (${startTime}s - ${endTime}s, duration: ${segmentDuration}s)`
-    );
+    // console.log(
+    //   `[SSE] Phase 1 (Downloading) - yt-dlp segment download (${startTime}s - ${endTime}s, duration: ${segmentDuration}s)`
+    // );
 
     emitProgress('downloading', true);
 
@@ -177,10 +177,10 @@ export async function downloadWithYtdlp(
       quality: '1080p',
     });
 
-    console.log('[DEBUG] yt-dlp command:', ytdlpBin, ytdlpArgs.join(' '));
-    console.log('[DEBUG] Full command array:', JSON.stringify(ytdlpArgs, null, 2));
-    console.log('[DEBUG] Temp file path:', tempFile);
-    console.log(`[SSE] yt-dlp command: ${ytdlpBin} ${ytdlpArgs.join(' ')}`);
+    // console.log('[DEBUG] yt-dlp command:', ytdlpBin, ytdlpArgs.join(' '));
+    // console.log('[DEBUG] Full command array:', JSON.stringify(ytdlpArgs, null, 2));
+    // console.log('[DEBUG] Temp file path:', tempFile);
+    // console.log(`[SSE] yt-dlp command: ${ytdlpBin} ${ytdlpArgs.join(' ')}`);
 
     const ytdlpProc = spawn(ytdlpBin, ytdlpArgs, {
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -201,11 +201,11 @@ export async function downloadWithYtdlp(
       if (ytdlpProgress !== null) {
         updateProgress(ytdlpProgress, 'downloading');
 
-        const rounded = Math.floor(ytdlpProgress / 5) * 5;
-        if (rounded % 5 === 0 && rounded !== lastLoggedProgress) {
-          console.log(`[SSE] yt-dlp progress: ${ytdlpProgress.toFixed(1)}%`);
-          lastLoggedProgress = rounded;
-        }
+        // const rounded = Math.floor(ytdlpProgress / 5) * 5;
+        // if (rounded % 5 === 0 && rounded !== lastLoggedProgress) {
+        //   console.log(`[SSE] yt-dlp progress: ${ytdlpProgress.toFixed(1)}%`);
+        //   lastLoggedProgress = rounded;
+        // }
         return;
       }
 
@@ -215,11 +215,11 @@ export async function downloadWithYtdlp(
         if (ffmpegProgress > 0) {
           updateProgress(ffmpegProgress, 'downloading');
 
-          const rounded = Math.floor(ffmpegProgress / 5) * 5;
-          if (rounded % 5 === 0 && rounded !== lastLoggedProgress) {
-            console.log(`[SSE] yt-dlp FFmpeg merge: ${ffmpegProgress.toFixed(1)}%`);
-            lastLoggedProgress = rounded;
-          }
+          // const rounded = Math.floor(ffmpegProgress / 5) * 5;
+          // if (rounded % 5 === 0 && rounded !== lastLoggedProgress) {
+          //   console.log(`[SSE] yt-dlp FFmpeg merge: ${ffmpegProgress.toFixed(1)}%`);
+          //   lastLoggedProgress = rounded;
+          // }
         }
       }
     };
@@ -227,7 +227,7 @@ export async function downloadWithYtdlp(
     ytdlpProc.stdout?.on('data', (chunk: Buffer) => {
       const text = chunk.toString();
       stdoutOutput += text;
-      console.log('[DEBUG] yt-dlp stdout:', text.trim());
+      // console.log('[DEBUG] yt-dlp stdout:', text.trim());
 
       const lines = text.split('\n');
       lines.forEach(parseProgressLine);
@@ -236,7 +236,7 @@ export async function downloadWithYtdlp(
     ytdlpProc.stderr?.on('data', (chunk: Buffer) => {
       const text = chunk.toString();
       stderrOutput += text;
-      console.log('[DEBUG] yt-dlp stderr:', text.trim());
+      // console.log('[DEBUG] yt-dlp stderr:', text.trim());
 
       const lines = text.split('\n');
       lines.forEach(parseProgressLine);
@@ -247,13 +247,13 @@ export async function downloadWithYtdlp(
     });
 
     ytdlpProc.on('exit', (code, signal) => {
-      console.log('[DEBUG] yt-dlp exit code:', code, 'signal:', signal);
+      // console.log('[DEBUG] yt-dlp exit code:', code, 'signal:', signal);
     });
 
     const ytdlpSuccess = await runWithTimeout(ytdlpProc, PROCESS.YTDLP_TIMEOUT_MS);
 
-    console.log('[DEBUG] runWithTimeout result:', ytdlpSuccess);
-    console.log('[DEBUG] tempFile exists:', existsSync(tempFile));
+    // console.log('[DEBUG] runWithTimeout result:', ytdlpSuccess);
+    // console.log('[DEBUG] tempFile exists:', existsSync(tempFile));
 
     if (!ytdlpSuccess || !existsSync(tempFile)) {
       console.error('[DEBUG] yt-dlp FAILED');
@@ -264,7 +264,7 @@ export async function downloadWithYtdlp(
 
     // 파일 크기 검증 (손상 방지)
     const stats = await fsPromises.stat(tempFile);
-    console.log(`[SSE] yt-dlp completed: ${(stats.size / 1024 / 1024).toFixed(1)} MB`);
+    // console.log(`[SSE] yt-dlp completed: ${(stats.size / 1024 / 1024).toFixed(1)} MB`);
 
     if (stats.size < 1024) {
       // 1KB 미만
@@ -277,7 +277,7 @@ export async function downloadWithYtdlp(
     currentPhase = 'processing';
     emitProgress('processing', true);
 
-    console.log('[SSE] Phase 2 (Processing) - ffmpeg timestamp reset');
+    // console.log('[SSE] Phase 2 (Processing) - ffmpeg timestamp reset');
 
     const ffmpegProc = spawn(
       getFfmpegPath(),
@@ -308,11 +308,11 @@ export async function downloadWithYtdlp(
       const progress = phase2FfmpegTracker.pushChunk(chunk);
       updateProgress(progress, 'processing');
 
-      const rounded = Math.floor(progress / 5) * 5;
-      if (rounded !== lastFFmpegLog) {
-        console.log(`[SSE] FFmpeg: ${phase2FfmpegTracker.getProcessedSeconds().toFixed(1)}s (${progress.toFixed(1)}%)`);
-        lastFFmpegLog = rounded;
-      }
+      // const rounded = Math.floor(progress / 5) * 5;
+      // if (rounded !== lastFFmpegLog) {
+      //   console.log(`[SSE] FFmpeg: ${phase2FfmpegTracker.getProcessedSeconds().toFixed(1)}s (${progress.toFixed(1)}%)`);
+      //   lastFFmpegLog = rounded;
+      // }
     });
 
     const ffmpegSuccess = await runWithTimeout(ffmpegProc, PROCESS.FFMPEG_TIMEOUT_MS);
@@ -326,7 +326,7 @@ export async function downloadWithYtdlp(
 
     // ===== 완료 =====
     updateProgress(100, 'processing');
-    console.log('[SSE] Phase 2 completed: 100%');
+    // console.log('[SSE] Phase 2 completed: 100%');
     currentPhase = 'completed';
     emitProgress('completed', true);
 
@@ -337,7 +337,7 @@ export async function downloadWithYtdlp(
     });
 
     updateJobStatus(jobId, { outputPath, status: 'completed' });
-    console.log(`[SSE] Job completed: ${jobId}`);
+    // console.log(`[SSE] Job completed: ${jobId}`);
   } catch (error) {
     safeUnlink(tempFile);
     safeUnlink(outputPath);
