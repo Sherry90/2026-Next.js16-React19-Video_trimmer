@@ -38,6 +38,8 @@ export const APP_CONFIG = {
     STREAMLINK_TIMEOUT_MS: 300000,
     /** FFmpeg 프로세스 타임아웃 (ms) - 1분 */
     FFMPEG_TIMEOUT_MS: 60000,
+    /** yt-dlp 프로세스 타임아웃 (ms) - 5분 (streamlink와 동일) */
+    YTDLP_TIMEOUT_MS: 300000,
   },
 
   /**

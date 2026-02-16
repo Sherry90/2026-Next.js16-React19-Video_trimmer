@@ -64,7 +64,10 @@
       "mcp__jetbrains__get_file_text_by_path",
       "mcp__jetbrains__search_in_files_by_text",
       "Bash(test:*)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(yt-dlp:*)",
+      "Bash(python3:*)",
+      "mcp__jetbrains__find_files_by_name_keyword"
     ]
   },
   "enableAllProjectMcpServers": true,

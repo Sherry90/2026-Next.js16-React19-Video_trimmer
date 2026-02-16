@@ -277,6 +277,46 @@ function parseFFmpegProgress(stderr: string, totalDuration: number): number {
   return calculateProgress(currentTime, totalDuration);
 }
 
+/**
+ * yt-dlp 진행률 파서
+ *
+ * yt-dlp의 --newline 플래그 출력에서 진행률을 추출합니다.
+ * 형식: "[download] 45.2% of 123.45MiB at 1.23MiB/s ETA 00:12"
+ */
+class YtdlpProgressParser {
+  private lastProgress = 0;
+
+  /**
+   * yt-dlp 출력 라인을 파싱하여 진행률 반환
+   *
+   * @param line - yt-dlp stdout/stderr 라인
+   * @returns 진행률 (0-100) 또는 null (파싱 실패)
+   */
+  parseLine(line: string): number | null {
+    if (!line) return null;
+
+    // yt-dlp 진행률 형식: "[download] 45.2% of 123.45MiB at 1.23MiB/s ETA 00:12"
+    const percentMatch = line.match(/\[download\]\s+(\d+(?:\.\d+)?)%/);
+    if (percentMatch) {
+      const progress = parseFloat(percentMatch[1]);
+      if (!isNaN(progress) && progress >= 0 && progress <= 100) {
+        // 단조 증가 보장 (backwards progress 무시)
+        this.lastProgress = Math.max(this.lastProgress, progress);
+        return this.lastProgress;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 현재까지의 최대 진행률 반환
+   */
+  getProgress(): number {
+    return this.lastProgress;
+  }
+}
+
 export {
   calculateProgress,
   parseFlexibleDuration,
@@ -286,4 +326,5 @@ export {
   StreamlinkProgressTracker,
   FFmpegProgressTracker,
   parseFFmpegProgress,
+  YtdlpProgressParser,
 };
