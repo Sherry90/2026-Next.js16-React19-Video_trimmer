@@ -19,7 +19,7 @@ import { getFfmpegPath, getYtdlpPath } from './binPaths';
 import { runWithTimeout } from './processUtils';
 import { PROCESS } from '@/constants/appConfig';
 import { YtdlpProgressParser } from './progressParser';
-import { buildYtdlpFormatSpec, DEFAULT_QUALITY } from './formatSelector';
+import { buildYtdlpFormatSpec, DEFAULT_QUALITY, QUALITY_PRESETS } from './formatSelector';
 import { clamp } from '@/utils/mathUtils';
 import type { SSEProgressEvent, SSECompleteEvent, SSEErrorEvent } from '@/types/sse';
 
@@ -56,7 +56,7 @@ export function buildYtdlpArgs(params: {
   outputPath: string;
   quality?: '1080p' | 'best';
 }): string[] {
-  const { url, startTime, endTime, outputPath, quality = '1080p' } = params;
+  const { url, startTime, endTime, outputPath, quality = 'best' } = params;
 
   // 시간 범위: 초 단위로 전달 (yt-dlp 권장)
   const timeRange = `*${startTime}-${endTime}`;
@@ -65,7 +65,7 @@ export function buildYtdlpArgs(params: {
   const formatSpec =
     quality === '1080p'
       ? buildYtdlpFormatSpec(DEFAULT_QUALITY) // 1080p 선호, fallback 허용
-      : 'bv+ba/b'; // 최고 화질
+      : buildYtdlpFormatSpec(QUALITY_PRESETS.BEST); // 최고 화질 (제한 없음)
 
   return [
     '--download-sections',
@@ -174,7 +174,7 @@ export async function downloadWithYtdlp(
       startTime,
       endTime,
       outputPath: tempFile,
-      quality: '1080p',
+      // quality 생략 시 기본값 'best' 사용 (최고 화질)
     });
 
     // console.log('[DEBUG] yt-dlp command:', ytdlpBin, ytdlpArgs.join(' '));
