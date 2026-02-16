@@ -77,7 +77,7 @@ export function buildYtdlpArgs(params: {
     '--downloader-args',
     'aria2c:-x 16 -s 16 -k 1M --console-log-level=warn --summary-interval=0', // 16개 연결, 16개 분할, 1MB 청크, 로그 최소화
     '-N',
-    '6', // dash/hls 프래그먼트용 (일반 HTTP에는 효과 없음)
+    '8', // 동시 다운로드 fragment 수
     '--progress',
     '--newline',
     '--progress-template',
