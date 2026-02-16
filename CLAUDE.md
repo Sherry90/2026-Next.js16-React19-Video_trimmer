@@ -4,17 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A client-side web application for trimming videos in the browser without server uploads. Built with Next.js 16 and uses MP4Box.js for stream-copy trimming (no re-encoding).
+A client-side web application for trimming videos in the browser without server uploads. Built with Next.js 16, uses MP4Box.js for fast stream-copy trimming, and supports both local files and URL sources (YouTube, Chzzk).
 
 ## Commands
 
 ### Development
 ```bash
-npm run dev           # Start dev server on localhost:3000 (Turbopack)
+npm run dev           # Start dev server (localhost:3000, Turbopack)
 npm run build         # Production build
 npm start             # Start production server
 npm run lint          # Run ESLint
-npm run type-check    # TypeScript type checking (tsc --noEmit)
+npm run type-check    # TypeScript type checking
 ```
 
 ### Testing
@@ -22,155 +22,48 @@ npm run type-check    # TypeScript type checking (tsc --noEmit)
 npm test              # Run Vitest unit tests
 npm run test:ui       # Vitest UI
 npm run test:coverage # Coverage report
-npm run test:e2e      # Playwright E2E tests (most skipped - need real video files)
+npm run test:e2e      # Playwright E2E tests (most skipped)
 npm run test:e2e:ui   # Playwright UI
 ```
 
-**Note**: E2E tests require actual video files and are mostly skipped. Unit tests cover core logic comprehensively.
+## Quick Reference
 
-## 키보드 단축키
-
-편집 화면에서 사용 가능한 단축키:
+### 키보드 단축키 (편집 화면)
 
 | 키 | 기능 |
 |----|------|
-| **Space** | 재생/일시정지 토글 |
-| **I** | 현재 위치를 In Point로 설정 |
-| **O** | 현재 위치를 Out Point로 설정 |
-| **←** | 1초 뒤로 |
-| **→** | 1초 앞으로 |
-| **Shift + ←** | 0.1초 뒤로 (프레임 단위) |
-| **Shift + →** | 0.1초 앞으로 (프레임 단위) |
-| **Home** | In Point로 점프 |
-| **End** | Out Point로 점프 |
+| **Space** | 재생/일시정지 |
+| **I** / **O** | In Point / Out Point 설정 |
+| **←** / **→** | 1초 이동 |
+| **Shift + ←/→** | 0.1초 이동 (프레임) |
+| **Home** / **End** | In Point / Out Point로 점프 |
 | **Ctrl + 휠** | 타임라인 줌 (0.1x ~ 10x) |
 
 단축키는 입력 필드 포커스 시 비활성화됩니다.
 
-## Architecture
+### 핵심 아키텍처
 
-### State Management (Zustand)
+- **State**: Zustand 단일 스토어 (`src/stores/useStore.ts`), Selector 패턴
+- **Phase**: idle → uploading → editing → processing → completed | error
+- **Features**: `src/features/` 하위에 upload, url-input, player, timeline, export
+- **Processing**: MP4Box.js (primary) / FFmpeg.wasm (fallback)
+- **Dependencies**: ffmpeg, yt-dlp, streamlink (자동 다운로드)
 
-Single store at `src/stores/useStore.ts` manages all application state:
-
-**Phase-based workflow**: The application progresses through phases:
-- `idle` → `uploading` → `editing` → `processing` → `completed` | `error`
-
-**State structure**:
-- `timeline`: currentTime, duration, inPoint, outPoint, zoom, locks
-- `processing`: phase, progress, videoUrl, processedVideoUrl
-- `player`: isPlaying, isScrubbing, isSeeking
-- `error`: errorMessage, errorCode
-- `export`: trimmedUrl, filename
-
-**Critical patterns**:
-- State setters include validation (e.g., `setInPoint` constrains between 0 and outPoint)
-- Memory management: `URL.revokeObjectURL()` called on cleanup to prevent leaks
-- Immutable updates using spread operators
-- **Selector pattern** (`src/stores/selectors.ts`, `src/stores/selectorFactory.ts`): Reusable selectors with `useShallow` for optimized re-renders
-  - `useTimelineState()`, `useTimelineActions()`, `usePlayerState()`, etc.
-  - **selectorFactory**: Factory functions for creating selectors (`createStateSelector`, `createSimpleSelector`)
-
-### Feature-Based Organization
+### Feature 구조
 
 ```
-src/
-├── features/
-│   ├── upload/        # File upload, drag-and-drop, validation
-│   ├── url-input/     # URL input, yt-dlp integration (refactored 2026-02-12, SSE 2026-02-14)
-│   │   ├── components/
-│   │   │   ├── UrlInputZone.tsx
-│   │   │   ├── UrlPreviewSection.tsx       # ~95 lines (decomposed)
-│   │   │   ├── UrlPreviewCard.tsx          # New: thumbnail & info
-│   │   │   └── UrlPreviewRangeControl.tsx  # New: time inputs
-│   │   ├── hooks/
-│   │   │   ├── useUrlInput.ts
-│   │   │   └── useStreamDownload.ts        # SSE-based download (refactored)
-│   │   └── utils/
-│   │       └── sseProgressUtils.ts         # Progress calculation & messages
-│   ├── player/        # Video.js player, context provider, playback controls
-│   ├── timeline/      # Timeline editor (refactored 2026-01-30, 2026-02-12)
-│   │   ├── components/
-│   │   │   ├── TimelineEditor.tsx      # 64 lines (orchestrator)
-│   │   │   ├── TrimHandle.tsx          # Unified In/Out handle
-│   │   │   ├── Playhead.tsx            # ~145 lines (seek logic extracted)
-│   │   │   ├── TimelineControls.tsx    # Control grouping
-│   │   │   ├── PreviewButtons.tsx      # Preview Edges only (Full removed)
-│   │   │   └── WaveformBackground.tsx
-│   │   └── hooks/
-│   │       ├── usePreviewPlayback.ts   # Preview logic
-│   │       ├── useTimelineZoom.ts      # Zoom logic
-│   │       └── usePlayheadSeek.ts      # New: seek verification
-│   └── export/        # Export button, trimming logic (refactored 2026-02-12)
-│       ├── components/
-│       │   └── ExportButton.tsx        # ~30 lines (logic extracted)
-│       ├── hooks/
-│       │   └── useExportState.ts       # New: export state management
-│       └── utils/
-│           ├── trimVideoDispatcher.ts  # ~110 lines (FFmpeg singleton)
-│           ├── trimVideoMP4Box.ts      # ~190 lines (helpers extracted)
-│           ├── trimVideoFFmpeg.ts
-│           ├── trimVideoServer.ts
-│           ├── mp4boxHelpers.ts        # New: sample filtering
-│           └── FFmpegSingleton.ts      # New: singleton pattern
-├── lib/               # Common utilities (new 2026-02-12, expanded 2026-02-15)
-│   ├── binPaths.ts
-│   ├── processUtils.ts          # Process management
-│   ├── apiErrorHandler.ts       # API error handling
-│   ├── formatSelector.ts        # yt-dlp format/quality selection (1080p preferred)
-│   ├── progressParser.ts        # Progress parsers (Streamlink, yt-dlp, FFmpeg)
-│   ├── platformDetector.ts      # Platform detection (domain-based)
-│   ├── downloadJob.ts           # Download orchestrator (Strategy Pattern)
-│   ├── streamlinkDownloader.ts  # Chzzk downloader (Streamlink-based)
-│   └── ytdlpDownloader.ts       # YouTube/generic downloader (yt-dlp-based)
-├── types/             # TypeScript type definitions (expanded 2026-02-14)
-│   ├── store.ts
-│   ├── video.ts
-│   ├── timeline.ts
-│   └── sse.ts                # New: SSE event types
-└── stores/            # State management (refactored 2026-02-12)
-    ├── useStore.ts
-    ├── selectors.ts          # ~94 lines (factory pattern)
-    └── selectorFactory.ts    # New: selector generators
+src/features/<feature>/
+├── components/    # React 컴포넌트
+├── hooks/         # Custom hooks
+├── utils/         # 유틸리티 함수
+└── context/       # Context Provider (필요시)
 ```
 
-Each feature has `components/`, `hooks/`, `utils/`, and sometimes `context/`.
+## Critical Patterns
 
-**Recent refactoring**:
-- **2026-01-30**: TimelineEditor decomposed from 182 lines to 64 lines. InPointHandle/OutPointHandle merged into TrimHandle.
-- **2026-02-12**: 11-item refactoring (Preview Full removed, 11 new utility files/hooks, major component simplification)
-- **2026-02-14**: SSE migration (Socket.IO removed, -100KB bundle, -21 packages), type safety (Discriminated Union), utility extraction (sseProgressUtils.ts)
-- **2026-02-15**: YouTube support via Strategy Pattern (platformDetector, yt-dlp downloader, 1080p quality, parallel download)
+### 1. Player-Timeline Synchronization
 
-### Video Processing Flow
-
-1. **Upload** (`idle` → `uploading` → `editing`):
-   - User drops/selects file in `UploadZone`
-   - `useFileUpload.handleFileSelect()` validates format and size
-   - Creates Object URL, sets phase to 'editing'
-
-2. **Editing** (`editing`):
-   - `VideoPlayerView` initializes video.js player
-   - `WaveformBackground` loads audio visualization (wavesurfer.js)
-   - `TimelineEditor` provides trim controls (handles, inputs, keyboard shortcuts)
-
-3. **Export** (`editing` → `processing` → `completed`):
-   - User clicks Export button
-   - **Primary**: MP4Box.js stream copy (src/features/export/utils/trimVideoMP4Box.ts)
-   - **Fallback**: FFmpeg.wasm transcoding (src/features/export/utils/trimVideoFFmpeg.ts)
-   - MP4Box finds nearest keyframe, extracts samples in time range, creates new MP4
-   - Sets phase to 'completed' with download URL
-
-4. **Download/Reset**:
-   - Download button with proper filename (`{original}_edited.{ext}`)
-   - Reset to edit new file (proper cleanup of Object URLs)
-
-### Player-Timeline Synchronization
-
-**Critical pattern to prevent race conditions**:
-
-The timeline uses a scrubbing state to avoid conflicts between user interaction and video playback:
-
+**Race condition 방지**:
 ```typescript
 // VideoPlayerView.tsx - timeupdate handler
 player.on('timeupdate', () => {
@@ -185,227 +78,89 @@ player.on('timeupdate', () => {
 });
 ```
 
-**Playhead dragging** (`src/features/timeline/components/Playhead.tsx`):
-- Sets `isScrubbing: true` on mousedown
+**Playhead dragging** (`Playhead.tsx`):
+- `isScrubbing: true` on mousedown
 - Works in PERCENTAGE coordinates during drag
 - Converts to time only at drag end
-- Uses refs for stable closures to prevent stale state
+- Uses refs for stable closures
 
-**Video player context** (`src/features/player/context/VideoPlayerContext.tsx`):
-- Provides video.js player instance to child components
-- Exposes control methods: `play()`, `pause()`, `seek()`, `togglePlay()`
-- Prevents prop drilling
+### 2. Phase-based Workflow
 
-### MP4Box.js vs FFmpeg.wasm
+상태는 항상 순차적으로 진행:
+- `idle` → `uploading` → `editing` → `processing` → `completed` | `error`
+- Phase 변경 시 이전 phase 상태 정리 필요 (URL revoke 등)
 
-**Current approach**: MP4Box.js (primary implementation)
-- Stream copy without re-encoding
-- Fast, maintains quality, lightweight bundle
-- Keyframe-based trimming (1-2 second accuracy, not frame-accurate)
-- Implementation: Parses MP4 structure, filters samples by time range, creates new MP4
+### 3. Memory Management
 
-**Fallback**: FFmpeg.wasm (still in codebase at `src/features/export/utils/trimVideoFFmpeg.ts`)
-- Would provide frame-accurate trimming
-- Slower, larger bundle, requires SharedArrayBuffer
-- Not actively used but available if needed
+**필수 cleanup**:
+- Object URLs: `URL.revokeObjectURL()` on reset/unmount
+- Video.js player: `player.dispose()` on unmount
+- Wavesurfer: `wavesurfer.destroy()` when video changes
+- Event listeners: cleanup in useEffect return
 
-### Dependency Bundling
+**URL sources**:
+- `source: 'file' | 'url'` 필드로 구분
+- `file: File | null` (URL sources는 null)
+- URL sources는 revokeObjectURL 스킵
 
-All required binaries are automatically managed:
+### 4. Video Player Context
 
-**ffmpeg**: Bundled via `@ffmpeg-installer/ffmpeg` (v4.4)
-- Installed as npm dependency
-- System ffmpeg as fallback
-
-**yt-dlp**: Auto-downloaded on postinstall
-- Priority: system > `.bin/yt-dlp` (auto-downloaded) > yt-dlp-wrap
-- Downloaded from GitHub releases by `scripts/setup-deps.mjs`
-- **Version requirement**: >= 2022.06.22.1 (for `--download-sections` support)
-- Used for YouTube and generic platforms
-
-**streamlink**: Auto-downloaded on postinstall
-- Priority: bundled binary > system binary
-- Windows: portable .exe from streamlink/windows-builds
-- Linux: AppImage from streamlink/streamlink-appimage (x64/ARM64)
-- macOS: system only (install via `brew install streamlink`)
-- Downloaded to `.bin/` folder (Git-ignored)
-- `scripts/setup-deps.mjs` runs on postinstall to check/download dependencies
-
-**Binary path resolution**: `src/lib/binPaths.ts`
-- `getFfmpegPath()`: Returns bundled or system ffmpeg
-- `getYtdlpPath()`: Returns system, `.bin/`, or yt-dlp-wrap path
-- `getStreamlinkPath()`: Returns bundled or system streamlink
-- `hasStreamlink()`: Checks if streamlink is available
-- `checkDependencies()`: Returns availability status of all tools
-
-**Build configuration**: `next.config.ts`
-- `serverExternalPackages: ['@ffmpeg-installer/ffmpeg', 'yt-dlp-wrap']` required for Turbopack
-
-### URL Download Strategy
-
-**Platform Detection** (`src/lib/platformDetector.ts`):
-- Domain-based detection: `chzzk.naver.com` → Chzzk, `youtube.com`/`youtu.be` → YouTube, others → Generic
-- Strategy selection: Chzzk → Streamlink, YouTube/Generic → yt-dlp
-
-**Chzzk (Streamlink)** (`src/lib/streamlinkDownloader.ts`):
-- Two-phase process:
-  1. `streamlink --hls-start-offset + --hls-duration + --stream-segment-threads 6` → temp file
-  2. `ffmpeg -avoid_negative_ts make_zero -c copy` → final file
-- Quality: `best` (hardcoded)
-- Progress: file size polling + segment count estimation
-- Parallel download: 6 threads
-
-**YouTube (yt-dlp)** (`src/lib/ytdlpDownloader.ts`):
-- Two-phase process (same pattern as Chzzk):
-  1. `yt-dlp --download-sections "*START-END" -f "bestvideo[height<=?1080]+bestaudio/best" -N 6` → temp file
-  2. `ffmpeg -avoid_negative_ts make_zero -c copy` → final file
-- Quality: 1080p preferred with flexible fallback (`height<=?1080`, `?` allows fallback)
-- Progress: real-time percentage parsing from `--newline` output (more accurate)
-- Parallel download: 6 threads (same as Chzzk, using `-N 6`)
-- FFmpeg location: `--ffmpeg-location` points to bundled ffmpeg
-
-**Common patterns**:
-- Fast-fail error handling (no fallbacks, clear error messages)
-- SSE (Server-Sent Events) for real-time progress
-- Phase-based progress: downloading (0-90%) → processing (90-100%)
-
-## Important Implementation Details
-
-### 1. Scrubbing State Management
-File: `src/features/timeline/components/Playhead.tsx`
-
-Uses `isScrubbing` flag to prevent race conditions:
-- During drag, playhead works in percentage coordinates
-- Video timeupdate events are ignored when scrubbing
-- Only converts to time and seeks on drag end
-- Uses `seeked` event verification to handle correct seek completion
-
-### 2. Keyboard Shortcuts
-File: `src/features/timeline/hooks/useKeyboardShortcuts.ts`
-
-Protected from input interference:
 ```typescript
-if (
-  target.tagName === 'INPUT' ||
-  target.tagName === 'TEXTAREA' ||
-  target.isContentEditable
-) {
-  return; // Don't intercept when typing in inputs
-}
+// Access player instance
+const { player, play, pause, seek, togglePlay } = useVideoPlayerContext();
+
+// Always check existence
+if (!player) return;
+player.currentTime(time);
 ```
 
-Active only during 'editing' phase.
+### 5. URL Download Strategy
 
-### 3. Preview Edges Feature
-File: `src/features/timeline/components/PreviewButtons.tsx`
+**Platform detection** (`src/lib/platformDetector.ts`):
+- Chzzk → Streamlink downloader
+- YouTube → yt-dlp downloader
+- Generic → yt-dlp (fallback)
 
-Intelligent preview logic:
-- Short segments (<10s): plays full segment
-- Long segments: plays first 5s, jumps to last 5s
-- Uses video.js `seeked` event to resume playback after jump
+**Two-phase process**:
+1. Download/extract segment → temp file
+2. FFmpeg timestamp reset → final file
 
-### 4. Waveform Visualization
-File: `src/features/timeline/components/WaveformBackground.tsx`
+**Progress**: SSE (Server-Sent Events)
+- Phase 1 (downloading): 0-90%
+- Phase 2 (processing): 90-100%
 
-- Loads audio from video URL using wavesurfer.js
-- Displays loading progress
-- Gracefully handles videos without audio track
-- Supports zoom (linked to timeline zoom state)
-- Destroyed and recreated when video changes
+## Development Workflow
 
-### 5. Timeline Zoom
-Files: `src/stores/useStore.ts`, `src/features/timeline/components/WaveformBackground.tsx`
-
-- Ctrl+wheel to zoom (0.1 - 10x)
-- Zoom factor stored in Zustand
-- Applied to wavesurfer: `wavesurfer.zoom(zoom * 10)`
-- Timeline handles scale proportionally
-
-### 6. Memory Management
-
-Proper cleanup throughout:
-- Object URLs revoked in store reset (`URL.revokeObjectURL()`)
-- Video.js player disposed on component unmount
-- Wavesurfer destroyed when video changes
-- Event listeners removed in useEffect cleanup functions
-
-## Code Patterns
-
-### Custom Hooks
-- `useDragHandle`: Reusable dragging logic with mouse events
-- `useFileUpload`: File upload with validation
-- `useKeyboardShortcuts`: Global keyboard shortcuts with phase awareness
-- `usePreviewPlayback`: Preview playback logic (full segment, edges)
-- `useTimelineZoom`: Timeline zoom control (Ctrl+wheel)
-
-### Context Usage
-Only the video player uses React Context to avoid prop drilling of the video.js instance. All other state uses Zustand.
-
-### Type Safety
-- Separate type files: `store.ts`, `video.ts`, `timeline.ts`
-- Discriminated union for AppPhase
-- Custom interfaces for MP4Box (missing official types)
-
-## Development Constraints
-
-### Supported Formats
-
-**Core**: MP4, WebM, OGG
-**Apple/QuickTime**: MOV, M4V
-**Microsoft/Windows**: AVI, WMV
-**Matroska**: MKV
-**Streaming/Mobile**: FLV, TS, 3GP, 3G2
-**MPEG variants**: MPEG, MPG
-
-17 formats total (see `src/constants/fileConstraints.ts`)
-
-### Validation
-
-**File size (multi-tier)**:
-- **Recommended max**: 500MB (safe processing)
-- **Warning threshold**: 1GB (caution advised)
-- **Soft max**: 2GB (memory check required)
-- **Hard max**: 5GB (absolute limit)
-
-**Format validation**: `src/features/upload/utils/validateFile.ts`
-
-### Keyframe Accuracy
-MP4Box trimming finds the nearest keyframe to start time, resulting in 1-2 second accuracy (not frame-accurate). This is a trade-off for fast, no-encoding trimming.
-
-## Testing Strategy
-
-### Unit Tests (Vitest)
-Comprehensive coverage of:
-- Utility functions (timeFormatter, constrainPosition, validateFile, sseProgressUtils)
-- Zustand store logic (all state management)
-- SSE progress calculation and messaging
-- 119 tests passing (updated 2026-02-14, streamlined from 136)
-
-### E2E Tests (Playwright)
-Framework configured with test skeletons:
-- Upload workflow
-- Editor interactions
-- Full trimming workflow
-- Most tests skipped (require real video files)
-
-## Common Development Patterns
-
-When adding features:
+### Adding Features
 1. Add state to Zustand store with validation
 2. Create feature folder with components/hooks/utils
-3. Use context only if needed to avoid prop drilling
+3. Use context only if needed (avoid prop drilling)
 4. Add unit tests for logic, E2E tests for workflows
 5. Run `npm run type-check` before committing
 
-When debugging timeline sync issues:
+### Debugging Timeline Sync
 - Check `isScrubbing` and `isSeeking` flags
 - Verify timeupdate handlers ignore events during user interaction
 - Use refs for stable closures in event handlers
 
-When working with video.js:
+### Working with video.js
 - Access player via `useVideoPlayerContext()`
 - Always check player exists before calling methods
 - Dispose player on component unmount
+
+## Important Constraints
+
+### Supported Formats
+MP4, WebM, OGG, MOV, M4V, AVI, WMV, MKV, FLV, TS, 3GP, 3G2, MPEG, MPG (17 formats)
+
+### File Size Limits
+- **Recommended**: 500MB (safe)
+- **Warning**: 1GB (caution)
+- **Soft max**: 2GB (memory check)
+- **Hard max**: 5GB (absolute limit)
+
+### Keyframe Accuracy
+MP4Box trimming finds the nearest keyframe, resulting in ±1-2 second accuracy (not frame-accurate). This is a trade-off for fast, no-encoding trimming.
 
 ## Git Commit Guidelines
 
@@ -451,28 +206,9 @@ Ctrl+휠로 타임라인 줌 조절 가능
 
 ## Documentation
 
-Comprehensive project documentation is organized in `.docs/`:
+**For detailed information, always refer to:**
+- **`.docs/PROJECT.md`** - Complete project documentation (architecture, technical details, performance)
+- **`.docs/HISTORY.md`** - Development history and architectural decisions
+- **`scripts/README.md`** - Scripts documentation
 
-- **`.docs/PROJECT.md`** - Complete project documentation (start here)
-  - Overview, current state, architecture, development workflow
-  - Technical stack, video processing, performance characteristics
-  - Deployment, constraints, limitations
-- **`.docs/HISTORY.md`** - Complete development history (2026-01-21 ~ 2026-02-11)
-  - Timeline, major milestones, bug fixes, refactoring
-  - URL trimming implementation, Streamlink auto-download
-  - Technical lessons learned
-
-### Scripts and References
-
-- **`scripts/`** - Project scripts
-  - `setup-deps.mjs` - Auto-download binaries (yt-dlp, streamlink) on postinstall
-  - `cut_video.sh` - Original shell script reference (디버깅 및 로직 참조용)
-  - `README.md` - Scripts documentation
-
-For current project status and architecture, refer to PROJECT.md. For development history and architectural decisions, refer to HISTORY.md.
-
-### More Details
-
-For complete architecture overview and performance characteristics, see `.docs/PROJECT.md`.
-
-For development history and architectural decisions, see `.docs/HISTORY.md`.
+This file (CLAUDE.md) is a quick reference guide for Claude Code. For comprehensive technical details, patterns, and implementation specifics, see PROJECT.md.

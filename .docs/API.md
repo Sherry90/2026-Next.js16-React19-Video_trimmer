@@ -263,8 +263,11 @@ data: {"type":"error","message":"에러 메시지"}
 ```
 
 **Phase 설명:**
-- `downloading`: Streamlink 다운로드 (0-100%)
-- `processing`: FFmpeg 처리 (0-100%)
+- `downloading`: 플랫폼별 다운로더 실행 (0-100%)
+  - Chzzk: Streamlink (HLS 세그먼트 병렬 다운로드)
+  - YouTube: yt-dlp (`--download-sections` 구간 추출)
+  - Generic: yt-dlp (fallback)
+- `processing`: FFmpeg 타임스탬프 리셋 (0-100%)
 - `completed`: 작업 완료
 
 **클라이언트 사용법:**
@@ -293,6 +296,39 @@ eventSource.onmessage = (event) => {
 2. ReadableStream 생성
 3. 이벤트를 SSE 형식으로 변환
 4. 스트림 반환
+
+**Platform Strategy (2026-02-15)**:
+
+다운로드 작업은 URL 도메인에 따라 적절한 전략을 자동 선택합니다:
+
+```typescript
+// src/lib/platformDetector.ts
+detectPlatform(url: string): 'chzzk' | 'youtube' | 'generic'
+selectDownloadStrategy(platform, streamType): 'streamlink' | 'ytdlp'
+```
+
+**플랫폼별 다운로더**:
+
+1. **Chzzk** (`src/lib/streamlinkDownloader.ts`):
+   - Phase 1: `streamlink --hls-start-offset + --hls-duration` → temp file
+   - Phase 2: `ffmpeg -avoid_negative_ts make_zero -c copy` → final file
+   - 병렬 다운로드: `--stream-segment-threads 6`
+   - 성능: 15-20초 (1분 영상)
+
+2. **YouTube** (`src/lib/ytdlpDownloader.ts`):
+   - Phase 1: `yt-dlp --download-sections "*START-END" -f "bestvideo[height<=?9999]+bestaudio/best"` → temp file
+   - Phase 2: `ffmpeg -avoid_negative_ts make_zero -c copy` → final file
+   - 병렬 다운로드: `-N 8` (concurrent fragments), aria2c (`-x 16 -s 16`)
+   - 화질: 최고 화질 (제한 없음), flexible fallback
+   - 성능: 30-40초 (1분 영상, FFmpeg 구간 추출이 병목)
+
+3. **Generic** (기타 URL):
+   - yt-dlp 사용 (YouTube와 동일한 방식)
+
+**공통 패턴**:
+- 모든 다운로더는 2-phase process 사용
+- SSE를 통한 실시간 진행률 전송
+- Fast-fail error handling (명확한 에러 메시지, fallback 없음)
 
 ---
 
