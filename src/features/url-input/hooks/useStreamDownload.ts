@@ -168,10 +168,20 @@ export function useStreamDownload() {
         console.log('[SSE Client] Job started:', jobId);
 
         // 2. SSE 스트림 연결
-        const eventSource = new EventSource(`/api/download/stream/${jobId}`);
+        const streamUrl = `/api/download/stream/${jobId}`;
+        console.log('[SSE Client] 🔌 Creating EventSource for:', streamUrl);
+        const eventSource = new EventSource(streamUrl);
+        console.log('[SSE Client] 🔌 EventSource created, readyState:', eventSource.readyState); // 0=CONNECTING, 1=OPEN, 2=CLOSED
         eventSourceRef.current = eventSource;
 
+        // EventSource 연결 성공 감지
+        eventSource.addEventListener('open', () => {
+          console.log('[SSE Client] ✅ EventSource connected successfully');
+        });
+
         eventSource.onmessage = (event) => {
+          console.log('[SSE Client] 📨 Received message:', event.data);
+
           try {
             const data: SSEEvent = JSON.parse(event.data);
 
@@ -187,7 +197,10 @@ export function useStreamDownload() {
           }
         };
 
-        eventSource.onerror = () => {
+        eventSource.onerror = (event) => {
+          console.error('[SSE Client] ❌ EventSource error event:', event);
+          console.error('[SSE Client] ❌ EventSource readyState:', eventSource.readyState);
+          console.error('[SSE Client] ❌ EventSource URL:', eventSource.url);
           handleConnectionError(eventSource);
         };
       } catch (error) {

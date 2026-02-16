@@ -12,18 +12,26 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
   const { jobId } = await params;
 
-  console.log(`[SSE] Client connected to stream: ${jobId}`);
+  console.log(`[SSE] ========== SSE STREAM REQUEST ==========`);
+  console.log(`[SSE] 🔌 Client connected to stream: ${jobId}`);
+  console.log(`[SSE] 🔌 Request URL: ${request.url}`);
 
   // ReadableStream 생성
   const stream = new ReadableStream({
     start(controller) {
       const encoder = new TextEncoder();
 
+      // 즉시 초기 이벤트 전송 (Next.js 버퍼링 방지)
+      // SSE 프로토콜: 콜론으로 시작하는 라인은 주석 (브라우저가 무시)
+      controller.enqueue(encoder.encode(': connected\n\n'));
+      console.log(`[SSE] 📤 Initial heartbeat sent for job: ${jobId}`);
+
       // JobStream 구독
       const unsubscribe = getJobStream(jobId, (event) => {
         try {
           const data = `data: ${JSON.stringify(event)}\n\n`;
           controller.enqueue(encoder.encode(data));
+          console.log(`[SSE] 📤 Event sent to client: ${event.type} for job ${jobId}`);
 
           // 완료/에러 시 스트림 종료
           if (event.type === 'complete' || event.type === 'error') {
