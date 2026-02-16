@@ -47,11 +47,11 @@ export function getJobStream(jobId: string, listener: JobListener): () => void {
       listeners: [listener],
     };
     jobs.set(jobId, job);
-    console.log(`[SSE] 🔌 Job created with initial listener: ${jobId}`);
+    // console.log(`[SSE] 🔌 Job created with initial listener: ${jobId}`);
   } else {
     // 기존 Job에 리스너 추가
     job.listeners.push(listener);
-    console.log(`[SSE] 🔌 Listener added to existing job: ${jobId} (total: ${job.listeners.length})`);
+    // console.log(`[SSE] 🔌 Listener added to existing job: ${jobId} (total: ${job.listeners.length})`);
   }
 
   // Unsubscribe 함수 반환
@@ -60,7 +60,7 @@ export function getJobStream(jobId: string, listener: JobListener): () => void {
     if (currentJob) {
       const beforeCount = currentJob.listeners.length;
       currentJob.listeners = currentJob.listeners.filter((l) => l !== listener);
-      console.log(`[SSE] 🔌 Listener removed from job: ${jobId} (${beforeCount} → ${currentJob.listeners.length})`);
+      // console.log(`[SSE] 🔌 Listener removed from job: ${jobId} (${beforeCount} → ${currentJob.listeners.length})`);
     }
   };
 }
@@ -79,11 +79,11 @@ function emitEvent(jobId: string, event: JobEvent) {
 
   // Case 2: No listeners (warning - indicates race condition)
   if (job.listeners.length === 0) {
-    console.warn(`[SSE] ⚠️  No listeners for job ${jobId}, event type: ${event.type} (possible race condition)`);
+    // console.warn(`[SSE] ⚠️  No listeners for job ${jobId}, event type: ${event.type} (possible race condition)`);
   }
 
   // Log emission (helps verify listeners are working)
-  console.log(`[SSE] 📡 Emitting ${event.type} to ${job.listeners.length} listener(s) for job ${jobId}`);
+  // console.log(`[SSE] 📡 Emitting ${event.type} to ${job.listeners.length} listener(s) for job ${jobId}`);
 
   // Emit to all listeners
   job.listeners.forEach((listener) => {
@@ -109,7 +109,7 @@ function updateJobStatus(jobId: string, updates: Partial<Job>) {
   if (updates.status !== undefined) job.status = updates.status;
   if (updates.outputPath !== undefined) job.outputPath = updates.outputPath;
 
-  console.log(`[SSE] 🔧 Job status updated: ${jobId}, new status: ${job.status}`);
+  // console.log(`[SSE] 🔧 Job status updated: ${jobId}, new status: ${job.status}`);
 }
 
 /**
@@ -137,19 +137,19 @@ export async function startDownloadJob(
       status: 'running',
       listeners: [],
     });
-    console.log(`[SSE] 🔧 Job initialized: ${jobId}`);
+    // console.log(`[SSE] 🔧 Job initialized: ${jobId}`);
   } else {
     // Job 존재: 리스너 보존하고 상태만 업데이트
     existingJob.status = 'running';
     existingJob.outputPath = null;
-    console.log(`[SSE] 🔧 Job reinitialized: ${jobId} (preserving ${existingJob.listeners.length} listeners)`);
+    // console.log(`[SSE] 🔧 Job reinitialized: ${jobId} (preserving ${existingJob.listeners.length} listeners)`);
   }
 
   // 플랫폼 감지 및 전략 선택
   const platform = detectPlatform(url);
   const strategy = selectDownloadStrategy(platform, streamType || 'mp4');
 
-  console.log(`[SSE] Platform: ${platform}, Strategy: ${strategy}`);
+  // console.log(`[SSE] Platform: ${platform}, Strategy: ${strategy}`);
 
   // 전략별 다운로더에 위임
   if (strategy === 'streamlink') {

@@ -68,7 +68,7 @@ export async function downloadWithStreamlink(
 
   const estimatedBitrate = tbr || EXPORT.DEFAULT_BITRATE_KBPS;
   const estimatedBytes = ((estimatedBitrate * 1024) / 8) * segmentDuration;
-  console.log(`[SSE] Estimated: ${(estimatedBytes / 1024 / 1024).toFixed(1)} MB (${estimatedBitrate} kbps)`);
+  // console.log(`[SSE] Estimated: ${(estimatedBytes / 1024 / 1024).toFixed(1)} MB (${estimatedBitrate} kbps)`);
 
   let currentPhase: 'downloading' | 'processing' | 'completed' = 'downloading';
   let lastLoggedProgress = -1;
@@ -82,7 +82,7 @@ export async function downloadWithStreamlink(
       return;
     }
 
-    console.log(`[SSE] ${phase}: ${roundedProgress}% (${processedSeconds.toFixed(2)}s)`);
+    // console.log(`[SSE] ${phase}: ${roundedProgress}% (${processedSeconds.toFixed(2)}s)`);
 
     emitEvent(jobId, {
       type: 'progress',
@@ -113,9 +113,9 @@ export async function downloadWithStreamlink(
 
     emitProgress('downloading', true);
 
-    console.log(
-      `[SSE] Phase 1 (Downloading) - offset=${formatTimeHHMMSS(startTime)} duration=${formatTimeHHMMSS(segmentDuration)}`
-    );
+    // console.log(
+    //   `[SSE] Phase 1 (Downloading) - offset=${formatTimeHHMMSS(startTime)} duration=${formatTimeHHMMSS(segmentDuration)}`
+    // );
 
     // ===== PHASE 1: Streamlink 구간 다운로드 =====
     const streamlinkArgs = [
@@ -156,13 +156,13 @@ export async function downloadWithStreamlink(
         const progress = Math.min(100, (stats.size / estimatedBytes) * 100);
         updateProgress(progress, 'downloading');
 
-        const rounded = Math.floor(progress / 5) * 5;
-        if (rounded % 5 === 0 && rounded !== lastLoggedProgress) {
-          console.log(
-            `[SSE] Downloaded: ${(stats.size / 1024 / 1024).toFixed(1)} MB / ${(estimatedBytes / 1024 / 1024).toFixed(1)} MB`
-          );
-          lastLoggedProgress = rounded;
-        }
+        // const rounded = Math.floor(progress / 5) * 5;
+        // if (rounded % 5 === 0 && rounded !== lastLoggedProgress) {
+        //   console.log(
+        //     `[SSE] Downloaded: ${(stats.size / 1024 / 1024).toFixed(1)} MB / ${(estimatedBytes / 1024 / 1024).toFixed(1)} MB`
+        //   );
+        //   lastLoggedProgress = rounded;
+        // }
       } catch {}
     }, POLLING.PROGRESS_CHECK_INTERVAL_MS);
 
@@ -171,18 +171,18 @@ export async function downloadWithStreamlink(
       clearInterval(progressInterval);
       streamlinkProc.stderr?.removeAllListeners('data');
 
-      console.log('[SSE] Streamlink closed');
+      // console.log('[SSE] Streamlink closed');
 
-      try {
-        const stats = await fsPromises.stat(tempFile);
-        console.log(`[SSE] Final: ${(stats.size / 1024 / 1024).toFixed(1)} MB`);
-      } catch {}
+      // try {
+      //   const stats = await fsPromises.stat(tempFile);
+      //   console.log(`[SSE] Final: ${(stats.size / 1024 / 1024).toFixed(1)} MB`);
+      // } catch {}
 
-      const debugPath = join(tmpdir(), `streamlink_debug_${jobId}.log`);
-      try {
-        writeFileSync(debugPath, streamlinkStderr, 'utf-8');
-        console.log(`[SSE] Stderr: ${debugPath}`);
-      } catch {}
+      // const debugPath = join(tmpdir(), `streamlink_debug_${jobId}.log`);
+      // try {
+      //   writeFileSync(debugPath, streamlinkStderr, 'utf-8');
+      //   console.log(`[SSE] Stderr: ${debugPath}`);
+      // } catch {}
 
       return result && existsSync(tempFile);
     })();
@@ -193,7 +193,7 @@ export async function downloadWithStreamlink(
     }
 
     const actualDuration = await getFileDuration(tempFile);
-    console.log(`[SSE] Phase 1 completed - Duration: ${actualDuration.toFixed(1)}s / ${segmentDuration}s`);
+    // console.log(`[SSE] Phase 1 completed - Duration: ${actualDuration.toFixed(1)}s / ${segmentDuration}s`);
 
     // ===== PHASE 2: FFmpeg 타임스탬프 리셋 =====
     processedSeconds = 0;
@@ -201,7 +201,7 @@ export async function downloadWithStreamlink(
     currentPhase = 'processing';
     emitProgress('processing', true);
 
-    console.log('[SSE] Phase 2 (Processing) - ffmpeg timestamp reset');
+    // console.log('[SSE] Phase 2 (Processing) - ffmpeg timestamp reset');
 
     const ffmpegProc = spawn(
       getFfmpegPath(),
@@ -232,11 +232,11 @@ export async function downloadWithStreamlink(
       const progress = ffmpegTracker.pushChunk(chunk);
       updateProgress(progress, 'processing');
 
-      const rounded = Math.floor(progress / 5) * 5;
-      if (rounded !== lastFFmpegLog) {
-        console.log(`[SSE] FFmpeg: ${ffmpegTracker.getProcessedSeconds().toFixed(1)}s (${progress.toFixed(1)}%)`);
-        lastFFmpegLog = rounded;
-      }
+      // const rounded = Math.floor(progress / 5) * 5;
+      // if (rounded !== lastFFmpegLog) {
+      //   console.log(`[SSE] FFmpeg: ${ffmpegTracker.getProcessedSeconds().toFixed(1)}s (${progress.toFixed(1)}%)`);
+      //   lastFFmpegLog = rounded;
+      // }
     });
 
     const ffmpegSuccess = await runWithTimeout(ffmpegProc, PROCESS.FFMPEG_TIMEOUT_MS);
@@ -250,7 +250,7 @@ export async function downloadWithStreamlink(
 
     // ===== 완료 =====
     updateProgress(100, 'processing');
-    console.log('[SSE] Phase 2 completed: 100%');
+    // console.log('[SSE] Phase 2 completed: 100%');
     currentPhase = 'completed';
     emitProgress('completed', true);
 
@@ -261,7 +261,7 @@ export async function downloadWithStreamlink(
     });
 
     updateJobStatus(jobId, { outputPath, status: 'completed' });
-    console.log(`[SSE] Job completed: ${jobId}`);
+    // console.log(`[SSE] Job completed: ${jobId}`);
   } catch (error) {
     safeUnlink(tempFile);
     safeUnlink(outputPath);
