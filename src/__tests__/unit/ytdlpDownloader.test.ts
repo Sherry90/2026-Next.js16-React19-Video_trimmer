@@ -25,27 +25,27 @@ describe('ytdlpDownloader', () => {
       expect(args[sectionIndex + 1]).toBe('*60-180');
     });
 
-    it('uses 1080p quality by default', () => {
+    it('uses best quality by default', () => {
       const args = buildYtdlpArgs(baseParams);
 
       const formatIndex = args.indexOf('-f');
       expect(formatIndex).toBeGreaterThan(-1);
+      expect(args[formatIndex + 1]).toBe('bestvideo[height<=?9999]+bestaudio/best');
+    });
+
+    it('uses 1080p quality when specified', () => {
+      const args = buildYtdlpArgs({ ...baseParams, quality: '1080p' });
+
+      const formatIndex = args.indexOf('-f');
       expect(args[formatIndex + 1]).toBe('bestvideo[height<=?1080]+bestaudio/best');
     });
 
-    it('uses best quality when specified', () => {
-      const args = buildYtdlpArgs({ ...baseParams, quality: 'best' });
-
-      const formatIndex = args.indexOf('-f');
-      expect(args[formatIndex + 1]).toBe('bv+ba/b');
-    });
-
-    it('uses 6 concurrent threads for parallel download', () => {
+    it('uses 8 concurrent threads for parallel download', () => {
       const args = buildYtdlpArgs(baseParams);
 
       expect(args).toContain('-N');
       const concurrentIndex = args.indexOf('-N');
-      expect(args[concurrentIndex + 1]).toBe('6');
+      expect(args[concurrentIndex + 1]).toBe('8');
     });
 
     it('specifies ffmpeg location', () => {
