@@ -57,7 +57,7 @@ interface StoreActions {
 
   // URL 미리보기 관련
   setUrlPreview: (data: Omit<UrlPreviewState, 'inPoint' | 'outPoint'>) => void;
-  setUrlPreviewRange: (inPoint: number, outPoint: number) => void;
+  setUrlPreviewRange: (inPoint: number | null, outPoint: number | null) => void;
   clearUrlPreview: () => void;
 
   // 타임라인 관련
@@ -166,12 +166,11 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
 
   // URL 미리보기 관련
   setUrlPreview: (data) => {
-    const maxDuration = 600; // 10분 제한
     set({
       urlPreview: {
         ...data,
-        inPoint: 0,
-        outPoint: Math.min(data.duration, maxDuration),
+        inPoint: null,   // null = 처음부터 (0)
+        outPoint: null,  // null = 끝까지 (min(duration, maxSegment))
       },
       phase: 'url_preview',
     });
@@ -180,6 +179,14 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
   setUrlPreviewRange: (inPoint, outPoint) => {
     const { urlPreview } = get();
     if (!urlPreview) return;
+
+    // null이 포함된 경우 그대로 저장 (constraint 적용 안 함)
+    if (inPoint === null || outPoint === null) {
+      set({ urlPreview: { ...urlPreview, inPoint, outPoint } });
+      return;
+    }
+
+    // 둘 다 number인 경우 constraint 적용
     const maxSegment = 600;
     const constrainedIn = Math.max(0, Math.min(inPoint, urlPreview.duration));
     const constrainedOut = Math.max(constrainedIn, Math.min(outPoint, urlPreview.duration));

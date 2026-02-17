@@ -17,11 +17,13 @@ export function UrlPreviewSection() {
   const downloadPhase = useStore((state) => state.processing.downloadPhase);
 
   const handleInPointChange = useCallback(
-    (value: number) => {
+    (value: number | null) => {
       if (!urlPreview) return;
+      const resolvedValue = value ?? 0;
+      const resolvedOut = urlPreview.outPoint ?? Math.min(urlPreview.duration, TIMELINE.MAX_SEGMENT_DURATION_SECONDS);
       // Start 변경 시: outPoint가 새 Start보다 작거나 같으면 자동으로 Start + 10분으로 조정
-      const newOut = value >= urlPreview.outPoint
-        ? Math.min(value + TIMELINE.MAX_SEGMENT_DURATION_SECONDS, urlPreview.duration)
+      const newOut = resolvedValue >= resolvedOut
+        ? Math.min(resolvedValue + TIMELINE.MAX_SEGMENT_DURATION_SECONDS, urlPreview.duration)
         : urlPreview.outPoint;
       setUrlPreviewRange(value, newOut);
     },
@@ -29,7 +31,7 @@ export function UrlPreviewSection() {
   );
 
   const handleOutPointChange = useCallback(
-    (value: number) => {
+    (value: number | null) => {
       if (!urlPreview) return;
       setUrlPreviewRange(urlPreview.inPoint, value);
     },
@@ -43,7 +45,9 @@ export function UrlPreviewSection() {
 
   if (!urlPreview) return null;
 
-  const segmentDuration = urlPreview.outPoint - urlPreview.inPoint;
+  const resolvedIn = urlPreview.inPoint ?? 0;
+  const resolvedOut = urlPreview.outPoint ?? Math.min(urlPreview.duration, TIMELINE.MAX_SEGMENT_DURATION_SECONDS);
+  const segmentDuration = resolvedOut - resolvedIn;
   const isOverLimit = segmentDuration > TIMELINE.MAX_SEGMENT_DURATION_SECONDS;
 
   return (

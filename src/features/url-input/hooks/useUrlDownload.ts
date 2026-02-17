@@ -25,8 +25,8 @@ export function useUrlDownload() {
       try {
         const blob = await trimVideoServer({
           originalUrl: urlPreview.originalUrl,
-          startTime: urlPreview.inPoint,
-          endTime: urlPreview.outPoint,
+          startTime: urlPreview.inPoint ?? 0,
+          endTime: urlPreview.outPoint ?? Math.min(urlPreview.duration, 600),
           filename: `${urlPreview.title || 'video'}.mp4`,
         });
 

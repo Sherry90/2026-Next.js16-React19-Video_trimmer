@@ -10,8 +10,8 @@ interface TimelineControlsProps {
   duration: number;
   isInPointLocked: boolean;
   isOutPointLocked: boolean;
-  onInPointChange: (value: number) => void;
-  onOutPointChange: (value: number) => void;
+  onInPointChange: (value: number | null) => void;
+  onOutPointChange: (value: number | null) => void;
   onInPointLockToggle: () => void;
   onOutPointLockToggle: () => void;
   onPreviewEdges: () => void;
