@@ -1,7 +1,6 @@
 /**
  * FFmpeg log parsing utilities for accurate progress tracking
  */
-import { formatDuration } from '@/utils/timeFormatter';
 
 export interface FFmpegProgress {
   processedTime: number; // seconds
@@ -100,6 +99,3 @@ export function estimateRemainingTime(
   const remainingDuration = totalDuration - processedTime;
   return remainingDuration / speed;
 }
-
-// Re-export formatDuration for backward compatibility
-export { formatDuration };

@@ -12,10 +12,11 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { FFmpegProgressTracker, getFileDuration } from './progressParser';
 import { getFfmpegPath, getStreamlinkPath } from './binPaths';
-import { formatTimeHHMMSS } from '@/utils/timeFormatter';
+
 import { runWithTimeout } from './processUtils';
 import { PROCESS, EXPORT, POLLING } from '@/constants/appConfig';
 import { clamp } from '@/utils/mathUtils';
+import { formatTime } from '@/utils/timeFormatter';
 import type { SSEProgressEvent, SSECompleteEvent, SSEErrorEvent } from '@/types/sse';
 
 function safeUnlink(path: string): void {
@@ -159,7 +160,7 @@ export async function downloadWithStreamlink(
     emitProgress('downloading', true);
 
     // console.log(
-    //   `[SSE] Phase 1 (Downloading) - offset=${formatTimeHHMMSS(startTime)} duration=${formatTimeHHMMSS(segmentDuration)}`
+    //   `[SSE] Phase 1 (Downloading) - offset=${formatTime(startTime, false)} duration=${formatTime(segmentDuration, false)}`
     // );
 
     // ===== PHASE 1: Streamlink 구간 다운로드 =====
@@ -168,9 +169,9 @@ export async function downloadWithStreamlink(
       'debug',
       '--progress=force',
       '--hls-start-offset',
-      formatTimeHHMMSS(startTime),
+      formatTime(startTime, false),
       '--hls-duration',
-      formatTimeHHMMSS(segmentDuration),
+      formatTime(segmentDuration, false),
       '--stream-segment-threads',
       '6',
       url,

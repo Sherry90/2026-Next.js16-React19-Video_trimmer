@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { formatTime, parseTime } from '@/utils/timeFormatter';
+import { formatTime, parseFlexibleTime } from '@/utils/timeFormatter';
 
 interface TimeInputProps {
   label: string;
@@ -30,7 +30,7 @@ export function TimeInput({
 
   const handleBlur = useCallback(() => {
     setIsFocused(false);
-    const parsedTime = parseTime(inputValue);
+    const parsedTime = parseFlexibleTime(inputValue);
     const constrainedTime = Math.max(
       min,
       max !== undefined ? Math.min(parsedTime, max) : parsedTime
