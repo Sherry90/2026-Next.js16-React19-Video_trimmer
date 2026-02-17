@@ -16,8 +16,8 @@ export interface UrlPreviewState {
   originalUrl: string;
   streamUrl: string;
   streamType: 'hls' | 'mp4';
-  inPoint: number;
-  outPoint: number;
+  inPoint: number | null;   // null = 처음부터 (0)
+  outPoint: number | null;  // null = 끝까지 (min(duration, maxSegment))
   tbr: number | null; // Total bitrate (kbps)
 }
 

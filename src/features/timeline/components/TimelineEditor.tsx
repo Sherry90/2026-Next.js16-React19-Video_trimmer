@@ -51,8 +51,8 @@ export function TimelineEditor() {
         duration={duration}
         isInPointLocked={isInPointLocked}
         isOutPointLocked={isOutPointLocked}
-        onInPointChange={setInPoint}
-        onOutPointChange={setOutPoint}
+        onInPointChange={(value) => { if (value !== null) setInPoint(value); }}
+        onOutPointChange={(value) => { if (value !== null) setOutPoint(value); }}
         onInPointLockToggle={() => setInPointLocked(!isInPointLocked)}
         onOutPointLockToggle={() => setOutPointLocked(!isOutPointLocked)}
         onPreviewEdges={handlePreviewEdges}

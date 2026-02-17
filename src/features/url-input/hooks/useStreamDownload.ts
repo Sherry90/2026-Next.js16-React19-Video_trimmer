@@ -146,8 +146,8 @@ export function useStreamDownload() {
 
         const downloadRequest: DownloadRequest = {
           url: urlPreview.originalUrl,
-          startTime: urlPreview.inPoint,
-          endTime: urlPreview.outPoint,
+          startTime: urlPreview.inPoint ?? 0,
+          endTime: urlPreview.outPoint ?? Math.min(urlPreview.duration, 600),
           filename,
           tbr: urlPreview.tbr,
         };

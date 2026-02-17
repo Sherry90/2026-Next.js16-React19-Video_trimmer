@@ -1,15 +1,15 @@
 'use client';
 
-import { formatDuration } from '@/utils/timeFormatter';
+import { formatDuration, formatTime } from '@/utils/timeFormatter';
 import { TimeInput } from '@/features/timeline/components/TimeInput';
 
 interface UrlPreviewRangeControlProps {
-  inPoint: number;
-  outPoint: number;
+  inPoint: number | null;
+  outPoint: number | null;
   duration: number;
   maxSegment: number;
-  onInPointChange: (value: number) => void;
-  onOutPointChange: (value: number) => void;
+  onInPointChange: (value: number | null) => void;
+  onOutPointChange: (value: number | null) => void;
 }
 
 /**
@@ -23,7 +23,9 @@ export function UrlPreviewRangeControl({
   onInPointChange,
   onOutPointChange,
 }: UrlPreviewRangeControlProps) {
-  const segmentDuration = outPoint - inPoint;
+  const resolvedIn = inPoint ?? 0;
+  const resolvedOut = outPoint ?? Math.min(duration, maxSegment);
+  const segmentDuration = resolvedOut - resolvedIn;
   const isOverLimit = segmentDuration > maxSegment;
 
   return (
@@ -36,13 +38,15 @@ export function UrlPreviewRangeControl({
           onChange={onInPointChange}
           min={0}
           max={duration}
+          placeholder="00:00:00.000"
         />
         <TimeInput
           label="End"
           value={outPoint}
           onChange={onOutPointChange}
-          min={inPoint}
+          min={resolvedIn}
           max={duration}
+          placeholder={formatTime(Math.min(duration, maxSegment))}
         />
       </div>
 
