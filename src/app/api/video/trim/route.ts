@@ -5,8 +5,9 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { getFfmpegPath, getStreamlinkPath, hasStreamlink } from '@/lib/binPaths';
-import { formatTimeHHMMSS } from '@/utils/timeFormatter';
+
 import { runWithTimeout } from '@/lib/processUtils';
+import { formatTime } from '@/utils/timeFormatter';
 import { validateTrimRequest, handleApiError } from '@/utils/apiUtils';
 import { streamFile } from '@/lib/streamUtils';
 
@@ -39,11 +40,11 @@ async function trimWithStreamlink(
 
   try {
     // Stage 1: Download segment with streamlink
-    console.log(`[trim] Stage 1 - streamlink download: offset=${formatTimeHHMMSS(startTime)} duration=${formatTimeHHMMSS(duration)}`);
+    console.log(`[trim] Stage 1 - streamlink download: offset=${formatTime(startTime, false)} duration=${formatTime(duration, false)}`);
 
     const args = [
-      '--hls-start-offset', formatTimeHHMMSS(startTime),
-      '--stream-segmented-duration', formatTimeHHMMSS(duration),
+      '--hls-start-offset', formatTime(startTime, false),
+      '--stream-segmented-duration', formatTime(duration, false),
       '--stream-segment-threads', '6',  // 병렬 다운로드 (1-10, 기본값 1)
       originalUrl,
       'best',

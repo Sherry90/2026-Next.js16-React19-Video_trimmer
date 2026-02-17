@@ -70,6 +70,8 @@ export const APP_CONFIG = {
     SECONDS_PER_HOUR: 3600,
     /** 1초 = 1000밀리초 */
     MILLISECONDS_PER_SECOND: 1000,
+    /** 1분의 최대 초 = 59 */
+    MAX_SECONDS_PER_MINUTE: 59,
   },
 
   /**

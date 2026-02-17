@@ -1,31 +1,23 @@
 import { TIME } from '@/constants/appConfig';
 
 /**
- * 초 단위 시간을 HH:MM:SS.mmm 형식으로 변환
+ * 초 단위 시간을 HH:MM:SS.mmm 또는 HH:MM:SS 형식으로 변환
+ * @param includeMs 밀리초 포함 여부 (기본값: true)
  */
-export function formatTime(seconds: number): string {
+export function formatTime(seconds: number, includeMs = true): string {
   const hours = Math.floor(seconds / TIME.SECONDS_PER_HOUR);
   const minutes = Math.floor((seconds % TIME.SECONDS_PER_HOUR) / TIME.SECONDS_PER_MINUTE);
   const secs = Math.floor(seconds % TIME.SECONDS_PER_MINUTE);
-  const milliseconds = Math.floor((seconds % 1) * TIME.MILLISECONDS_PER_SECOND);
+  const base = [
+    hours.toString().padStart(2, '0'),
+    minutes.toString().padStart(2, '0'),
+    secs.toString().padStart(2, '0'),
+  ].join(':');
 
-  const hoursStr = hours.toString().padStart(2, '0');
-  const minutesStr = minutes.toString().padStart(2, '0');
-  const secsStr = secs.toString().padStart(2, '0');
-  const millisecondsStr = milliseconds.toString().padStart(3, '0');
+  if (!includeMs) return base;
 
-  return `${hoursStr}:${minutesStr}:${secsStr}.${millisecondsStr}`;
-}
-
-/**
- * 초 단위 시간을 HH:MM:SS 형식으로 변환 (streamlink용)
- */
-export function formatTimeHHMMSS(seconds: number): string {
-  const hours = Math.floor(seconds / TIME.SECONDS_PER_HOUR);
-  const minutes = Math.floor((seconds % TIME.SECONDS_PER_HOUR) / TIME.SECONDS_PER_MINUTE);
-  const secs = Math.floor(seconds % TIME.SECONDS_PER_MINUTE);
-
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  const ms = Math.floor((seconds % 1) * TIME.MILLISECONDS_PER_SECOND);
+  return base + '.' + ms.toString().padStart(3, '0');
 }
 
 /**
@@ -58,6 +50,52 @@ export function parseTime(timeString: string): number {
     seconds +
     milliseconds / TIME.MILLISECONDS_PER_SECOND
   );
+}
+
+/**
+ * 유연한 시간 파싱 - 여러 형식 허용:
+ * - 단일 숫자: "90" → 90초
+ * - MM:SS 형식: "1:30" → 90초
+ * - HH:MM:SS.mmm 형식: "01:02:03.123" → 3723.123초
+ *
+ * @returns 초 단위 파싱 결과, 유효하지 않은 입력은 0 반환
+ */
+export function parseFlexibleTime(input: string): number {
+  const trimmed = input.trim();
+
+  if (!trimmed) return 0;
+
+  const colonCount = (trimmed.match(/:/g) || []).length;
+
+  // Case 1: 단일 숫자 (초)
+  if (colonCount === 0) {
+    const seconds = parseFloat(trimmed);
+    return isNaN(seconds) || seconds < 0 ? 0 : seconds;
+  }
+
+  // Case 2: MM:SS 형식
+  if (colonCount === 1) {
+    const [minutesPart, secondsPart] = trimmed.split(':');
+    const minutes = parseInt(minutesPart, 10);
+    const secondsAndMillis = secondsPart.split('.');
+    const seconds = parseInt(secondsAndMillis[0], 10);
+    const millis = secondsAndMillis[1]
+      ? parseInt(secondsAndMillis[1].padEnd(3, '0'), 10)
+      : 0;
+
+    if (isNaN(minutes) || isNaN(seconds) || isNaN(millis)) return 0;
+    if (minutes < 0 || seconds < 0 || seconds > TIME.MAX_SECONDS_PER_MINUTE || millis < 0) return 0;
+
+    return minutes * TIME.SECONDS_PER_MINUTE + seconds + millis / TIME.MILLISECONDS_PER_SECOND;
+  }
+
+  // Case 3: HH:MM:SS 형식
+  if (colonCount === 2) {
+    return parseTime(trimmed);
+  }
+
+  // 유효하지 않음: 콜론이 너무 많음
+  return 0;
 }
 
 /**
