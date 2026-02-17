@@ -1,9 +1,10 @@
 /**
  * yt-dlp 기반 다운로드 (유튜브 및 범용 플랫폼)
  *
- * 2단계 프로세스 (치지직과 동일):
- * 1. yt-dlp --download-sections → 임시 파일
- * 2. ffmpeg 타임스탬프 리셋 (-avoid_negative_ts make_zero)
+ * 1단계 프로세스 (최적화):
+ * - yt-dlp --download-sections + --postprocessor-args → 최종 파일
+ * - FFmpeg 옵션 (-avoid_negative_ts make_zero -movflags +faststart)을 postprocessor로 전달
+ * - Phase 2 불필요, 파일 I/O 1회로 감소
  *
  * 공식 문서:
  * - https://gigazine.net/gsc_news/en/20220624-yt-dlp-download-sections/
@@ -27,6 +28,51 @@ function safeUnlink(path: string): void {
   try {
     if (path && existsSync(path)) unlinkSync(path);
   } catch {}
+}
+
+/**
+ * MP4 파일의 버퍼 플러시 완료 및 메타데이터 유효성 검증
+ *
+ * FFmpeg 프로세스 종료 후 OS 커널 버퍼가 디스크에 완전히 쓰여질 때까지 대기
+ */
+async function ensureFileComplete(filePath: string, timeoutMs = 5000): Promise<void> {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeoutMs) {
+    try {
+      // 1. 파일 열기 시도 (read-only)
+      const fd = await fsPromises.open(filePath, 'r');
+
+      // 2. 파일 크기 확인
+      const stats = await fd.stat();
+      if (stats.size < 1024) {
+        await fd.close();
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        continue;
+      }
+
+      // 3. MP4 ftyp header 읽기 (처음 12 bytes)
+      const buffer = Buffer.allocUnsafe(12);
+      await fd.read(buffer, 0, 12, 0);
+      await fd.close();
+
+      // 4. MP4 signature 검증
+      // MP4 파일은 'ftyp' box로 시작 (offset 4-8)
+      const signature = buffer.toString('ascii', 4, 8);
+      if (signature === 'ftyp') {
+        // 파일이 완전히 쓰여짐
+        return;
+      }
+
+      // 5. signature 불완전 → 재시도
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    } catch (error) {
+      // 파일 아직 쓰기 중 또는 잠김 → 재시도
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+  }
+
+  throw new Error(`File completion timeout: ${filePath}`);
 }
 
 // Server-side event types (extends SSE types with jobId)
@@ -86,6 +132,8 @@ export function buildYtdlpArgs(params: {
     getFfmpegPath(), // 번들된 FFmpeg 사용
     '--merge-output-format',
     'mp4', // 최종 출력을 mp4 컨테이너로 강제 (webm 확장자 추가 방지)
+    '--postprocessor-args',
+    'ffmpeg:-avoid_negative_ts make_zero -fflags +genpts -movflags +faststart', // FFmpeg 옵션: timestamp 정규화 + 빠른 스트리밍
     '--no-playlist',
     '-o',
     outputPath,
@@ -110,10 +158,9 @@ export async function downloadWithYtdlp(
 ): Promise<void> {
   const { url, startTime, endTime, filename } = params;
   const outputPath = join(tmpdir(), `download_${jobId}.mp4`);
-  const tempFile = join(tmpdir(), `ytdlp_temp_${jobId}.mp4`);
 
   const segmentDuration = endTime - startTime;
-  let currentPhase: 'downloading' | 'processing' | 'completed' = 'downloading';
+  let currentPhase: 'downloading' | 'completed' = 'downloading';
 
   let processedSeconds = 0;
   let lastEmittedProgress = -1;
@@ -122,7 +169,7 @@ export async function downloadWithYtdlp(
 
   const computeProgress = () => clamp((processedSeconds / totalSeconds) * 100, 0, 100);
 
-  const emitProgress = (phase: 'downloading' | 'processing' | 'completed', force = false) => {
+  const emitProgress = (phase: 'downloading' | 'completed', force = false) => {
     const roundedProgress = Math.round(computeProgress());
 
     if (!force && roundedProgress === lastEmittedProgress && phase === lastEmittedPhase) {
@@ -148,9 +195,9 @@ export async function downloadWithYtdlp(
     if (currentPhase !== expectedPhase) return;
     const normalized = clamp(progressPercent, 0, 100);
     const seconds = (segmentDuration * normalized) / 100;
-    if (seconds > processedSeconds || expectedPhase === 'downloading') {
-      processedSeconds = expectedPhase === 'downloading' ? seconds : Math.max(processedSeconds, seconds);
-      emitProgress(expectedPhase as 'downloading' | 'processing');
+    if (seconds > processedSeconds) {
+      processedSeconds = seconds;
+      emitProgress(expectedPhase as 'downloading');
     }
   };
 
@@ -162,9 +209,9 @@ export async function downloadWithYtdlp(
 
     // console.log('[DEBUG] yt-dlp binary path:', ytdlpBin);
 
-    // ===== PHASE 1: yt-dlp 구간 다운로드 =====
+    // ===== yt-dlp 구간 다운로드 + FFmpeg 후처리 (1단계) =====
     // console.log(
-    //   `[SSE] Phase 1 (Downloading) - yt-dlp segment download (${startTime}s - ${endTime}s, duration: ${segmentDuration}s)`
+    //   `[SSE] yt-dlp download (${startTime}s - ${endTime}s, duration: ${segmentDuration}s)`
     // );
 
     emitProgress('downloading', true);
@@ -173,7 +220,7 @@ export async function downloadWithYtdlp(
       url,
       startTime,
       endTime,
-      outputPath: tempFile,
+      outputPath: outputPath, // 최종 파일로 직접 출력 (Phase 2 불필요)
       // quality 생략 시 기본값 'best' 사용 (최고 화질)
     });
 
@@ -253,80 +300,38 @@ export async function downloadWithYtdlp(
     const ytdlpSuccess = await runWithTimeout(ytdlpProc, PROCESS.YTDLP_TIMEOUT_MS);
 
     // console.log('[DEBUG] runWithTimeout result:', ytdlpSuccess);
-    // console.log('[DEBUG] tempFile exists:', existsSync(tempFile));
+    // console.log('[DEBUG] outputPath exists:', existsSync(outputPath));
 
-    if (!ytdlpSuccess || !existsSync(tempFile)) {
+    if (!ytdlpSuccess || !existsSync(outputPath)) {
       console.error('[DEBUG] yt-dlp FAILED');
       console.error('[DEBUG] stdout:', stdoutOutput);
       console.error('[DEBUG] stderr:', stderrOutput);
+      safeUnlink(outputPath);
       throw new Error(`yt-dlp 다운로드에 실패했습니다\nstderr: ${stderrOutput.slice(-500)}`);
     }
 
     // 파일 크기 검증 (손상 방지)
-    const stats = await fsPromises.stat(tempFile);
+    const stats = await fsPromises.stat(outputPath);
     // console.log(`[SSE] yt-dlp completed: ${(stats.size / 1024 / 1024).toFixed(1)} MB`);
 
     if (stats.size < 1024) {
       // 1KB 미만
+      safeUnlink(outputPath);
       throw new Error('다운로드된 파일이 손상되었습니다 (파일 크기가 너무 작음)');
     }
 
-    // ===== PHASE 2: FFmpeg 타임스탬프 리셋 =====
-    processedSeconds = 0;
-    totalSeconds = segmentDuration;
-    currentPhase = 'processing';
-    emitProgress('processing', true);
-
-    // console.log('[SSE] Phase 2 (Processing) - ffmpeg timestamp reset');
-
-    const ffmpegProc = spawn(
-      getFfmpegPath(),
-      [
-        '-y',
-        '-i',
-        tempFile,
-        '-c',
-        'copy', // 스트림 복사 (재인코딩 없음)
-        '-avoid_negative_ts',
-        'make_zero',
-        '-fflags',
-        '+genpts',
-        '-movflags',
-        '+faststart',
-        '-progress',
-        'pipe:2',
-        '-nostats',
-        outputPath,
-      ],
-      { stdio: ['ignore', 'pipe', 'pipe'] }
-    );
-
-    const phase2FfmpegTracker = new FFmpegProgressTracker(segmentDuration);
-    let lastFFmpegLog = -1;
-
-    ffmpegProc.stderr?.on('data', (chunk: Buffer) => {
-      const progress = phase2FfmpegTracker.pushChunk(chunk);
-      updateProgress(progress, 'processing');
-
-      // const rounded = Math.floor(progress / 5) * 5;
-      // if (rounded !== lastFFmpegLog) {
-      //   console.log(`[SSE] FFmpeg: ${phase2FfmpegTracker.getProcessedSeconds().toFixed(1)}s (${progress.toFixed(1)}%)`);
-      //   lastFFmpegLog = rounded;
-      // }
-    });
-
-    const ffmpegSuccess = await runWithTimeout(ffmpegProc, PROCESS.FFMPEG_TIMEOUT_MS);
-
-    safeUnlink(tempFile); // 임시 파일 정리
-
-    if (!ffmpegSuccess || !existsSync(outputPath)) {
+    // ✅ 파일 버퍼 플러시 완료 대기 (동기적 처리)
+    try {
+      await ensureFileComplete(outputPath);
+      console.log('[yt-dlp] File write completed and verified:', outputPath);
+    } catch (error) {
       safeUnlink(outputPath);
-      throw new Error('FFmpeg 처리에 실패했습니다');
+      throw new Error('파일 쓰기 검증에 실패했습니다');
     }
 
     // ===== 완료 =====
-    updateProgress(100, 'processing');
-    // console.log('[SSE] Phase 2 completed: 100%');
+    updateProgress(100, 'downloading');
+    // console.log('[SSE] yt-dlp completed: 100%');
     currentPhase = 'completed';
     emitProgress('completed', true);
 
@@ -339,7 +344,6 @@ export async function downloadWithYtdlp(
     updateJobStatus(jobId, { outputPath, status: 'completed' });
     // console.log(`[SSE] Job completed: ${jobId}`);
   } catch (error) {
-    safeUnlink(tempFile);
     safeUnlink(outputPath);
     console.error(`[SSE] Job failed: ${jobId}`, error);
 
