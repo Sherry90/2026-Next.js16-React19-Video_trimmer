@@ -6,29 +6,10 @@
  * - YouTube/기타 → yt-dlp (향후 구현)
  */
 
-import { unlinkSync, existsSync } from 'fs';
 import { detectPlatform, selectDownloadStrategy } from './platformDetector';
-import {
-  downloadWithStreamlink,
-  type JobListener,
-  type Job,
-  type EventEmitter,
-} from './streamlinkDownloader';
+import { downloadWithStreamlink } from './streamlinkDownloader';
 import { downloadWithYtdlp } from './ytdlpDownloader';
-
-function safeUnlink(path: string): void {
-  try {
-    if (path && existsSync(path)) unlinkSync(path);
-  } catch {}
-}
-
-// Server-side event types (extends SSE types with jobId)
-import type { SSEProgressEvent, SSECompleteEvent, SSEErrorEvent } from '@/types/sse';
-
-type JobProgressEvent = SSEProgressEvent & { jobId: string; processedSeconds: number; totalSeconds: number };
-type JobCompleteEvent = SSECompleteEvent & { jobId: string; filename: string };
-type JobErrorEvent = SSEErrorEvent & { jobId: string };
-type JobEvent = JobProgressEvent | JobCompleteEvent | JobErrorEvent;
+import { type Job, type JobListener, type EventEmitter, type JobEvent, safeUnlink } from './downloadTypes';
 
 // Global job storage (향후 Redis/DB로 교체 가능)
 const jobs = new Map<string, Job>();
@@ -37,30 +18,14 @@ const jobs = new Map<string, Job>();
  * Job 스트림 구독
  */
 export function getJobStream(jobId: string, listener: JobListener): () => void {
-  let job = jobs.get(jobId);
+  // 스트림 라우트에서 getJob()으로 먼저 가드하므로 여기 도달 시 job은 항상 존재
+  const job = jobs.get(jobId)!;
+  job.listeners.push(listener);
 
-  if (!job) {
-    // Job이 없으면 새로 생성 (리스너만 등록)
-    job = {
-      outputPath: null,
-      status: 'running',
-      listeners: [listener],
-    };
-    jobs.set(jobId, job);
-    // console.log(`[SSE] 🔌 Job created with initial listener: ${jobId}`);
-  } else {
-    // 기존 Job에 리스너 추가
-    job.listeners.push(listener);
-    // console.log(`[SSE] 🔌 Listener added to existing job: ${jobId} (total: ${job.listeners.length})`);
-  }
-
-  // Unsubscribe 함수 반환
   return () => {
     const currentJob = jobs.get(jobId);
     if (currentJob) {
-      const beforeCount = currentJob.listeners.length;
       currentJob.listeners = currentJob.listeners.filter((l) => l !== listener);
-      // console.log(`[SSE] 🔌 Listener removed from job: ${jobId} (${beforeCount} → ${currentJob.listeners.length})`);
     }
   };
 }
@@ -108,6 +73,7 @@ function updateJobStatus(jobId: string, updates: Partial<Job>) {
   // 기존 객체의 속성만 변경 (리스너 배열 참조 유지)
   if (updates.status !== undefined) job.status = updates.status;
   if (updates.outputPath !== undefined) job.outputPath = updates.outputPath;
+  if (updates.errorMessage !== undefined) job.errorMessage = updates.errorMessage;
 
   // console.log(`[SSE] 🔧 Job status updated: ${jobId}, new status: ${job.status}`);
 }
