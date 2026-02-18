@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getJobStream } from '@/lib/downloadJob';
+import { getJob, getJobStream } from '@/lib/downloadJob';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,22 +20,40 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const stream = new ReadableStream({
     start(controller) {
       const encoder = new TextEncoder();
+      const encode = (event: object) => encoder.encode(`data: ${JSON.stringify(event)}\n\n`);
 
+      // [재연결 처리] 현재 job 상태 즉시 확인
+      const currentJob = getJob(jobId);
+
+      if (!currentJob) {
+        controller.enqueue(encode({ type: 'error', message: '다운로드 정보가 만료되었습니다' }));
+        controller.close();
+        return;
+      }
+
+      if (currentJob.status === 'completed') {
+        controller.enqueue(encode({ type: 'complete' }));
+        controller.close();
+        return;
+      }
+
+      if (currentJob.status === 'failed') {
+        controller.enqueue(encode({ type: 'error', message: currentJob.errorMessage ?? '다운로드에 실패했습니다' }));
+        controller.close();
+        return;
+      }
+
+      // status === 'running' → 기존 로직대로 listeners에 등록
       // 즉시 초기 이벤트 전송 (Next.js 버퍼링 방지)
-      // SSE 프로토콜: 콜론으로 시작하는 라인은 주석 (브라우저가 무시)
       controller.enqueue(encoder.encode(': connected\n\n'));
-      // console.log(`[SSE] 📤 Initial heartbeat sent for job: ${jobId}`);
 
       // JobStream 구독
       const unsubscribe = getJobStream(jobId, (event) => {
         try {
-          const data = `data: ${JSON.stringify(event)}\n\n`;
-          controller.enqueue(encoder.encode(data));
-          // console.log(`[SSE] 📤 Event sent to client: ${event.type} for job ${jobId}`);
+          controller.enqueue(encode(event));
 
           // 완료/에러 시 스트림 종료
           if (event.type === 'complete' || event.type === 'error') {
-            // console.log(`[SSE] Stream closed: ${jobId} (${event.type})`);
             controller.close();
             unsubscribe();
           }
