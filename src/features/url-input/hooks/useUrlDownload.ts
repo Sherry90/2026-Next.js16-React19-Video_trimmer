@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { TIMELINE } from '@/constants/appConfig';
 import { useStore } from '@/stores/useStore';
 import { useProgressActions } from '@/stores/selectors';
 import { trimVideoServer } from '@/features/export/utils/trimVideoServer';
@@ -26,7 +27,7 @@ export function useUrlDownload() {
         const blob = await trimVideoServer({
           originalUrl: urlPreview.originalUrl,
           startTime: urlPreview.inPoint ?? 0,
-          endTime: urlPreview.outPoint ?? Math.min(urlPreview.duration, 600),
+          endTime: urlPreview.outPoint ?? Math.min(urlPreview.duration, TIMELINE.MAX_SEGMENT_DURATION_SECONDS),
           filename: `${urlPreview.title || 'video'}.mp4`,
         });
 

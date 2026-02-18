@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { TIMELINE } from '@/constants/appConfig';
 import type {
   AppPhase,
   VideoFile,
@@ -78,6 +79,7 @@ interface StoreActions {
    * 참고: "stage"와 "phase"는 같은 의미 (다운로드 진행 단계)
    */
   setDownloadStage: (phase: 'downloading' | 'processing' | 'completed' | null, message?: string) => void;
+  setActiveDownloadJobId: (jobId: string | null) => void;
 
   // 플레이어 관련
   setIsPlaying: (playing: boolean) => void;
@@ -122,6 +124,7 @@ const initialState: StoreState = {
     waveformProgress: 0,
     downloadPhase: null,
     downloadMessage: null,
+    activeDownloadJobId: null,
   },
   player: {
     isPlaying: false,
@@ -187,10 +190,10 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
     }
 
     // 둘 다 number인 경우 constraint 적용
-    const maxSegment = 600;
+    const maxSegment = TIMELINE.MAX_SEGMENT_DURATION_SECONDS;
     const constrainedIn = Math.max(0, Math.min(inPoint, urlPreview.duration));
     const constrainedOut = Math.max(constrainedIn, Math.min(outPoint, urlPreview.duration));
-    // 10분 제한 적용
+    // 최대 세그먼트 길이 제한 적용
     const finalOut = constrainedOut - constrainedIn > maxSegment
       ? constrainedIn + maxSegment
       : constrainedOut;
@@ -305,6 +308,11 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
         downloadPhase: phase,
         downloadMessage: message ?? null,
       },
+    })),
+
+  setActiveDownloadJobId: (jobId) =>
+    set((state) => ({
+      processing: { ...state.processing, activeDownloadJobId: jobId },
     })),
 
   // 플레이어 관련

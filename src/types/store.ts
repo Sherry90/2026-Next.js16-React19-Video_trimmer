@@ -51,6 +51,7 @@ export interface ProcessingState {
   waveformProgress: number;   // Phase 4, 0-100
   downloadPhase: DownloadPhase | null; // SSE download phase
   downloadMessage: string | null;   // SSE download message
+  activeDownloadJobId: string | null; // HMR 재연결을 위한 활성 job ID
 }
 
 export interface PlayerState {

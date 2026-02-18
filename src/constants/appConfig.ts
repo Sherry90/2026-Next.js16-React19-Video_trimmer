@@ -8,8 +8,8 @@ export const APP_CONFIG = {
    * 타임라인 관련 설정
    */
   TIMELINE: {
-    /** 최대 세그먼트 길이 (초) - 10분 */
-    MAX_SEGMENT_DURATION_SECONDS: 600,
+    /** 최대 세그먼트 길이 (초) - 20분 */
+    MAX_SEGMENT_DURATION_SECONDS: 1200,
     /** 최소 줌 배율 */
     MIN_ZOOM: 0.1,
     /** 최대 줌 배율 */
