@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { TIMELINE } from '@/constants/appConfig';
 import type {
   AppPhase,
   VideoFile,
@@ -185,19 +184,14 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
       return;
     }
 
-    // 둘 다 number인 경우 constraint 적용
-    const maxSegment = TIMELINE.MAX_SEGMENT_DURATION_SECONDS;
+    // 둘 다 number인 경우 [0, duration] 범위만 보장
     const constrainedIn = Math.max(0, Math.min(inPoint, urlPreview.duration));
-    const constrainedOut = Math.max(constrainedIn, Math.min(outPoint, urlPreview.duration));
-    // 최대 세그먼트 길이 제한 적용
-    const finalOut = constrainedOut - constrainedIn > maxSegment
-      ? constrainedIn + maxSegment
-      : constrainedOut;
+    const constrainedOut = Math.max(0, Math.min(outPoint, urlPreview.duration));
     set({
       urlPreview: {
         ...urlPreview,
         inPoint: constrainedIn,
-        outPoint: finalOut,
+        outPoint: constrainedOut,
       },
     });
   },
