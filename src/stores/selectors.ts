@@ -79,6 +79,15 @@ export const useUploadProgress = createSimpleSelector((state) => state.processin
 export const useTrimProgress = createSimpleSelector((state) => state.processing.trimProgress);
 export const useWaveformProgress = createSimpleSelector((state) => state.processing.waveformProgress);
 
+// Download Selectors
+export const useDownloadPhase = createSimpleSelector((state) => state.processing.downloadPhase);
+export const useDownloadMessage = createSimpleSelector((state) => state.processing.downloadMessage);
+export const useActiveDownloadJobId = createSimpleSelector((state) => state.processing.activeDownloadJobId);
+
+// Fine-grained Timeline Selectors
+export const useZoom = createSimpleSelector((state) => state.timeline.zoom);
+export const usePlayhead = createSimpleSelector((state) => state.timeline.playhead);
+
 // Error & Export Selectors
 export const useError = createStateSelector((state) => ({
   errorMessage: state.error.errorMessage,
