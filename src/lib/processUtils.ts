@@ -75,8 +75,7 @@ export function runWithTimeout(
       if (settled) return;
       settled = true;
       clearTimeout(timeout);
-      // console.log(`[DEBUG] runWithTimeout finished: ${result}, reason: ${reason}`);
-      resolve(result);
+        resolve(result);
     };
 
     proc.stderr?.on('data', (chunk: Buffer) => {
@@ -84,30 +83,24 @@ export function runWithTimeout(
     });
 
     proc.on('error', (err) => {
-      // console.error('[DEBUG] Process error:', err);
       console.log(`${logPrefix} process error:`, err.message);
       settle(false, `process error: ${err.message}`);
     });
 
     proc.on('close', (code) => {
-      // console.log(`[DEBUG] Process close: code=${code}`);
       if (onSuccess(code, stderr)) {
-        // console.log(`${logPrefix} succeeded`);
         settle(true, `exit code ${code}`);
       } else {
         console.log(
           `${logPrefix} exited with code ${code}:`,
           stderr.slice(0, 300)
         );
-        // console.error('[DEBUG] stderr:', stderr);
         settle(false, `exit code ${code}`);
       }
     });
 
     // Timeout
     const timeout = setTimeout(() => {
-      // console.error('[DEBUG] Process timeout after', timeoutMs, 'ms');
-      // console.error('[DEBUG] stderr so far:', stderr);
       console.log(`${logPrefix} timed out after ${timeoutMs}ms`);
       proc.kill('SIGKILL');
       settle(false, 'timeout');

@@ -42,14 +42,6 @@ function emitEvent(jobId: string, event: JobEvent) {
     return;
   }
 
-  // Case 2: No listeners (warning - indicates race condition)
-  if (job.listeners.length === 0) {
-    // console.warn(`[SSE] ⚠️  No listeners for job ${jobId}, event type: ${event.type} (possible race condition)`);
-  }
-
-  // Log emission (helps verify listeners are working)
-  // console.log(`[SSE] 📡 Emitting ${event.type} to ${job.listeners.length} listener(s) for job ${jobId}`);
-
   // Emit to all listeners
   job.listeners.forEach((listener) => {
     try {
@@ -75,7 +67,6 @@ function updateJobStatus(jobId: string, updates: Partial<Job>) {
   if (updates.outputPath !== undefined) job.outputPath = updates.outputPath;
   if (updates.errorMessage !== undefined) job.errorMessage = updates.errorMessage;
 
-  // console.log(`[SSE] 🔧 Job status updated: ${jobId}, new status: ${job.status}`);
 }
 
 /**
@@ -103,19 +94,13 @@ export async function startDownloadJob(
       status: 'running',
       listeners: [],
     });
-    // console.log(`[SSE] 🔧 Job initialized: ${jobId}`);
   } else {
-    // Job 존재: 리스너 보존하고 상태만 업데이트
     existingJob.status = 'running';
     existingJob.outputPath = null;
-    // console.log(`[SSE] 🔧 Job reinitialized: ${jobId} (preserving ${existingJob.listeners.length} listeners)`);
   }
 
-  // 플랫폼 감지 및 전략 선택
   const platform = detectPlatform(url);
   const strategy = selectDownloadStrategy(platform, streamType || 'mp4');
-
-  // console.log(`[SSE] Platform: ${platform}, Strategy: ${strategy}`);
 
   // 전략별 다운로더에 위임
   if (strategy === 'streamlink') {
