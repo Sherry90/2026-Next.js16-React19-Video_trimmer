@@ -7,6 +7,7 @@ interface UrlPreviewCardProps {
   thumbnail?: string;
   duration: number;
   maxDuration: number;
+  isSegmentOverLimit: boolean;
 }
 
 /**
@@ -17,6 +18,7 @@ export function UrlPreviewCard({
   thumbnail,
   duration,
   maxDuration,
+  isSegmentOverLimit,
 }: UrlPreviewCardProps) {
   return (
     <>
@@ -40,7 +42,7 @@ export function UrlPreviewCard({
         <p className="text-[12px] text-[#74808c] mb-5">
           {formatDuration(duration)}
           {duration > maxDuration && (
-            <span className="ml-2 text-amber-400">
+            <span className={`ml-2 text-amber-400 ${isSegmentOverLimit ? 'animate-emphasize' : ''}`}>
               (max {maxDuration / 60}min per download)
             </span>
           )}

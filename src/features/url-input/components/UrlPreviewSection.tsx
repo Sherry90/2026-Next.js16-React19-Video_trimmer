@@ -18,13 +18,7 @@ export function UrlPreviewSection() {
   const handleInPointChange = useCallback(
     (value: number | null) => {
       if (!urlPreview) return;
-      const resolvedValue = value ?? 0;
-      const resolvedOut = urlPreview.outPoint ?? Math.min(urlPreview.duration, TIMELINE.MAX_SEGMENT_DURATION_SECONDS);
-      // Start 변경 시: outPoint가 새 Start보다 작거나 같으면 자동으로 Start + 10분으로 조정
-      const newOut = resolvedValue >= resolvedOut
-        ? Math.min(resolvedValue + TIMELINE.MAX_SEGMENT_DURATION_SECONDS, urlPreview.duration)
-        : urlPreview.outPoint;
-      setUrlPreviewRange(value, newOut);
+      setUrlPreviewRange(value, urlPreview.outPoint);
     },
     [urlPreview, setUrlPreviewRange]
   );
@@ -47,7 +41,9 @@ export function UrlPreviewSection() {
   const resolvedIn = urlPreview.inPoint ?? 0;
   const resolvedOut = urlPreview.outPoint ?? Math.min(urlPreview.duration, TIMELINE.MAX_SEGMENT_DURATION_SECONDS);
   const segmentDuration = resolvedOut - resolvedIn;
-  const isOverLimit = segmentDuration > TIMELINE.MAX_SEGMENT_DURATION_SECONDS;
+  const isEndBeforeStart = resolvedOut <= resolvedIn;
+  const isOverLimit = !isEndBeforeStart && segmentDuration > TIMELINE.MAX_SEGMENT_DURATION_SECONDS;
+  const isInvalid = isEndBeforeStart || isOverLimit;
 
   return (
     <div className="w-full max-w-2xl mx-auto p-6">
@@ -57,6 +53,7 @@ export function UrlPreviewSection() {
           thumbnail={urlPreview.thumbnail}
           duration={urlPreview.duration}
           maxDuration={TIMELINE.MAX_SEGMENT_DURATION_SECONDS}
+          isSegmentOverLimit={isOverLimit}
         />
 
         <UrlPreviewRangeControl
@@ -64,6 +61,9 @@ export function UrlPreviewSection() {
           outPoint={urlPreview.outPoint}
           duration={urlPreview.duration}
           maxSegment={TIMELINE.MAX_SEGMENT_DURATION_SECONDS}
+          segmentDuration={segmentDuration}
+          isEndBeforeStart={isEndBeforeStart}
+          isOverLimit={isOverLimit}
           onInPointChange={handleInPointChange}
           onOutPointChange={handleOutPointChange}
         />
@@ -109,7 +109,7 @@ export function UrlPreviewSection() {
             <div className="flex gap-3">
               <button
                 onClick={handleDownloadAndEdit}
-                disabled={isOverLimit || segmentDuration <= 0}
+                disabled={isInvalid}
                 className="flex-1 px-4 py-2.5 text-[13px] font-medium text-white bg-[#2962ff] border-none rounded-sm cursor-pointer transition-colors duration-200 hover:bg-[#0041f5] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Download & Edit
