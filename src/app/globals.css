@@ -35,3 +35,37 @@ body {
 .animate-pulse-bar {
   animation: pulse-bar 1.5s ease-in-out infinite;
 }
+
+/* URL 다운로드 입력 유효성 애니메이션 */
+@keyframes emphasize {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.05); }
+}
+
+.animate-emphasize {
+  display: inline-block;
+  transform-origin: left center;
+  animation: emphasize 1s ease-in-out infinite;
+}
+
+@keyframes flash-red {
+  0%, 100% { outline-color: #ef4444; }
+  50%       { outline-color: transparent; }
+}
+
+.animate-flash-red {
+  outline: 2px solid #ef4444;
+  outline-offset: 1px;
+  animation: flash-red 0.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-bar,
+  .animate-emphasize {
+    animation: none;
+  }
+  .animate-flash-red {
+    animation: none;
+    outline: 2px solid #ef4444;
+  }
+}
