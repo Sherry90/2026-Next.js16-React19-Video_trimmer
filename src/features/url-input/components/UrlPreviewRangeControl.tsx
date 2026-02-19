@@ -8,6 +8,9 @@ interface UrlPreviewRangeControlProps {
   outPoint: number | null;
   duration: number;
   maxSegment: number;
+  segmentDuration: number;
+  isEndBeforeStart: boolean;
+  isOverLimit: boolean;
   onInPointChange: (value: number | null) => void;
   onOutPointChange: (value: number | null) => void;
 }
@@ -20,13 +23,13 @@ export function UrlPreviewRangeControl({
   outPoint,
   duration,
   maxSegment,
+  segmentDuration,
+  isEndBeforeStart,
+  isOverLimit,
   onInPointChange,
   onOutPointChange,
 }: UrlPreviewRangeControlProps) {
   const resolvedIn = inPoint ?? 0;
-  const resolvedOut = outPoint ?? Math.min(duration, maxSegment);
-  const segmentDuration = resolvedOut - resolvedIn;
-  const isOverLimit = segmentDuration > maxSegment;
 
   return (
     <div className="p-5 pt-0">
@@ -39,6 +42,7 @@ export function UrlPreviewRangeControl({
           min={0}
           max={duration}
           placeholder="00:00:00.000"
+          error={isEndBeforeStart}
         />
         <TimeInput
           label="End"
@@ -47,17 +51,20 @@ export function UrlPreviewRangeControl({
           min={resolvedIn}
           max={duration}
           placeholder={formatTime(Math.min(duration, maxSegment))}
+          error={isEndBeforeStart}
         />
       </div>
 
       {/* Segment duration display */}
       <p
         className={`text-[12px] mb-5 ${
-          isOverLimit ? 'text-red-400' : 'text-[#74808c]'
+          isEndBeforeStart || isOverLimit ? 'text-red-400' : 'text-[#74808c]'
         }`}
       >
-        Selected: {formatDuration(segmentDuration)}
-        {isOverLimit && ` — ${maxSegment / 60} min limit exceeded`}
+        {isEndBeforeStart
+          ? 'End must be after start'
+          : `Selected: ${formatDuration(segmentDuration)}${isOverLimit ? ` — ${maxSegment / 60} min limit exceeded` : ''}`
+        }
       </p>
     </div>
   );
