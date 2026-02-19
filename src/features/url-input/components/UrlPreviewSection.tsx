@@ -1,20 +1,19 @@
 'use client';
 
 import { useCallback } from 'react';
-import { useUrlPreview, useUrlPreviewActions } from '@/stores/selectors';
+import { useUrlPreview, useUrlPreviewActions, useTrimProgress, useDownloadMessage, useDownloadPhase } from '@/stores/selectors';
 import { UrlPreviewCard } from './UrlPreviewCard';
 import { UrlPreviewRangeControl } from './UrlPreviewRangeControl';
 import { useStreamDownload } from '../hooks/useStreamDownload';
-import { useStore } from '@/stores/useStore';
 import { TIMELINE } from '@/constants/appConfig';
 
 export function UrlPreviewSection() {
   const urlPreview = useUrlPreview();
   const { setUrlPreviewRange, clearUrlPreview } = useUrlPreviewActions();
   const { handleDownload, isDownloading } = useStreamDownload();
-  const trimProgress = useStore((state) => state.processing.trimProgress);
-  const downloadMessage = useStore((state) => state.processing.downloadMessage);
-  const downloadPhase = useStore((state) => state.processing.downloadPhase);
+  const trimProgress = useTrimProgress();
+  const downloadMessage = useDownloadMessage();
+  const downloadPhase = useDownloadPhase();
 
   const handleInPointChange = useCallback(
     (value: number | null) => {
