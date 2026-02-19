@@ -15,14 +15,12 @@ import { spawn } from 'child_process';
 import { existsSync, promises as fsPromises } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { FFmpegProgressTracker } from './progressParser';
+import { FFmpegProgressTracker, YtdlpProgressParser } from './progressParser';
 import { getFfmpegPath, getYtdlpPath } from './binPaths';
 import { runWithTimeout } from './processUtils';
-import { PROCESS } from '@/constants/appConfig';
-import { YtdlpProgressParser } from './progressParser';
+import { PROCESS, DOWNLOAD } from '@/constants/appConfig';
 import { buildYtdlpFormatSpec, DEFAULT_QUALITY, QUALITY_PRESETS } from './formatSelector';
-import { clamp } from '@/utils/mathUtils';
-import { safeUnlink, ensureFileComplete, type Job, type JobListener, type EventEmitter, type JobEvent } from './downloadTypes';
+import { safeUnlink, ensureFileComplete, DownloadProgressTracker, type Job, type EventEmitter } from './downloadTypes';
 
 /**
  * yt-dlp 명령어 인자 생성
@@ -53,19 +51,19 @@ export function buildYtdlpArgs(params: {
     '--external-downloader',
     'aria2c',
     '--downloader-args',
-    'aria2c:-x 16 -s 16 -k 1M --console-log-level=warn --summary-interval=0', // 16개 연결, 16개 분할, 1MB 청크, 로그 최소화
+    `aria2c:-x ${DOWNLOAD.ARIA2C_MAX_CONNECTIONS} -s ${DOWNLOAD.ARIA2C_SPLIT_COUNT} -k ${DOWNLOAD.ARIA2C_CHUNK_SIZE} --console-log-level=warn --summary-interval=0`,
     '-N',
-    '8', // 동시 다운로드 fragment 수
+    String(DOWNLOAD.YTDLP_CONCURRENT_FRAGMENTS),
     '--progress',
     '--newline',
     '--progress-template',
     'download:[download] %(progress.downloaded_bytes)s/%(progress.total_bytes)s at %(progress.speed)s ETA %(progress.eta)s',
     '--ffmpeg-location',
-    getFfmpegPath(), // 번들된 FFmpeg 사용
+    getFfmpegPath(),
     '--merge-output-format',
-    'mp4', // 최종 출력을 mp4 컨테이너로 강제 (webm 확장자 추가 방지)
+    'mp4',
     '--postprocessor-args',
-    'ffmpeg:-avoid_negative_ts make_zero -fflags +genpts -movflags +faststart', // FFmpeg 옵션: timestamp 정규화 + 빠른 스트리밍
+    'ffmpeg:-avoid_negative_ts make_zero -fflags +genpts -movflags +faststart',
     '--no-playlist',
     '-o',
     outputPath,
@@ -92,46 +90,7 @@ export async function downloadWithYtdlp(
   const outputPath = join(tmpdir(), `download_${jobId}.mp4`);
 
   const segmentDuration = endTime - startTime;
-  let currentPhase: 'downloading' | 'completed' = 'downloading';
-
-  let processedSeconds = 0;
-  let lastEmittedProgress = -1;
-  let lastEmittedPhase: string | null = null;
-  let totalSeconds = Math.max(1, segmentDuration);
-
-  const computeProgress = () => clamp((processedSeconds / totalSeconds) * 100, 0, 100);
-
-  const emitProgress = (phase: 'downloading' | 'completed', force = false) => {
-    const roundedProgress = Math.round(computeProgress());
-
-    if (!force && roundedProgress === lastEmittedProgress && phase === lastEmittedPhase) {
-      return;
-    }
-
-    // console.log(`[SSE] ${phase}: ${roundedProgress}% (${processedSeconds.toFixed(2)}s)`);
-
-    emitEvent(jobId, {
-      type: 'progress',
-      jobId,
-      progress: roundedProgress,
-      processedSeconds: Number(processedSeconds.toFixed(2)),
-      totalSeconds: Number(totalSeconds.toFixed(2)),
-      phase,
-    });
-
-    lastEmittedProgress = roundedProgress;
-    lastEmittedPhase = phase;
-  };
-
-  const updateProgress = (progressPercent: number, expectedPhase: string) => {
-    if (currentPhase !== expectedPhase) return;
-    const normalized = clamp(progressPercent, 0, 100);
-    const seconds = (segmentDuration * normalized) / 100;
-    if (seconds > processedSeconds) {
-      processedSeconds = seconds;
-      emitProgress(expectedPhase as 'downloading');
-    }
-  };
+  const tracker = new DownloadProgressTracker(jobId, emitEvent, segmentDuration, 'downloading');
 
   try {
     const ytdlpBin = getYtdlpPath();
@@ -139,66 +98,37 @@ export async function downloadWithYtdlp(
       throw new Error('yt-dlp이 설치되어 있지 않습니다');
     }
 
-    // console.log('[DEBUG] yt-dlp binary path:', ytdlpBin);
-
     // ===== yt-dlp 구간 다운로드 + FFmpeg 후처리 (1단계) =====
-    // console.log(
-    //   `[SSE] yt-dlp download (${startTime}s - ${endTime}s, duration: ${segmentDuration}s)`
-    // );
-
-    emitProgress('downloading', true);
+    tracker.emitProgress('downloading', true);
 
     const ytdlpArgs = buildYtdlpArgs({
       url,
       startTime,
       endTime,
-      outputPath: outputPath, // 최종 파일로 직접 출력 (Phase 2 불필요)
-      // quality 생략 시 기본값 'best' 사용 (최고 화질)
+      outputPath,
     });
-
-    // console.log('[DEBUG] yt-dlp command:', ytdlpBin, ytdlpArgs.join(' '));
-    // console.log('[DEBUG] Full command array:', JSON.stringify(ytdlpArgs, null, 2));
-    // console.log('[DEBUG] Temp file path:', tempFile);
-    // console.log(`[SSE] yt-dlp command: ${ytdlpBin} ${ytdlpArgs.join(' ')}`);
 
     const ytdlpProc = spawn(ytdlpBin, ytdlpArgs, {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
-    // stderr/stdout 전체 수집 (디버깅용)
     let stderrOutput = '';
     let stdoutOutput = '';
 
     const progressParser = new YtdlpProgressParser();
-    const ytdlpFfmpegTracker = new FFmpegProgressTracker(segmentDuration); // yt-dlp 내부 FFmpeg 병합용
-    let lastLoggedProgress = -1;
+    const ytdlpFfmpegTracker = new FFmpegProgressTracker(segmentDuration);
 
-    // stdout과 stderr 모두에서 진행률 파싱 (yt-dlp는 둘 다 사용)
     const parseProgressLine = (line: string) => {
-      // 1. yt-dlp의 [download] XX% 파싱 시도
       const ytdlpProgress = progressParser.parseLine(line);
       if (ytdlpProgress !== null) {
-        updateProgress(ytdlpProgress, 'downloading');
-
-        // const rounded = Math.floor(ytdlpProgress / 5) * 5;
-        // if (rounded % 5 === 0 && rounded !== lastLoggedProgress) {
-        //   console.log(`[SSE] yt-dlp progress: ${ytdlpProgress.toFixed(1)}%`);
-        //   lastLoggedProgress = rounded;
-        // }
+        tracker.updateProgress(ytdlpProgress, 'downloading');
         return;
       }
 
-      // 2. FFmpeg의 time=HH:MM:SS 파싱 시도 (yt-dlp 내부 병합)
       if (line.includes('frame=') && line.includes('time=')) {
         const ffmpegProgress = ytdlpFfmpegTracker.pushChunk(Buffer.from(line));
         if (ffmpegProgress > 0) {
-          updateProgress(ffmpegProgress, 'downloading');
-
-          // const rounded = Math.floor(ffmpegProgress / 5) * 5;
-          // if (rounded % 5 === 0 && rounded !== lastLoggedProgress) {
-          //   console.log(`[SSE] yt-dlp FFmpeg merge: ${ffmpegProgress.toFixed(1)}%`);
-          //   lastLoggedProgress = rounded;
-          // }
+          tracker.updateProgress(ffmpegProgress, 'downloading');
         }
       }
     };
@@ -206,7 +136,6 @@ export async function downloadWithYtdlp(
     ytdlpProc.stdout?.on('data', (chunk: Buffer) => {
       const text = chunk.toString();
       stdoutOutput += text;
-      // console.log('[DEBUG] yt-dlp stdout:', text.trim());
 
       const lines = text.split('\n');
       lines.forEach(parseProgressLine);
@@ -215,44 +144,33 @@ export async function downloadWithYtdlp(
     ytdlpProc.stderr?.on('data', (chunk: Buffer) => {
       const text = chunk.toString();
       stderrOutput += text;
-      // console.log('[DEBUG] yt-dlp stderr:', text.trim());
 
       const lines = text.split('\n');
       lines.forEach(parseProgressLine);
     });
 
     ytdlpProc.on('error', (error) => {
-      console.error('[DEBUG] yt-dlp process error:', error);
-    });
-
-    ytdlpProc.on('exit', (code, signal) => {
-      // console.log('[DEBUG] yt-dlp exit code:', code, 'signal:', signal);
+      console.error('[yt-dlp] process error:', error);
     });
 
     const ytdlpSuccess = await runWithTimeout(ytdlpProc, PROCESS.YTDLP_TIMEOUT_MS);
 
-    // console.log('[DEBUG] runWithTimeout result:', ytdlpSuccess);
-    // console.log('[DEBUG] outputPath exists:', existsSync(outputPath));
-
     if (!ytdlpSuccess || !existsSync(outputPath)) {
-      console.error('[DEBUG] yt-dlp FAILED');
-      console.error('[DEBUG] stdout:', stdoutOutput);
-      console.error('[DEBUG] stderr:', stderrOutput);
+      console.error('[yt-dlp] FAILED');
+      console.error('[yt-dlp] stdout:', stdoutOutput);
+      console.error('[yt-dlp] stderr:', stderrOutput);
       safeUnlink(outputPath);
       throw new Error(`yt-dlp 다운로드에 실패했습니다\nstderr: ${stderrOutput.slice(-500)}`);
     }
 
     // 파일 크기 검증 (손상 방지)
     const stats = await fsPromises.stat(outputPath);
-    // console.log(`[SSE] yt-dlp completed: ${(stats.size / 1024 / 1024).toFixed(1)} MB`);
 
-    if (stats.size < 1024) {
-      // 1KB 미만
+    if (stats.size < DOWNLOAD.MIN_VALID_FILE_SIZE) {
       safeUnlink(outputPath);
       throw new Error('다운로드된 파일이 손상되었습니다 (파일 크기가 너무 작음)');
     }
 
-    // ✅ 파일 버퍼 플러시 완료 대기 (동기적 처리)
     try {
       await ensureFileComplete(outputPath);
       console.log('[yt-dlp] File write completed and verified:', outputPath);
@@ -262,32 +180,16 @@ export async function downloadWithYtdlp(
     }
 
     // ===== 완료 =====
-    updateProgress(100, 'downloading');
-    // console.log('[SSE] yt-dlp completed: 100%');
-    currentPhase = 'completed';
-    emitProgress('completed', true);
-
-    emitEvent(jobId, {
-      type: 'complete',
-      jobId,
-      filename: filename || 'video.mp4',
-    });
-
-    updateJobStatus(jobId, { outputPath, status: 'completed' });
-    // console.log(`[SSE] Job completed: ${jobId}`);
+    tracker.updateProgress(100, 'downloading');
+    tracker.setCurrentPhase('completed');
+    tracker.emitProgress('completed', true);
+    tracker.emitComplete(filename || 'video.mp4', outputPath, updateJobStatus);
   } catch (error) {
     safeUnlink(outputPath);
     console.error(`[SSE] Job failed: ${jobId}`, error);
 
     const errorMessage = error instanceof Error ? error.message : 'yt-dlp 다운로드 중 오류가 발생했습니다';
-
-    emitEvent(jobId, {
-      type: 'error',
-      jobId,
-      message: errorMessage,
-    });
-
-    updateJobStatus(jobId, { outputPath: null, status: 'failed', errorMessage });
+    tracker.emitError(errorMessage, updateJobStatus);
 
     throw error;
   }

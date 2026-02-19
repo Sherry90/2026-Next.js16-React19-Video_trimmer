@@ -103,8 +103,26 @@ export const APP_CONFIG = {
     /** 다운로드 진행률 체크 간격 (ms) */
     PROGRESS_CHECK_INTERVAL_MS: 200,
   },
+
+  /**
+   * 다운로드 관련 설정
+   */
+  DOWNLOAD: {
+    /** Streamlink HLS 세그먼트 스레드 수 */
+    STREAMLINK_SEGMENT_THREADS: 6,
+    /** yt-dlp 동시 다운로드 fragment 수 */
+    YTDLP_CONCURRENT_FRAGMENTS: 8,
+    /** aria2c 최대 연결 수 */
+    ARIA2C_MAX_CONNECTIONS: 16,
+    /** aria2c 분할 수 */
+    ARIA2C_SPLIT_COUNT: 16,
+    /** aria2c 청크 크기 */
+    ARIA2C_CHUNK_SIZE: '1M',
+    /** 유효 파일 최소 크기 (bytes) */
+    MIN_VALID_FILE_SIZE: 1024,
+  },
 } as const;
 
 // 타입 안전성을 위한 개별 export
-export const { TIMELINE, URL_INPUT, PROCESS, EXPORT, PROGRESS, TIME, UI, PLAYBACK, POLLING } =
+export const { TIMELINE, URL_INPUT, PROCESS, EXPORT, PROGRESS, TIME, UI, PLAYBACK, POLLING, DOWNLOAD } =
   APP_CONFIG;
