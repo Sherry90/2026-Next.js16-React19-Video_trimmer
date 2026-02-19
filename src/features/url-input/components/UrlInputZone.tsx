@@ -101,7 +101,7 @@ export function UrlInputZone() {
 
       {/* Supported platforms hint */}
       <p className="mt-2 text-[10px] text-[#74808c] opacity-50">
-        YouTube, Chzzk, Twitch, and more (yt-dlp supported sites)
+        Chzzk, YouTube
       </p>
     </div>
   );
