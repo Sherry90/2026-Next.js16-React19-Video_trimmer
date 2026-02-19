@@ -6,7 +6,9 @@
  */
 
 import { unlinkSync, existsSync, promises as fsPromises } from 'fs';
-import type { SSEProgressEvent, SSECompleteEvent, SSEErrorEvent } from '@/types/sse';
+import type { SSEProgressEvent, SSECompleteEvent, SSEErrorEvent, DownloadPhase } from '@/types/sse';
+import { clamp } from '@/utils/mathUtils';
+import { DOWNLOAD } from '@/constants/appConfig';
 
 // Server-side event types (extends SSE types with jobId)
 export type JobProgressEvent = SSEProgressEvent & { jobId: string; processedSeconds: number; totalSeconds: number };
@@ -50,7 +52,7 @@ export async function ensureFileComplete(filePath: string, timeoutMs = 5000): Pr
 
       // 2. 파일 크기 확인
       const stats = await fd.stat();
-      if (stats.size < 1024) {
+      if (stats.size < DOWNLOAD.MIN_VALID_FILE_SIZE) {
         await fd.close();
         await new Promise((resolve) => setTimeout(resolve, 50));
         continue;
@@ -78,4 +80,99 @@ export async function ensureFileComplete(filePath: string, timeoutMs = 5000): Pr
   }
 
   throw new Error(`File completion timeout: ${filePath}`);
+}
+
+/**
+ * 다운로드 진행률 추적기
+ *
+ * streamlinkDownloader, ytdlpDownloader 공통 진행률 계산/전송 로직
+ */
+export class DownloadProgressTracker {
+  private processedSeconds = 0;
+  private lastEmittedProgress = -1;
+  private lastEmittedPhase: DownloadPhase | null = null;
+  private totalSeconds: number;
+  private currentPhase: DownloadPhase;
+
+  constructor(
+    private jobId: string,
+    private emitEvent: EventEmitter,
+    private segmentDuration: number,
+    initialPhase: DownloadPhase,
+  ) {
+    this.totalSeconds = Math.max(1, segmentDuration);
+    this.currentPhase = initialPhase;
+  }
+
+  private computeProgress(): number {
+    return clamp((this.processedSeconds / this.totalSeconds) * 100, 0, 100);
+  }
+
+  emitProgress(phase: DownloadPhase, force = false): void {
+    const roundedProgress = Math.round(this.computeProgress());
+
+    if (!force && roundedProgress === this.lastEmittedProgress && phase === this.lastEmittedPhase) {
+      return;
+    }
+
+    this.emitEvent(this.jobId, {
+      type: 'progress',
+      jobId: this.jobId,
+      progress: roundedProgress,
+      processedSeconds: Number(this.processedSeconds.toFixed(2)),
+      totalSeconds: Number(this.totalSeconds.toFixed(2)),
+      phase,
+    });
+
+    this.lastEmittedProgress = roundedProgress;
+    this.lastEmittedPhase = phase;
+  }
+
+  updateProgress(progressPercent: number, expectedPhase: DownloadPhase): void {
+    if (this.currentPhase !== expectedPhase) return;
+    const normalized = clamp(progressPercent, 0, 100);
+    const seconds = (this.segmentDuration * normalized) / 100;
+    if (seconds > this.processedSeconds || expectedPhase === 'downloading') {
+      this.processedSeconds = expectedPhase === 'downloading'
+        ? seconds
+        : Math.max(this.processedSeconds, seconds);
+      this.emitProgress(expectedPhase);
+    }
+  }
+
+  resetForPhase(phase: DownloadPhase): void {
+    this.processedSeconds = 0;
+    this.totalSeconds = Math.max(1, this.segmentDuration);
+    this.currentPhase = phase;
+  }
+
+  setCurrentPhase(phase: DownloadPhase): void {
+    this.currentPhase = phase;
+  }
+
+  getCurrentPhase(): DownloadPhase {
+    return this.currentPhase;
+  }
+
+  emitComplete(filename: string, outputPath: string, updateJobStatus: (jobId: string, job: Partial<Job>) => void): void {
+    this.emitEvent(this.jobId, {
+      type: 'complete',
+      jobId: this.jobId,
+      filename,
+    });
+    updateJobStatus(this.jobId, { outputPath, status: 'completed' });
+  }
+
+  emitError(message: string, updateJobStatus: (jobId: string, job: Partial<Job>) => void): void {
+    this.emitEvent(this.jobId, {
+      type: 'error',
+      jobId: this.jobId,
+      message,
+    });
+    updateJobStatus(this.jobId, {
+      outputPath: null,
+      status: 'failed',
+      errorMessage: message,
+    });
+  }
 }
