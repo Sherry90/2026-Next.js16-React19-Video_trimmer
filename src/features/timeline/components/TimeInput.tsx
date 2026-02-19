@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useId } from 'react';
 import { formatTime, parseFlexibleTime } from '@/utils/timeFormatter';
 
 interface TimeInputProps {
@@ -11,6 +11,7 @@ interface TimeInputProps {
   min?: number;
   disabled?: boolean;
   placeholder?: string;
+  error?: boolean;
 }
 
 export function TimeInput({
@@ -21,7 +22,9 @@ export function TimeInput({
   min = 0,
   disabled = false,
   placeholder = '00:00:00.000',
+  error = false,
 }: TimeInputProps) {
+  const inputId = useId();
   const [inputValue, setInputValue] = useState(value === null ? '' : formatTime(value));
   const [isFocused, setIsFocused] = useState(false);
 
@@ -84,10 +87,11 @@ export function TimeInput({
 
   return (
     <div className="flex items-center gap-2">
-      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+      <label htmlFor={inputId} className="text-sm font-medium text-gray-700 dark:text-gray-300">
         {label}
       </label>
       <input
+        id={inputId}
         type="text"
         value={inputValue}
         onChange={handleChange}
@@ -104,6 +108,7 @@ export function TimeInput({
           text-gray-900 dark:text-gray-100
           focus:outline-none focus:ring-2 focus:ring-blue-500
           disabled:opacity-50 disabled:cursor-not-allowed
+          ${error ? 'animate-flash-red' : ''}
         `}
       />
     </div>
