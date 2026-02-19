@@ -74,11 +74,7 @@ interface StoreActions {
   setUploadProgress: (progress: number) => void;
   setTrimProgress: (progress: number) => void;
   setWaveformProgress: (progress: number) => void;
-  /**
-   * 다운로드 단계(phase) 및 메시지 설정
-   * 참고: "stage"와 "phase"는 같은 의미 (다운로드 진행 단계)
-   */
-  setDownloadStage: (phase: 'downloading' | 'processing' | 'completed' | null, message?: string) => void;
+  setDownloadPhase: (phase: 'downloading' | 'processing' | 'completed' | null, message?: string) => void;
   setActiveDownloadJobId: (jobId: string | null) => void;
 
   // 플레이어 관련
@@ -291,17 +287,7 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
       processing: { ...state.processing, waveformProgress: progress },
     })),
 
-  /**
-   * 다운로드 단계 및 메시지 설정
-   *
-   * 용어 설명:
-   * - "phase" (단계): 다운로드 프로세스의 현재 단계 ('downloading' | 'processing' | 'completed')
-   * - "message": 사용자에게 표시할 진행 상태 메시지
-   *
-   * 참고: 함수 이름은 "setDownloadStage"이지만, 실제로는 downloadPhase와 downloadMessage를 설정합니다.
-   *       "stage"와 "phase"는 같은 의미로 사용됩니다 (다운로드 진행 단계).
-   */
-  setDownloadStage: (phase, message) =>
+  setDownloadPhase: (phase, message) =>
     set((state) => ({
       processing: {
         ...state.processing,
