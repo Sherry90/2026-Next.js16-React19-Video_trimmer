@@ -158,13 +158,15 @@ export async function downloadWithStreamlink(
     tracker.updateProgress(100, 'processing');
     tracker.setCurrentPhase('completed');
     tracker.emitProgress('completed', true);
-    tracker.emitComplete(filename || 'video.mp4', outputPath, updateJobStatus);
+    tracker.emitComplete(filename || 'video.mp4');
+    updateJobStatus(jobId, { outputPath, status: 'completed' });
   } catch (error) {
     safeUnlink(tempFile);
     safeUnlink(outputPath);
     console.error(`[SSE] Job failed: ${jobId}`, error);
 
     const errorMessage = error instanceof Error ? error.message : '다운로드에 실패했습니다';
-    tracker.emitError(errorMessage, updateJobStatus);
+    tracker.emitError(errorMessage);
+    updateJobStatus(jobId, { outputPath: null, status: 'failed', errorMessage });
   }
 }
