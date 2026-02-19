@@ -154,25 +154,19 @@ export class DownloadProgressTracker {
     return this.currentPhase;
   }
 
-  emitComplete(filename: string, outputPath: string, updateJobStatus: (jobId: string, job: Partial<Job>) => void): void {
+  emitComplete(filename: string): void {
     this.emitEvent(this.jobId, {
       type: 'complete',
       jobId: this.jobId,
       filename,
     });
-    updateJobStatus(this.jobId, { outputPath, status: 'completed' });
   }
 
-  emitError(message: string, updateJobStatus: (jobId: string, job: Partial<Job>) => void): void {
+  emitError(message: string): void {
     this.emitEvent(this.jobId, {
       type: 'error',
       jobId: this.jobId,
       message,
-    });
-    updateJobStatus(this.jobId, {
-      outputPath: null,
-      status: 'failed',
-      errorMessage: message,
     });
   }
 }

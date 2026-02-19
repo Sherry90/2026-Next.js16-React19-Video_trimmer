@@ -183,14 +183,14 @@ export async function downloadWithYtdlp(
     tracker.updateProgress(100, 'downloading');
     tracker.setCurrentPhase('completed');
     tracker.emitProgress('completed', true);
-    tracker.emitComplete(filename || 'video.mp4', outputPath, updateJobStatus);
+    tracker.emitComplete(filename || 'video.mp4');
+    updateJobStatus(jobId, { outputPath, status: 'completed' });
   } catch (error) {
     safeUnlink(outputPath);
     console.error(`[SSE] Job failed: ${jobId}`, error);
 
     const errorMessage = error instanceof Error ? error.message : 'yt-dlp 다운로드 중 오류가 발생했습니다';
-    tracker.emitError(errorMessage, updateJobStatus);
-
-    throw error;
+    tracker.emitError(errorMessage);
+    updateJobStatus(jobId, { outputPath: null, status: 'failed', errorMessage });
   }
 }
