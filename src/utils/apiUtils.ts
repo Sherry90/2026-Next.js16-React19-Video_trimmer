@@ -86,6 +86,37 @@ export function createValidationError(message: string): NextResponse {
   return NextResponse.json({ error: message }, { status: 400 });
 }
 
+type ValidationError = { valid: false; error: string; status: number };
+
+/**
+ * 공통 시간 범위 필드 검증
+ */
+function validateTimeRangeFields(
+  body: unknown,
+  urlField: string
+): ValidationError | { valid: true; url: string; startTime: number; endTime: number; rest: Record<string, unknown> } {
+  if (typeof body !== 'object' || body === null) {
+    return { valid: false, error: '유효하지 않은 요청입니다', status: 400 };
+  }
+  const fields = body as Record<string, unknown>;
+  const url = fields[urlField];
+  const { startTime, endTime } = fields;
+
+  if (!url || typeof url !== 'string' || !url.trim()) {
+    return { valid: false, error: '유효하지 않은 URL입니다', status: 400 };
+  }
+
+  if (typeof startTime !== 'number' || startTime < 0) {
+    return { valid: false, error: '유효하지 않은 시작 시간입니다', status: 400 };
+  }
+
+  if (typeof endTime !== 'number' || endTime <= startTime) {
+    return { valid: false, error: '종료 시간은 시작 시간보다 커야 합니다', status: 400 };
+  }
+
+  return { valid: true, url: url.trim(), startTime, endTime, rest: fields };
+}
+
 /**
  * Trim 요청 파라미터
  */
@@ -98,39 +129,20 @@ export interface TrimRequestParams {
 
 /**
  * Trim 요청 검증
- *
- * @param body - 요청 본문
- * @returns 검증 결과 (성공 시 파싱된 데이터, 실패 시 에러 정보)
  */
 export function validateTrimRequest(
   body: unknown
-):
-  | { valid: true; data: TrimRequestParams }
-  | { valid: false; error: string; status: number } {
-  if (typeof body !== 'object' || body === null) {
-    return { valid: false, error: '유효하지 않은 요청입니다', status: 400 };
-  }
-  const { originalUrl, startTime, endTime, filename } = body as Record<string, unknown>;
-
-  if (!originalUrl || typeof originalUrl !== 'string' || !originalUrl.trim()) {
-    return { valid: false, error: '유효하지 않은 URL입니다', status: 400 };
-  }
-
-  if (typeof startTime !== 'number' || startTime < 0) {
-    return { valid: false, error: '유효하지 않은 시작 시간입니다', status: 400 };
-  }
-
-  if (typeof endTime !== 'number' || endTime <= startTime) {
-    return { valid: false, error: '종료 시간은 시작 시간보다 커야 합니다', status: 400 };
-  }
+): { valid: true; data: TrimRequestParams } | ValidationError {
+  const base = validateTimeRangeFields(body, 'originalUrl');
+  if (!base.valid) return base;
 
   return {
     valid: true,
     data: {
-      originalUrl: originalUrl.trim(),
-      startTime,
-      endTime,
-      filename: typeof filename === 'string' ? filename : undefined,
+      originalUrl: base.url,
+      startTime: base.startTime,
+      endTime: base.endTime,
+      filename: typeof base.rest.filename === 'string' ? base.rest.filename : undefined,
     },
   };
 }
@@ -148,31 +160,14 @@ export interface DownloadRequestParams {
 
 /**
  * Download 요청 검증
- *
- * @param body - 요청 본문
- * @returns 검증 결과 (성공 시 파싱된 데이터, 실패 시 에러 정보)
  */
 export function validateDownloadRequest(
   body: unknown
-):
-  | { valid: true; data: DownloadRequestParams }
-  | { valid: false; error: string; status: number } {
-  if (typeof body !== 'object' || body === null) {
-    return { valid: false, error: '유효하지 않은 요청입니다', status: 400 };
-  }
-  const { url, startTime, endTime, filename, tbr } = body as Record<string, unknown>;
+): { valid: true; data: DownloadRequestParams } | ValidationError {
+  const base = validateTimeRangeFields(body, 'url');
+  if (!base.valid) return base;
 
-  if (!url || typeof url !== 'string' || !url.trim()) {
-    return { valid: false, error: '유효하지 않은 URL입니다', status: 400 };
-  }
-
-  if (typeof startTime !== 'number' || startTime < 0) {
-    return { valid: false, error: '유효하지 않은 시작 시간입니다', status: 400 };
-  }
-
-  if (typeof endTime !== 'number' || endTime <= startTime) {
-    return { valid: false, error: '종료 시간은 시작 시간보다 커야 합니다', status: 400 };
-  }
+  const { filename, tbr } = base.rest;
 
   if (!filename || typeof filename !== 'string') {
     return { valid: false, error: '파일명이 필요합니다', status: 400 };
@@ -181,9 +176,9 @@ export function validateDownloadRequest(
   return {
     valid: true,
     data: {
-      url: url.trim(),
-      startTime,
-      endTime,
+      url: base.url,
+      startTime: base.startTime,
+      endTime: base.endTime,
       filename,
       tbr: typeof tbr === 'number' ? tbr : undefined,
     },
