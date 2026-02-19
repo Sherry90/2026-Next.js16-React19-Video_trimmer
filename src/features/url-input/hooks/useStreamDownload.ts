@@ -22,7 +22,7 @@ export function useStreamDownload() {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const setTrimProgress = useStore((state) => state.setTrimProgress);
-  const setDownloadStage = useStore((state) => state.setDownloadStage);
+  const setDownloadPhase = useStore((state) => state.setDownloadPhase);
   const setPhase = useStore((state) => state.setPhase);
   const setVideoFile = useStore((state) => state.setVideoFile);
   const setErrorAndTransition = useStore((state) => state.setErrorAndTransition);
@@ -34,7 +34,7 @@ export function useStreamDownload() {
   function handleError(message: string, eventSource?: EventSource) {
     setErrorAndTransition(message, 'DOWNLOAD_ERROR');
     setIsDownloading(false);
-    setDownloadStage(null);
+    setDownloadPhase(null);
     setActiveDownloadJobId(null);
     if (eventSource) {
       eventSource.close();
@@ -64,7 +64,7 @@ export function useStreamDownload() {
       duration: 0,
     });
     setPhase('editing');
-    setDownloadStage(null);
+    setDownloadPhase(null);
   }
 
   function connectToJobStream(jobId: string) {
@@ -79,7 +79,7 @@ export function useStreamDownload() {
 
         if (data.type === 'progress') {
           setTrimProgress(calculateOverallProgress(data.phase, data.progress));
-          setDownloadStage(data.phase, getPhaseMessage(data.phase, data.processedSeconds, data.totalSeconds));
+          setDownloadPhase(data.phase, getPhaseMessage(data.phase, data.processedSeconds, data.totalSeconds));
         } else if (data.type === 'complete') {
           console.log('[SSE Client] Download completed:', jobId);
           eventSource.close();
@@ -137,7 +137,7 @@ export function useStreamDownload() {
       // 신규 다운로드
       setIsDownloading(true);
       setTrimProgress(0);
-      setDownloadStage(null);
+      setDownloadPhase(null);
 
       try {
         abortControllerRef.current = new AbortController();
@@ -175,7 +175,7 @@ export function useStreamDownload() {
       }
     },
     // Zustand actions와 React setState는 stable이므로 handleError/connectToJobStream 의존성 불필요
-    [setTrimProgress, setDownloadStage, setActiveDownloadJobId] // eslint-disable-line react-hooks/exhaustive-deps
+    [setTrimProgress, setDownloadPhase, setActiveDownloadJobId] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   return { handleDownload, isDownloading };
