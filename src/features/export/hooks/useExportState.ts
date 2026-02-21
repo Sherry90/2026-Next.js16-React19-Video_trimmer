@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useStore } from '@/stores/useStore';
 import { useCommonActions, useProgressActions } from '@/stores/selectors';
 import { trimVideo } from '@/features/export/utils/trimVideoDispatcher';
-import { generateEditedFilename } from '@/features/export/utils/generateFilename';
+import { generateTrimFilename } from '@/features/export/utils/generateFilename';
 import { requiresFFmpegDownload } from '@/features/export/utils/formatDetector';
 import { useFFmpegLoader } from './useFFmpegLoader';
 import type { VideoFile } from '@/types/store';
@@ -40,7 +40,7 @@ export function useExportState(
           '[ExportButton] URL source - using existing trimmed file'
         );
         const outputUrl = videoFile.url;
-        const outputFilename = generateEditedFilename(videoFile.name);
+        const outputFilename = generateTrimFilename(videoFile.name, inPoint, outPoint);
 
         console.log('[ExportButton] URL:', outputUrl);
         console.log('[ExportButton] Filename:', outputFilename);
@@ -65,7 +65,7 @@ export function useExportState(
 
       // Create Blob URL
       const outputUrl = URL.createObjectURL(outputBlob);
-      const outputFilename = generateEditedFilename(videoFile.name);
+      const outputFilename = generateTrimFilename(videoFile.name, inPoint, outPoint);
 
       console.log('[ExportButton] Created Blob URL:', outputUrl);
       console.log('[ExportButton] Blob size:', outputBlob.size, 'bytes');
