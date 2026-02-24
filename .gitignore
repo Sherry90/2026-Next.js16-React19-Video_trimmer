@@ -26,8 +26,9 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+debug-storybook.log
 
-# local env files
+# local env file
 .env*.local
 
 # vercel
@@ -62,3 +63,6 @@ views.json
 /public/*.mp4
 /public/.DS_Store
 src/__tests__/e2e/fixtures/*.mp4
+
+# storybook
+/storybook-static
