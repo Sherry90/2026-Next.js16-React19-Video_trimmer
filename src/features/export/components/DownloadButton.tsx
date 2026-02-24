@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useStore } from '@/stores/useStore';
 
 export function DownloadButton() {
@@ -10,17 +10,30 @@ export function DownloadButton() {
   const setPhase = useStore((state) => state.setPhase);
   const reset = useStore((state) => state.reset);
 
+  const lastDot = outputFilename ? outputFilename.lastIndexOf('.') : -1;
+  const baseName = outputFilename
+    ? lastDot !== -1 ? outputFilename.slice(0, lastDot) : outputFilename
+    : '';
+  const ext = outputFilename && lastDot !== -1 ? outputFilename.slice(lastDot) : '';
+
+  const [editableName, setEditableName] = useState('');
+
+  useEffect(() => {
+    if (outputFilename) {
+      const dot = outputFilename.lastIndexOf('.');
+      setEditableName(dot !== -1 ? outputFilename.slice(0, dot) : outputFilename);
+    }
+  }, [outputFilename]);
+
   const handleDownload = useCallback(() => {
     if (!outputUrl || !outputFilename) return;
 
-    console.log('[DownloadButton] Downloading:', outputUrl);
-    console.log('[DownloadButton] Filename:', outputFilename);
-
+    const finalName = editableName.trim() || baseName;
     const link = document.createElement('a');
     link.href = outputUrl;
-    link.download = outputFilename;
+    link.download = finalName + ext;
     link.click();
-  }, [outputUrl, outputFilename]);
+  }, [outputUrl, outputFilename, editableName, baseName, ext]);
 
   const handleBackToEdit = useCallback(() => {
     setPhase('editing');
@@ -54,9 +67,25 @@ export function DownloadButton() {
         Video Ready!
       </h3>
 
-      <p className="text-sm text-gray-600 dark:text-gray-400">
-        Your trimmed video is ready to download
-      </p>
+      <div className="text-left space-y-1">
+        <label htmlFor="save-as-input" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          Save as
+        </label>
+        <div className="flex items-center gap-1">
+          <input
+            id="save-as-input"
+            type="text"
+            value={editableName}
+            onChange={(e) => setEditableName(e.target.value)}
+            className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {ext && (
+            <span className="text-sm text-gray-500 dark:text-gray-400 select-none whitespace-nowrap">
+              {ext}
+            </span>
+          )}
+        </div>
+      </div>
 
       <div className="flex gap-3 justify-center">
         <button
