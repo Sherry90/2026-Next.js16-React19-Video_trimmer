@@ -5,7 +5,7 @@
  */
 
 import { execFileSync } from 'child_process';
-import { existsSync, mkdirSync, createWriteStream, unlinkSync } from 'fs';
+import { existsSync, mkdirSync, createWriteStream, copyFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
@@ -84,7 +84,7 @@ function getStreamlinkBinPath() {
     const archSuffix = arch === 'arm64' ? 'arm64' : 'x64';
     return join(binDir, `streamlink-linux-${archSuffix}.AppImage`);
   } else if (platform === 'darwin') {
-    return join(binDir, 'streamlink-macos');
+    return join(binDir, 'streamlink-venv', 'bin', 'streamlink');
   }
   return null;
 }
@@ -148,10 +148,12 @@ async function downloadStreamlink() {
     await downloadFile(url, destPath);
     execFileSync('chmod', ['+x', destPath]);
   } else if (platform === 'darwin') {
-    // macOS: system installation recommended
-    console.warn('    macOS: Please install streamlink via Homebrew:');
-    console.warn('    brew install streamlink');
-    throw new Error('macOS binary not available');
+    // macOS: install via Python venv (Python 3 is built-in since macOS 12.3)
+    const venvDir = join(binDir, 'streamlink-venv');
+    console.log('    Installing streamlink via Python venv...');
+    execFileSync('python3', ['-m', 'venv', venvDir], { stdio: 'inherit' });
+    execFileSync(join(venvDir, 'bin', 'pip'), ['install', 'streamlink', '--quiet'], { stdio: 'inherit' });
+    console.log(`    Installed to ${venvDir}`);
   }
 }
 
@@ -191,6 +193,40 @@ async function setupStreamlink() {
   }
 }
 
+/**
+ * Copy FFmpeg.wasm files from node_modules to public/ffmpeg/
+ */
+function copyWasmFiles() {
+  const srcDir = join(projectRoot, 'node_modules', '@ffmpeg', 'core', 'dist', 'umd');
+  const destDir = join(projectRoot, 'public', 'ffmpeg');
+  const files = ['ffmpeg-core.js', 'ffmpeg-core.wasm'];
+
+  if (!existsSync(srcDir)) {
+    console.warn('  ffmpeg-wasm: @ffmpeg/core not installed, skipping copy');
+    return;
+  }
+
+  if (!existsSync(destDir)) {
+    mkdirSync(destDir, { recursive: true });
+  }
+
+  let copied = 0;
+  for (const file of files) {
+    const src = join(srcDir, file);
+    const dest = join(destDir, file);
+    if (existsSync(src) && !existsSync(dest)) {
+      copyFileSync(src, dest);
+      copied++;
+    }
+  }
+
+  if (copied > 0) {
+    console.log(`  ffmpeg-wasm: copied ${copied} file(s) to public/ffmpeg/`);
+  } else {
+    console.log('  ffmpeg-wasm: already up to date (public/ffmpeg/)');
+  }
+}
+
 function checkFfmpeg() {
   try {
     const installer = require('@ffmpeg-installer/ffmpeg');
@@ -213,4 +249,5 @@ console.log('\nVideo Trimmer - Dependencies\n');
 checkFfmpeg();
 await setupYtDlp();
 await setupStreamlink();
+copyWasmFiles();
 console.log('');

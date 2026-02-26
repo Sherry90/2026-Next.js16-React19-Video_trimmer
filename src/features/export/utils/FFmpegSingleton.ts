@@ -67,8 +67,8 @@ export class FFmpegSingleton {
         onProgress?.(Math.round(progress * 100));
       });
 
-      // Load FFmpeg core (~20MB download)
-      const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+      // Load FFmpeg core from self-hosted files (public/ffmpeg/)
+      const baseURL = '/ffmpeg';
 
       await ffmpeg.load({
         coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),

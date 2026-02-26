@@ -58,6 +58,9 @@ views.json
 # HTTPS certificates (local dev only)
 /certificates
 
+# FFmpeg.wasm files (copied from node_modules by postinstall/prebuild)
+/public/ffmpeg/
+
 # Test sample videos
 /testsample
 /public/*.mp4

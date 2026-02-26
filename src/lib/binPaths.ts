@@ -94,7 +94,7 @@ export function getStreamlinkPath(): string | null {
     const archSuffix = arch === 'arm64' ? 'arm64' : 'x64';
     bundledPath = join(projectRoot, '.bin', `streamlink-linux-${archSuffix}.AppImage`);
   } else if (platform === 'darwin') {
-    bundledPath = join(projectRoot, '.bin', 'streamlink-macos');
+    bundledPath = join(projectRoot, '.bin', 'streamlink-venv', 'bin', 'streamlink');
   }
 
   if (bundledPath && existsSync(bundledPath)) {
