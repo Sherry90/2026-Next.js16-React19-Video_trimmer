@@ -10,6 +10,7 @@ import { detectPlatform, selectDownloadStrategy } from './platformDetector';
 import { downloadWithStreamlink } from './streamlinkDownloader';
 import { downloadWithYtdlp } from './ytdlpDownloader';
 import { type Job, type JobListener, type EventEmitter, type JobEvent, safeUnlink } from './downloadTypes';
+import { DOWNLOAD } from '@/constants/appConfig';
 
 // Global job storage (향후 Redis/DB로 교체 가능)
 const jobs = new Map<string, Job>();
@@ -24,10 +25,36 @@ export function getJobStream(jobId: string, listener: JobListener): () => void {
 
   return () => {
     const currentJob = jobs.get(jobId);
-    if (currentJob) {
-      currentJob.listeners = currentJob.listeners.filter((l) => l !== listener);
+    if (!currentJob) return;
+
+    currentJob.listeners = currentJob.listeners.filter((l) => l !== listener);
+
+    // 마지막 리스너 이탈 + 잡 실행 중 → grace period 후 abort
+    if (currentJob.listeners.length === 0 && currentJob.status === 'running') {
+      setTimeout(() => {
+        const job = jobs.get(jobId);
+        if (job && job.status === 'running' && job.listeners.length === 0) {
+          console.log(`[SSE] Cancelling orphaned job: ${jobId}`);
+          job.abort?.();
+        }
+      }, DOWNLOAD.JOB_ORPHAN_GRACE_PERIOD_MS);
     }
   };
+}
+
+/**
+ * 오래된 완료/실패 잡 정리 (lazy, startDownloadJob 호출 시 실행)
+ */
+function cleanupStaleJobs(): void {
+  const now = Date.now();
+  for (const [jobId, job] of jobs.entries()) {
+    if (
+      (job.status === 'completed' || job.status === 'failed') &&
+      now - job.createdAt > DOWNLOAD.JOB_TTL_MS
+    ) {
+      deleteJob(jobId);
+    }
+  }
 }
 
 /**
@@ -83,7 +110,11 @@ export async function startDownloadJob(
     streamType?: 'hls' | 'mp4'; // 플랫폼 힌트 (선택적)
   }
 ) {
+  cleanupStaleJobs();
+
   const { url, startTime, endTime, filename, tbr, streamType } = params;
+
+  const abortController = new AbortController();
 
   // Job 등록 (리스너 보존)
   const existingJob = jobs.get(jobId);
@@ -93,10 +124,14 @@ export async function startDownloadJob(
       outputPath: null,
       status: 'running',
       listeners: [],
+      createdAt: Date.now(),
+      abort: () => abortController.abort(),
     });
   } else {
     existingJob.status = 'running';
     existingJob.outputPath = null;
+    existingJob.createdAt = Date.now();
+    existingJob.abort = () => abortController.abort();
   }
 
   const platform = detectPlatform(url);
@@ -108,7 +143,8 @@ export async function startDownloadJob(
       jobId,
       { url, startTime, endTime, filename, tbr },
       emitEvent,
-      updateJobStatus
+      updateJobStatus,
+      abortController.signal
     );
   } else {
     // yt-dlp 다운로더 (유튜브 및 범용 플랫폼)
@@ -116,7 +152,8 @@ export async function startDownloadJob(
       jobId,
       { url, startTime, endTime, filename, tbr },
       emitEvent,
-      updateJobStatus
+      updateJobStatus,
+      abortController.signal
     );
   }
 }

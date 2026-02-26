@@ -30,7 +30,8 @@ export async function downloadWithStreamlink(
     tbr?: number;
   },
   emitEvent: EventEmitter,
-  updateJobStatus: (jobId: string, job: Partial<Job>) => void
+  updateJobStatus: (jobId: string, job: Partial<Job>) => void,
+  abortSignal?: AbortSignal
 ): Promise<void> {
   const { url, startTime, endTime, filename, tbr } = params;
   const outputPath = join(tmpdir(), `download_${jobId}.mp4`);
@@ -41,6 +42,17 @@ export async function downloadWithStreamlink(
   const estimatedBytes = ((estimatedBitrate * 1024) / 8) * segmentDuration;
 
   const tracker = new DownloadProgressTracker(jobId, emitEvent, segmentDuration, 'downloading');
+
+  // 현재 실행 중인 자식 프로세스 추적 (abort 시 종료)
+  let currentProc: ReturnType<typeof spawn> | null = null;
+
+  abortSignal?.addEventListener('abort', () => {
+    if (currentProc && !currentProc.killed) {
+      currentProc.kill('SIGTERM');
+      const proc = currentProc;
+      setTimeout(() => { if (!proc.killed) proc.kill('SIGKILL'); }, 2000);
+    }
+  }, { once: true });
 
   try {
     const streamlinkBin = getStreamlinkPath();
@@ -70,6 +82,7 @@ export async function downloadWithStreamlink(
     }
 
     const streamlinkProc = spawn(streamlinkBin, streamlinkArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+    currentProc = streamlinkProc;
     let streamlinkStderr = '';
 
     streamlinkProc.stderr?.on('data', (chunk: Buffer) => {
@@ -93,6 +106,7 @@ export async function downloadWithStreamlink(
       const result = await runWithTimeout(streamlinkProc, PROCESS.STREAMLINK_TIMEOUT_MS);
       clearInterval(progressInterval);
       streamlinkProc.stderr?.removeAllListeners('data');
+      currentProc = null;
 
       return result && existsSync(tempFile);
     })();
@@ -129,6 +143,7 @@ export async function downloadWithStreamlink(
       ],
       { stdio: ['ignore', 'pipe', 'pipe'] }
     );
+    currentProc = ffmpegProc;
 
     const ffmpegTracker = new FFmpegProgressTracker(segmentDuration);
 
@@ -138,6 +153,7 @@ export async function downloadWithStreamlink(
     });
 
     const ffmpegSuccess = await runWithTimeout(ffmpegProc, PROCESS.FFMPEG_TIMEOUT_MS);
+    currentProc = null;
 
     safeUnlink(tempFile);
 
