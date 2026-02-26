@@ -7,11 +7,17 @@ Video Trimmer의 모든 API 엔드포인트에 대한 상세 문서입니다.
 - [Video API](#video-api)
   - [POST /api/video/resolve](#post-apivideoresolve)
   - [GET /api/video/proxy](#get-apivideoproxy)
-  - [POST /api/video/trim](#post-apivideotrim)
+  - [POST /api/video/trim](#post-apivideotrim-chzzk-레거시)
 - [Download API (SSE)](#download-api-sse)
   - [POST /api/download/start](#post-apidownloadstart)
   - [GET /api/download/stream/:jobId](#get-apidownloadstreamjobid)
   - [GET /api/download/:jobId](#get-apidownloadjobid)
+- [공통 에러 처리](#공통-에러-처리)
+- [타입 정의](#타입-정의)
+- [성능 고려사항](#성능-고려사항)
+- [보안](#보안)
+- [개발/디버깅](#개발디버깅)
+- [cut_video.sh와 TypeScript 구현 비교](#cut_videosh와-typescript-구현-비교)
 
 ---
 
@@ -19,7 +25,7 @@ Video Trimmer의 모든 API 엔드포인트에 대한 상세 문서입니다.
 
 ### POST /api/video/resolve
 
-YouTube, Twitch 등의 URL에서 스트리밍 정보를 추출합니다.
+YouTube, Chzzk 등의 URL에서 스트리밍 정보를 추출합니다.
 
 **엔드포인트:** `POST /api/video/resolve`
 
@@ -119,9 +125,13 @@ Access-Control-Expose-Headers: Content-Length, Content-Range
 
 ---
 
-### POST /api/video/trim
+### POST /api/video/trim (Chzzk 레거시)
 
-URL 기반 비디오를 서버 사이드에서 트리밍합니다.
+> ⚠️ **레거시 엔드포인트**: 이 API는 Chzzk 전용으로 처음 구현된 레거시입니다.
+> 현재 권장 방식은 `/api/download/start` → SSE → `/api/download/:jobId` 흐름입니다.
+> SSE 기반 다운로드는 Chzzk와 YouTube 모두를 지원하고 실시간 진행률을 제공합니다.
+
+URL 기반 비디오를 서버 사이드에서 트리밍합니다 (Chzzk HLS 전용).
 
 **엔드포인트:** `POST /api/video/trim`
 
@@ -136,19 +146,6 @@ URL 기반 비디오를 서버 사이드에서 트리밍합니다.
 ```
 
 **응답:** 트리밍된 비디오 파일 (octet-stream)
-
-**응답 헤더:**
-```
-Content-Type: video/mp4
-Content-Disposition: attachment; filename*=UTF-8''trimmed.mp4
-```
-
-**에러 응답:**
-```json
-{
-  "error": "에러 메시지"
-}
-```
 
 **사용된 바이너리:**
 - `streamlink`: HLS 스트림 다운로드 (Phase 1)
@@ -176,14 +173,6 @@ ffmpeg -i temp.mp4 \
   -movflags +faststart \
   output.mp4
 ```
-
-**왜 2단계인가?**
-- Streamlink만 사용: 타임스탬프가 원본 기준 (0부터 시작하지 않음)
-- FFmpeg 타임스탬프 리셋 필요: `-avoid_negative_ts make_zero`
-
-**타임아웃:**
-- Streamlink: 5분
-- FFmpeg: 1분
 
 ---
 
@@ -227,7 +216,7 @@ Server-Sent Events를 사용한 실시간 진행률 스트리밍.
 **내부 로직:**
 1. 요청 검증 (`validateDownloadRequest`)
 2. UUID 생성
-3. `startDownloadJob` 백그라운드 실행
+3. `startDownloadJob` 백그라운드 실행 (플랫폼 감지 → 전략 선택)
 4. jobId 즉시 반환
 
 ---
@@ -263,12 +252,14 @@ data: {"type":"error","message":"에러 메시지"}
 ```
 
 **Phase 설명:**
-- `downloading`: 플랫폼별 다운로더 실행 (0-100%)
-  - Chzzk: Streamlink (HLS 세그먼트 병렬 다운로드)
-  - YouTube: yt-dlp (`--download-sections` 구간 추출)
-  - Generic: yt-dlp (fallback)
-- `processing`: FFmpeg 타임스탬프 리셋 (0-100%)
-- `completed`: 작업 완료
+
+| Phase | 플랫폼 | 설명 |
+|-------|--------|------|
+| `downloading` | Chzzk, YouTube | 다운로더 실행 중 (0-100%) |
+| `processing` | **Chzzk만** | FFmpeg 타임스탬프 리셋 (0-100%) |
+
+- **Chzzk**: `downloading` (Streamlink) → `processing` (FFmpeg)
+- **YouTube/Generic**: `downloading`만 (yt-dlp + FFmpeg를 내부에서 통합 처리)
 
 **클라이언트 사용법:**
 ```typescript
@@ -280,24 +271,25 @@ eventSource.onmessage = (event) => {
   if (data.type === 'progress') {
     console.log(`${data.phase}: ${data.progress}%`);
   } else if (data.type === 'complete') {
-    eventSource.close();
+    eventSource.close();  // CRITICAL: 먼저 닫기 (onerror 방지)
     window.location.href = `/api/download/${jobId}`;
   } else if (data.type === 'error') {
     console.error(data.message);
     eventSource.close();
   }
 };
+
+eventSource.onerror = (error) => {
+  if (eventSourceRef.current) {  // 아직 열려있으면 진짜 에러
+    console.error('Connection error:', error);
+  }
+  // null이면 정상 완료 후 닫힌 것 (무시)
+};
 ```
 
 **구현 파일:** `src/app/api/download/stream/[jobId]/route.ts`
 
-**내부 로직:**
-1. Job 스트림 구독 (`getJobStream`)
-2. ReadableStream 생성
-3. 이벤트를 SSE 형식으로 변환
-4. 스트림 반환
-
-**Platform Strategy (2026-02-15)**:
+**Platform Strategy:**
 
 다운로드 작업은 URL 도메인에 따라 적절한 전략을 자동 선택합니다:
 
@@ -307,28 +299,67 @@ detectPlatform(url: string): 'chzzk' | 'youtube' | 'generic'
 selectDownloadStrategy(platform, streamType): 'streamlink' | 'ytdlp'
 ```
 
-**플랫폼별 다운로더**:
+**플랫폼별 다운로더:**
 
-1. **Chzzk** (`src/lib/streamlinkDownloader.ts`):
-   - Phase 1: `streamlink --hls-start-offset + --hls-duration` → temp file
-   - Phase 2: `ffmpeg -avoid_negative_ts make_zero -c copy` → final file
-   - 병렬 다운로드: `--stream-segment-threads 6`
-   - 성능: 15-20초 (1분 영상)
+**1. Chzzk** (`src/lib/streamlinkDownloader.ts`) — 2-phase:
+```bash
+# Phase 1: Streamlink (HLS 구간 다운로드)
+streamlink \
+  --hls-start-offset HH:MM:SS \
+  --hls-duration HH:MM:SS \
+  --stream-segment-threads 6 \
+  <url> best -o temp.mp4
 
-2. **YouTube** (`src/lib/ytdlpDownloader.ts`):
-   - Phase 1: `yt-dlp --download-sections "*START-END" -f "bestvideo[height<=?9999]+bestaudio/best"` → temp file
-   - Phase 2: `ffmpeg -avoid_negative_ts make_zero -c copy` → final file
-   - 병렬 다운로드: `-N 8` (concurrent fragments), aria2c (`-x 16 -s 16`)
-   - 화질: 최고 화질 (제한 없음), flexible fallback
-   - 성능: 30-40초 (1분 영상, FFmpeg 구간 추출이 병목)
+# Phase 2: FFmpeg (타임스탬프 리셋)
+ffmpeg -i temp.mp4 \
+  -c copy \
+  -avoid_negative_ts make_zero \
+  -fflags +genpts \
+  -movflags +faststart \
+  final.mp4
+```
+- 병렬 다운로드: `--stream-segment-threads 6`
+- 성능: 15-20초 (1분 영상)
+- SSE phase: `downloading` → `processing`
 
-3. **Generic** (기타 URL):
-   - yt-dlp 사용 (YouTube와 동일한 방식)
+> **`--hls-duration` 선택 이유**: Streamlink 표준 플래그인 `--stream-segmented-duration`은
+> Chzzk에서 무시됨. Chzzk HLS 구현이 세그먼트 duration 메타데이터를 비표준 방식으로
+> 처리하기 때문. 소거법으로 발견. 어떤 공식 문서에도 없는 플랫폼 특화 동작.
 
-**공통 패턴**:
-- 모든 다운로더는 2-phase process 사용
-- SSE를 통한 실시간 진행률 전송
-- Fast-fail error handling (명확한 에러 메시지, fallback 없음)
+**2. YouTube/Generic** (`src/lib/ytdlpDownloader.ts`) — 1-phase:
+```bash
+# Phase 1: yt-dlp (구간 다운로드 + FFmpeg 통합)
+yt-dlp \
+  --download-sections "*START-END" \
+  -f "bestvideo[height<=?9999]+bestaudio/best" \
+  --postprocessor-args "ffmpeg:-avoid_negative_ts make_zero -fflags +genpts -movflags +faststart" \
+  --ffmpeg-location /path/to/ffmpeg \
+  -N 8 \
+  --external-downloader aria2c \
+  --external-downloader-args "aria2c:-x 16 -s 16" \
+  -o final.mp4 \
+  <url>
+```
+- 화질: 최고 화질 (제한 없음), flexible fallback
+- 병렬: `-N 8`, aria2c — **속도 개선 효과 없음** (YouTube 서버 throttle)
+- 성능: ~30-32초 (1분 영상)
+- SSE phase: `downloading`만 (FFmpeg가 yt-dlp 내부에서 처리됨)
+
+> **`-N` 최적화 한계**: `-N` 값이나 aria2c 연결 수를 늘려도 속도 개선 불가.
+> YouTube 서버가 클라이언트 병렬 요청을 throttle하는 것으로 추정.
+> 실측: 구간 다운로드 ~6 Mbps vs 전체 다운로드 ~93 Mbps.
+> 병목은 클라이언트가 아닌 서버 정책이므로 클라이언트 최적화로 해결 불가.
+
+**클라이언트 측 진행률 가중치** (`src/features/url-input/utils/sseProgressUtils.ts`):
+```typescript
+const PHASE_WEIGHTS = {
+  DOWNLOADING: 0.9,  // 0-90% 표시
+  PROCESSING: 0.1,   // 90-100% 표시
+};
+
+// Chzzk: downloading(0-90%) + processing(90-100%)
+// YouTube: downloading(0-90%) — processing은 없음
+```
 
 ---
 
@@ -367,7 +398,7 @@ Content-Disposition: attachment; filename*=UTF-8''video.mp4
 
 모든 API는 다음 유틸리티를 사용합니다:
 
-**파일:** `src/utils/apiUtils.ts`
+**파일:** `src/lib/apiErrorHandler.ts`
 
 ### parseYtdlpError
 
@@ -390,8 +421,8 @@ function parseYtdlpError(error: ProcessError): {
 요청 본문 검증.
 
 ```typescript
-function validateTrimRequest(body: unknown):
-  | { valid: true; data: TrimRequestParams }
+function validateDownloadRequest(body: unknown):
+  | { valid: true; data: DownloadRequestParams }
   | { valid: false; error: string; status: number }
 ```
 
@@ -399,7 +430,9 @@ function validateTrimRequest(body: unknown):
 - URL 존재 및 문자열 타입
 - startTime: 0 이상 숫자
 - endTime: startTime보다 큰 숫자
-- filename: 문자열 (Download API만)
+- filename: 문자열
+
+> **참고**: `validateTrimRequest`와 `validateDownloadRequest`는 각각 독립 구현 (공통 helper 없음)
 
 ---
 
@@ -433,6 +466,13 @@ export interface SSEErrorEvent {
 }
 ```
 
+**플랫폼별 phase 발생 패턴:**
+
+| phase | Chzzk | YouTube/Generic |
+|-------|-------|-----------------|
+| `downloading` | ✅ | ✅ |
+| `processing` | ✅ | ❌ (없음) |
+
 ---
 
 ## 성능 고려사항
@@ -451,7 +491,7 @@ export interface SSEErrorEvent {
 
 - 프록시/스트리밍: chunked transfer로 메모리 효율적
 - 다운로드: 임시 파일 사용, 완료 후 자동 삭제
-- Job 레지스트리: 메모리 내 저장 (향후 Redis 고려)
+- Job 레지스트리: 메모리 내 저장
 
 ### 동시성
 
@@ -512,6 +552,83 @@ curl -X POST http://localhost:3000/api/download/start \
 
 # SSE Stream
 curl -N http://localhost:3000/api/download/stream/<jobId>
+```
+
+---
+
+## cut_video.sh와 TypeScript 구현 비교
+
+**파일**: `scripts/cut_video.sh`
+
+이 스크립트는 **실행되지 않으며**, 디버깅 및 로직 참조 목적으로만 존재합니다. Streamlink + FFmpeg 2단계 프로세스의 원형 증명이며, TypeScript API로 포팅되었습니다.
+
+### 핵심 로직 원형
+
+#### Phase 1: Streamlink 다운로드
+
+```bash
+streamlink \
+  --hls-start-offset "$START" \
+  --stream-segmented-duration "$DUR" \
+  "$URL" best -o "temp.mp4"
+```
+
+> **참고**: 원본 스크립트는 `--stream-segmented-duration` 사용.
+> **현재 구현은 `--hls-duration` 사용** (Chzzk 호환성: `--stream-segmented-duration`이 Chzzk에서 무시됨).
+
+#### Phase 2: FFmpeg 타임스탬프 리셋
+
+```bash
+ffmpeg -i "temp.mp4" \
+  -c copy \
+  -avoid_negative_ts make_zero \
+  -fflags +genpts \
+  "$OUTPUT"
+```
+
+**왜 2단계가 필요한가?**
+- Streamlink만 사용: 타임스탬프가 원본 기준 (예: 3:05:24부터 시작)
+- 플레이어는 00:00:00부터 기대
+- FFmpeg 리셋 후: 타임스탬프가 00:00:00부터 시작
+
+### 쉘 스크립트 vs TypeScript API 비교
+
+| 항목 | 쉘 스크립트 | TypeScript API |
+|-----|-----------|---------------|
+| **실행** | 로컬 CLI | HTTP 서버 |
+| **입출력** | 파일 → 파일 | HTTP → HTTP |
+| **진행률** | 콘솔 출력 | SSE 스트림 |
+| **에러** | 종료 코드 | HTTP 상태 코드 |
+| **의존성** | 시스템 설치 | 번들 + 자동 다운로드 |
+| **플랫폼 지원** | Chzzk (Streamlink) | Chzzk + YouTube + Generic |
+
+### TypeScript 포팅 핵심
+
+**입력 방식 변환**:
+```bash
+# 쉘
+START="3:05:24"
+END="3:10:21"
+```
+
+```typescript
+// TypeScript API
+{
+  "startTime": 11124,  // 3:05:24 → 초 단위
+  "endTime": 11421,    // 3:10:21 → 초 단위
+}
+```
+
+**진행률 표시 변환**:
+```bash
+# 쉘: 콘솔 출력
+log_info "구간 다운로드 시작..."
+```
+
+```typescript
+// TypeScript: SSE로 실시간 스트리밍
+{ type: 'progress', progress: 45, phase: 'downloading' }
+{ type: 'complete', filename: 'video.mp4' }
 ```
 
 ---
