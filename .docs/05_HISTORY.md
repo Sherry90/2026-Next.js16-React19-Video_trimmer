@@ -514,6 +514,7 @@ const PHASE_WEIGHTS = {
 
 1. 양방향 통신이 필요 없으면 SSE가 Socket.IO보다 적합
 2. EventSource 정상 종료: 클라이언트가 서버보다 먼저 종료해야 onerror 방지
+3. SSE listener는 Map 객체의 속성 직접 변경으로 관리 — `jobs.set(id, {...job})`으로 재생성하면 listener 배열 참조가 끊겨 이벤트 전송 실패 (race condition)
 
 ---
 
