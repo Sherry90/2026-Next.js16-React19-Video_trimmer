@@ -289,6 +289,17 @@ eventSource.onerror = (error) => {
 
 **구현 파일:** `src/app/api/download/stream/[jobId]/route.ts`
 
+**구현 주의사항 — Next.js SSE 버퍼링:**
+Next.js App Router의 `ReadableStream`은 첫 데이터 전송 전까지 ~24초 버퍼링.
+스트림 시작 시 즉시 heartbeat를 전송하여 응답 시작을 트리거해야 함:
+
+```typescript
+// ✅ 스트림 시작 즉시 전송 (Next.js 버퍼링 방지)
+controller.enqueue(encoder.encode(': connected\n\n'));
+```
+
+SSE 주석 라인(`:` 시작)은 브라우저가 무시하므로 클라이언트에 영향 없음.
+
 **Platform Strategy:**
 
 다운로드 작업은 URL 도메인에 따라 적절한 전략을 자동 선택합니다:
