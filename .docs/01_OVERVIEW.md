@@ -316,8 +316,9 @@ src/
 
 4. 의존성 관리
    - yt-dlp: system > .bin/yt-dlp > yt-dlp-wrap
-   - streamlink: bundled > system (postinstall 자동 다운로드)
+   - streamlink: bundled (.bin/streamlink-venv) > system (postinstall 자동 설치)
    - ffmpeg: @ffmpeg-installer/ffmpeg (v4.4 번들)
+   - ffmpeg.wasm: @ffmpeg/core → public/ffmpeg/ (자체 호스팅, CDN 미사용)
 ```
 
 ### 4. 플레이어-타임라인 동기화
@@ -454,7 +455,7 @@ export type VideoTrimError =
 **플랫폼별 전략**:
 - **Windows**: streamlink portable .zip → `adm-zip` 압축 해제
 - **Linux**: streamlink AppImage (x64/ARM64) → `--appimage-extract-and-run`
-- **macOS**: streamlink 시스템 설치 필요 (`brew install streamlink`)
+- **macOS**: Python venv 자동 설치 (`.bin/streamlink-venv/`) → `brew install streamlink` 불필요
 
 ---
 

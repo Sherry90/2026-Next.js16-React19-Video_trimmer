@@ -22,8 +22,11 @@ Video Trimmer에서 사용하는 외부 바이너리 의존성과 자동 설치 
 ```
 Video Trimmer
 ├── FFmpeg (필수)
-│   ├── 번들: @ffmpeg-installer/ffmpeg v4.4
+│   ├── 번들: @ffmpeg-installer/ffmpeg v4.4 (서버)
 │   └── 용도: 타임스탬프 리셋, yt-dlp 내부 muxing
+├── FFmpeg.wasm (브라우저 fallback)
+│   ├── 번들: @ffmpeg/core v0.12.6 → public/ffmpeg/ (자체 호스팅)
+│   └── 용도: 비-MP4 파일 브라우저 내 트리밍
 ├── yt-dlp (필수)
 │   ├── 번들: .bin/yt-dlp (auto-download)
 │   └── 용도: URL 메타데이터 추출, YouTube/Generic 구간 다운로드
@@ -78,6 +81,7 @@ const nextConfig = {
 3. **브라우저 내 처리** (FFmpeg.wasm, fallback용)
    - 짧은 클립(≤60초) + 작은 파일(≤100MB)에서 자동 선택
    - `trimVideoDispatcher.ts`가 조건에 따라 MP4Box 대신 선택
+   - **자체 호스팅**: `@ffmpeg/core` npm 패키지에서 `public/ffmpeg/`로 복사 (CDN 미사용)
 
 ### 번들 버전
 
@@ -253,9 +257,9 @@ yt-dlp는 1000+ 사이트를 지원합니다:
 | Windows | streamlink.exe | streamlink/windows-builds (portable .zip) |
 | Linux x64 | streamlink-linux-x64.AppImage | streamlink/streamlink-appimage |
 | Linux ARM64 | streamlink-linux-arm64.AppImage | streamlink/streamlink-appimage |
-| macOS | - | 시스템만 (`brew install streamlink`) |
+| macOS | .bin/streamlink-venv/bin/streamlink | Python venv (`pip install streamlink`) |
 
-**macOS 제한:** 번들 바이너리 미제공. `brew install streamlink` 필수.
+**macOS 설치 방식:** 공식 portable binary 미제공. Python 3 가상환경에 자동 설치 (`npm install` 시 자동 실행). Python 3이 없을 경우 graceful fallback (경고만 출력).
 
 ### 주요 사용 사례
 
@@ -360,8 +364,8 @@ export function getStreamlinkPath(): string | null {
     const archSuffix = arch === 'arm64' ? 'arm64' : 'x64';
     bundledPath = join(projectRoot, '.bin', `streamlink-linux-${archSuffix}.AppImage`);
   } else if (platform === 'darwin') {
-    bundledPath = join(projectRoot, '.bin', 'streamlink-macos');
-    // macOS: setup-deps.mjs가 번들을 제공하지 않으므로 항상 miss
+    // Python venv 자동 설치 경로 (postinstall)
+    bundledPath = join(projectRoot, '.bin', 'streamlink-venv', 'bin', 'streamlink');
   }
 
   if (bundledPath && existsSync(bundledPath)) {
@@ -421,6 +425,14 @@ postinstall 훅 실행
 │    - 시스템 streamlink 확인          │
 │    - .bin/streamlink-* 확인          │
 │    - 없으면 플랫폼별 다운로드        │
+│      Win/Linux: 공식 바이너리        │
+│      macOS: Python venv (pip install)│
+└─────────────────────────────────────┘
+  ↓
+┌─────────────────────────────────────┐
+│ 4. copyWasmFiles()                  │
+│    - @ffmpeg/core → public/ffmpeg/  │
+│    - ffmpeg-core.js, .wasm 복사     │
 └─────────────────────────────────────┘
   ↓
 의존성 설치 완료
@@ -485,13 +497,16 @@ else if (platform === 'linux') {
 
 ```javascript
 else if (platform === 'darwin') {
-  console.warn('    macOS: Please install streamlink via Homebrew:');
-  console.warn('    brew install streamlink');
-  throw new Error('macOS binary not available');
+  // macOS: Python 3 가상환경에 streamlink 설치 (macOS 12.3+ 기본 내장)
+  const venvDir = join(binDir, 'streamlink-venv');
+  execFileSync('python3', ['-m', 'venv', venvDir], { stdio: 'inherit' });
+  execFileSync(join(venvDir, 'bin', 'pip'), ['install', 'streamlink', '--quiet'], { stdio: 'inherit' });
 }
 ```
 
-**이유:** Homebrew가 macOS 표준 패키지 관리자. 바이너리 배포보다 시스템 통합이 안정적.
+**저장 위치:** `.bin/streamlink-venv/bin/streamlink`
+
+**이유:** macOS에 공식 portable binary 미제공. Python 3(macOS 12.3+ 기본 내장)으로 venv 생성 후 pip 설치. python3 미설치 시 catch 블록에서 graceful fallback (경고 출력, install 실패해도 npm install은 계속됨).
 
 ### 에러 처리
 
@@ -562,13 +577,13 @@ npm install
 ```
 
 **설치되는 것:**
-- FFmpeg: 번들
+- FFmpeg: 번들 (`@ffmpeg-installer/ffmpeg`)
+- FFmpeg.wasm: `public/ffmpeg/` (자체 호스팅)
 - yt-dlp: `.bin/yt-dlp`
+- Streamlink: `.bin/streamlink-venv/bin/streamlink` (Python venv)
 
-**수동 설치 필수:**
-```bash
-brew install streamlink
-```
+**Python 3 필요:** macOS 12.3+ 기본 내장. 없을 경우 경고 출력 후 계속 진행.
+수동 대안: `brew install streamlink`
 
 **확인:**
 ```bash
@@ -639,9 +654,16 @@ npm install
 **문제:** `Streamlink not found` (macOS)
 
 **해결:**
-```bash
-brew install streamlink
-```
+1. `npm install` 재실행 (Python venv 자동 설치 시도)
+2. Python 3 미설치 시:
+   ```bash
+   brew install streamlink
+   ```
+3. 또는 수동으로 venv 생성:
+   ```bash
+   python3 -m venv .bin/streamlink-venv
+   .bin/streamlink-venv/bin/pip install streamlink
+   ```
 
 **문제:** `AppImage: FUSE not found` (Linux)
 
