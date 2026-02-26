@@ -23,6 +23,8 @@ export type Job = {
   status: 'running' | 'completed' | 'failed';
   listeners: JobListener[];
   errorMessage?: string;
+  createdAt: number;
+  abort?: () => void;
 };
 
 // Event emitter function type

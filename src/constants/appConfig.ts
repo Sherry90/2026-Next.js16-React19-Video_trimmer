@@ -120,6 +120,10 @@ export const APP_CONFIG = {
     ARIA2C_CHUNK_SIZE: '1M',
     /** 유효 파일 최소 크기 (bytes) */
     MIN_VALID_FILE_SIZE: 1024,
+    /** 고아 잡 정리 유예 시간 (ms) - 재연결 허용 시간 */
+    JOB_ORPHAN_GRACE_PERIOD_MS: 30_000,
+    /** 완료/실패 잡 TTL (ms) - 30분 후 자동 정리 */
+    JOB_TTL_MS: 30 * 60 * 1000,
   },
 } as const;
 

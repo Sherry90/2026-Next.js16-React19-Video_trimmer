@@ -84,7 +84,8 @@ export async function downloadWithYtdlp(
     tbr?: number;
   },
   emitEvent: EventEmitter,
-  updateJobStatus: (jobId: string, job: Partial<Job>) => void
+  updateJobStatus: (jobId: string, job: Partial<Job>) => void,
+  abortSignal?: AbortSignal
 ): Promise<void> {
   const { url, startTime, endTime, filename } = params;
   const outputPath = join(tmpdir(), `download_${jobId}.mp4`);
@@ -111,6 +112,13 @@ export async function downloadWithYtdlp(
     const ytdlpProc = spawn(ytdlpBin, ytdlpArgs, {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
+
+    abortSignal?.addEventListener('abort', () => {
+      if (!ytdlpProc.killed) {
+        ytdlpProc.kill('SIGTERM');
+        setTimeout(() => { if (!ytdlpProc.killed) ytdlpProc.kill('SIGKILL'); }, 2000);
+      }
+    }, { once: true });
 
     let stderrOutput = '';
     let stdoutOutput = '';
