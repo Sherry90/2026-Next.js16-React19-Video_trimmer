@@ -59,8 +59,8 @@
 
 4. **문서 읽기**
    - `CLAUDE.md` - 프로젝트 개요
-   - `.docs/PROJECT.md` - 기술 문서
-   - `.docs/API.md` - API 참조
+   - `.docs/01_OVERVIEW.md` - 기술 문서
+   - `.docs/02_API.md` - API 참조
 
 **확인 과제**:
 - [ ] 로컬에서 프로젝트 실행 성공
@@ -141,10 +141,11 @@ const useStore = create<StoreState>((set, get) => ({
    - 조건별 자동 선택 로직 (MP4Box → FFmpeg)
    - Fallback 전략
 
-4. **HLS URL 트리밍**
-   - `src/app/api/video/trim/route.ts` 분석
-   - Streamlink + FFmpeg 2단계 프로세스
-   - 타임스탬프 리셋 필요성 (`-avoid_negative_ts make_zero`)
+4. **URL 영상 다운로드 (SSE 기반)**
+   - `src/lib/downloadJob.ts` - 오케스트레이터 (플랫폼 감지 → 전략 선택)
+   - `src/lib/streamlinkDownloader.ts` - Chzzk 2-phase 프로세스
+   - `src/lib/ytdlpDownloader.ts` - YouTube 1-phase + `--postprocessor-args`
+   - SSE로 실시간 진행률 전송 흐름
 
 **실습 과제**:
 ```typescript
@@ -171,7 +172,7 @@ const ffmpegArgs = [
 - [ ] MP4Box와 FFmpeg의 장단점 5가지씩 설명
 - [ ] 키프레임이 무엇이고 왜 1-2초마다 있는지 설명
 - [ ] `trimVideoDispatcher`의 조건문 설명
-- [ ] HLS 2단계 트리밍이 왜 필요한지 설명
+- [ ] Chzzk 2-phase와 YouTube 1-phase의 차이 설명
 
 ---
 
@@ -183,7 +184,6 @@ const ffmpegArgs = [
 1. **API Routes 구조**
    - `src/app/api/video/resolve/route.ts` - yt-dlp 비디오 정보
    - `src/app/api/video/proxy/route.ts` - CORS 우회 프록시
-   - `src/app/api/video/trim/route.ts` - 서버 사이드 트리밍
 
 2. **SSE (Server-Sent Events)**
    - `src/app/api/download/start/route.ts` - Job 시작
@@ -227,7 +227,7 @@ function calculateOverallProgress(phase: string, progress: number): number {
 **확인 과제**:
 - [ ] SSE와 WebSocket 차이 설명
 - [ ] EventSource 사용법 설명
-- [ ] Phase별 진행률이 왜 0-100%로 리셋되는지 설명
+- [ ] Chzzk에서만 `processing` phase가 있는 이유 설명
 - [ ] 클라이언트 가중치 계산의 필요성 설명
 
 ---
@@ -305,7 +305,7 @@ const cleanup = () => {
 **3. 기술적 우수성**
 - Feature-based 아키텍처 (확장 가능)
 - 자동 의존성 관리 (postinstall)
-- 130개 테스트 통과 (안정성)
+- 149개 테스트 통과 (안정성)
 
 ### 기술 스택
 
@@ -321,8 +321,8 @@ Frontend (클라이언트)
 
 Backend (서버 사이드)
 ├── Next.js API Routes # REST API
-├── yt-dlp             # 비디오 메타데이터 추출
-├── streamlink         # HLS 세그먼트 다운로드
+├── yt-dlp             # 비디오 메타데이터 추출 + YouTube 다운로드
+├── streamlink         # Chzzk HLS 세그먼트 다운로드
 ├── ffmpeg             # 타임스탬프 리셋
 └── SSE                # 실시간 진행률 스트리밍
 
@@ -378,6 +378,7 @@ src/features/
 │   │   └── UrlPreviewRangeControl.tsx
 │   ├── hooks/
 │   │   ├── useUrlInput.ts
+│   │   ├── useUrlDownload.ts
 │   │   └── useStreamDownload.ts
 │   └── utils/
 │       └── sseProgressUtils.ts
@@ -413,7 +414,6 @@ src/features/
         ├── trimVideoDispatcher.ts
         ├── trimVideoMP4Box.ts
         ├── trimVideoFFmpeg.ts
-        ├── trimVideoServer.ts
         └── FFmpegSingleton.ts
 ```
 
@@ -422,10 +422,6 @@ src/features/
 2. **확장성**: 새 기능 추가 시 새 폴더만 생성
 3. **가독성**: 기능별로 코드가 그룹화되어 찾기 쉬움
 4. **재사용성**: hooks와 utils는 feature 내에서 재사용
-
-**단점**:
-1. **Import 경로**: Cross-feature 의존성 주의 필요
-2. **중복**: 공통 로직은 `src/lib/` 또는 `src/utils/`로 이동
 
 ---
 
@@ -563,11 +559,6 @@ export default function Home() {
   );
 }
 ```
-
-**장점**:
-1. **명확한 흐름**: 각 단계가 명확히 정의됨
-2. **버그 방지**: 잘못된 상태 전이 방지 (예: idle → processing)
-3. **테스트 용이**: 각 phase별 독립 테스트 가능
 
 ---
 
@@ -737,11 +728,6 @@ await ffmpeg.exec([
 
 **정확도**: ±0.02초 (프레임 단위)
 
-**트레이드오프**:
-- ✅ 정확함
-- ❌ 느림 (500MB 파일 30-60초)
-- ❌ 큰 번들 (~30MB)
-
 ---
 
 ### 3. HLS 스트리밍과 Streamlink
@@ -764,26 +750,32 @@ await ffmpeg.exec([
 streamlink \
   --hls-start-offset 00:03:05 \   # 시작 시간
   --hls-duration 00:05:00 \        # 길이
-  https://example.com/live.m3u8 best -o output.mp4
+  https://chzzk.naver.com/... best -o output.mp4
 ```
 
-**왜 2단계 프로세스?**
+**왜 2단계 프로세스? (Chzzk)**
 
-**Phase 1: Streamlink**
-```bash
-streamlink --hls-start-offset 00:03:05 --hls-duration 00:05:00 <url> best -o temp.mp4
 ```
-→ `temp.mp4` (타임스탬프가 00:03:05부터 시작)
+Phase 1: Streamlink
+→ temp.mp4 (타임스탬프가 00:03:05부터 시작)
 
-**Phase 2: FFmpeg 타임스탬프 리셋**
-```bash
-ffmpeg -i temp.mp4 -c copy -avoid_negative_ts make_zero -fflags +genpts output.mp4
+Phase 2: FFmpeg 타임스탬프 리셋
+→ output.mp4 (타임스탬프가 00:00:00부터 시작)
 ```
-→ `output.mp4` (타임스탬프가 00:00:00부터 시작)
 
 **필요성**:
 - 플레이어는 타임스탬프 00:00:00부터 시작 기대
 - 타임스탬프 리셋 없으면 플레이어 오작동 가능
+
+**YouTube는 왜 1-phase?**
+
+```
+Phase 1 only: yt-dlp --download-sections --postprocessor-args "ffmpeg:..."
+→ final.mp4 (타임스탬프가 00:00:00부터 시작)
+```
+
+- yt-dlp가 muxing 과정에서 FFmpeg를 내부적으로 호출
+- `--postprocessor-args`로 FFmpeg 옵션 전달 → Phase 2 불필요
 
 ---
 
@@ -923,19 +915,7 @@ export function RotateButton() {
 }
 ```
 
-**3단계: Hook 작성**
-
-```typescript
-// src/features/rotate/hooks/useRotate.ts
-export function useRotate() {
-  const rotateVideo = useStore((state) => state.rotateVideo);
-  const rotation = useStore((state) => state.rotation);
-
-  return { rotateVideo, rotation };
-}
-```
-
-**4단계: Store 업데이트**
+**3단계: Store 업데이트**
 
 ```typescript
 // src/stores/useStore.ts
@@ -943,18 +923,9 @@ export interface StoreState {
   rotation: number;  // 0, 90, 180, 270
   rotateVideo: (degrees: number) => void;
 }
-
-const useStore = create<StoreState>((set) => ({
-  rotation: 0,
-  rotateVideo: (degrees) => {
-    set((state) => ({
-      rotation: (state.rotation + degrees) % 360,
-    }));
-  },
-}));
 ```
 
-**5단계: 테스트 작성**
+**4단계: 테스트 작성**
 
 ```typescript
 // src/__tests__/unit/rotate.test.ts
@@ -969,20 +940,6 @@ describe('Rotate', () => {
     expect(result.current.rotation).toBe(90);
   });
 });
-```
-
-**6단계: 통합**
-
-```typescript
-// src/app/page.tsx
-import { RotateButton } from '@/features/rotate/components/RotateButton';
-
-{phase === 'editing' && (
-  <>
-    <EditorView />
-    <RotateButton />
-  </>
-)}
 ```
 
 ---
@@ -1029,14 +986,8 @@ export function runAllCleanups(): void {
 
 ```typescript
 // src/features/export/utils/trimVideoDispatcher.ts
-import { registerCleanup } from '@/lib/cleanup';
-
-export function cleanupFFmpeg(): void {
-  FFmpegSingleton.cleanup();
-}
-
 // 모듈 로드 시 자동 등록
-registerCleanup(cleanupFFmpeg);
+registerCleanup(() => FFmpegSingleton.cleanup());
 ```
 
 ```typescript
@@ -1096,19 +1047,6 @@ export function toProcessError(error: unknown): ProcessError {
 }
 ```
 
-```typescript
-// 사용
-import { toProcessError } from '@/types/process';
-
-try {
-  execFileSync('ffmpeg', ['-version']);
-} catch (error: unknown) {
-  const processError = toProcessError(error);
-  console.error(processError.message);
-  console.error(processError.code);  // 타입 안전!
-}
-```
-
 ---
 
 ### 3. Discriminated Union 패턴
@@ -1122,12 +1060,6 @@ interface SSEEvent {
   progress?: number;
   filename?: string;
   message?: string;
-}
-
-function handleEvent(event: SSEEvent) {
-  if (event.type === 'progress') {
-    console.log(event.progress);  // undefined일 수 있음!
-  }
 }
 ```
 
@@ -1178,11 +1110,6 @@ function handleEvent(event: SSEEvent) {
   }
 }
 ```
-
-**장점**:
-1. 타입 좁히기 자동
-2. 불가능한 조합 방지 (progress + filename)
-3. IDE 자동완성 향상
 
 ---
 
@@ -1242,13 +1169,6 @@ const handleMouseUp = () => {
 
 **원인**: Object URL을 revoke하지 않음
 
-```typescript
-// BAD
-const url = URL.createObjectURL(blob);
-setVideoUrl(url);
-// URL을 revoke하지 않으면 메모리에 계속 남음
-```
-
 **디버깅**:
 
 ```typescript
@@ -1269,12 +1189,11 @@ const cleanup = () => {
 
 // Store reset 시
 reset: () => {
-  const { videoUrl, processedVideoUrl, trimmedUrl, urlPreview } = get();
+  const { videoUrl, processedVideoUrl, trimmedUrl } = get();
 
   if (videoUrl) URL.revokeObjectURL(videoUrl);
   if (processedVideoUrl) URL.revokeObjectURL(processedVideoUrl);
   if (trimmedUrl) URL.revokeObjectURL(trimmedUrl);
-  if (urlPreview?.url) URL.revokeObjectURL(urlPreview.url);
 
   set(initialState);
 }
@@ -1288,19 +1207,6 @@ reset: () => {
 
 **원인**: 서버가 먼저 연결을 닫음 (정상 완료)
 
-```typescript
-// BAD
-eventSource.onerror = (error) => {
-  console.error('Connection error:', error);  // 정상 완료도 에러로 표시
-};
-
-eventSource.onmessage = (event) => {
-  if (data.type === 'complete') {
-    window.location.href = '/download';  // 서버가 먼저 닫음
-  }
-};
-```
-
 **해결**:
 
 ```typescript
@@ -1308,6 +1214,7 @@ eventSource.onmessage = (event) => {
 eventSource.onmessage = (event) => {
   if (data.type === 'complete') {
     eventSource.close();  // 먼저 닫기
+    eventSourceRef.current = null;
     window.location.href = '/download';
   }
 };
@@ -1316,6 +1223,7 @@ eventSource.onerror = (error) => {
   if (eventSourceRef.current) {  // 아직 열려있으면 에러
     console.error('Connection error:', error);
   }
+  // null이면 정상 완료 후 닫힌 것 (무시)
 };
 ```
 
@@ -1355,18 +1263,6 @@ describe('Store - Timeline', () => {
 
     expect(result.current.timeline.inPoint).toBe(30);
   });
-
-  it('should constrain in point to out point', () => {
-    const { result } = renderHook(() => useStore());
-
-    act(() => {
-      result.current.setVideoUrl('test.mp4', 100);
-      result.current.setOutPoint(50);
-      result.current.setInPoint(60);  // 60 > 50
-    });
-
-    expect(result.current.timeline.inPoint).toBe(50);  // 50으로 제한
-  });
 });
 ```
 
@@ -1379,16 +1275,6 @@ describe('Binary Dependencies', () => {
     const ffmpegPath = getFfmpegPath();
     expect(ffmpegPath).toBeTruthy();
     expect(existsSync(ffmpegPath)).toBe(true);
-  });
-
-  it('should have yt-dlp available', () => {
-    const ytdlpPath = getYtdlpPath();
-    expect(ytdlpPath).toBeTruthy();
-  });
-
-  it('should have streamlink available', () => {
-    const hasStreamlinkAvailable = hasStreamlink();
-    expect(hasStreamlinkAvailable).toBe(true);
   });
 });
 ```
@@ -1408,24 +1294,6 @@ describe('SSE Progress Utils', () => {
     expect(calculateOverallProgress('processing', 0)).toBe(90);
     expect(calculateOverallProgress('processing', 50)).toBe(95);
     expect(calculateOverallProgress('processing', 100)).toBe(100);
-  });
-});
-```
-
-**4. 간단한 유틸리티 (간소화)**
-
-```typescript
-// src/__tests__/unit/mathUtils.test.ts
-describe('mathUtils', () => {
-  it('should clamp value between min and max', () => {
-    expect(clamp(5, 0, 10)).toBe(5);
-    expect(clamp(-5, 0, 10)).toBe(0);
-    expect(clamp(15, 0, 10)).toBe(10);
-  });
-
-  it('should calculate percentage', () => {
-    expect(toPercentage(50, 100)).toBe(50);
-    expect(toPercentage(0, 100)).toBe(0);
   });
 });
 ```
@@ -1473,25 +1341,6 @@ export function usePreviewPlayback() {
 }
 ```
 
-**3단계: 테스트**
-
-```typescript
-// src/__tests__/unit/usePreviewPlayback.test.ts
-describe('usePreviewPlayback', () => {
-  it('should preview last 10 seconds', () => {
-    const { result } = renderHook(() => useStore());
-
-    act(() => {
-      result.current.setVideoUrl('test.mp4', 100);
-      result.current.setOutPoint(50);
-      // previewLast10s() 호출 시뮬레이션
-    });
-
-    // seek(40) 호출 검증 (50 - 10 = 40)
-  });
-});
-```
-
 ---
 
 ### 예제 2: 새 Export 형식 추가
@@ -1521,21 +1370,7 @@ async function trimToWebM(
 }
 ```
 
-**2단계: Store에 형식 추가**
-
-```typescript
-// src/stores/useStore.ts
-export interface StoreState {
-  export: {
-    format: 'mp4' | 'webm';  // 형식 추가
-    trimmedUrl: string | null;
-    filename: string;
-  };
-  setExportFormat: (format: 'mp4' | 'webm') => void;
-}
-```
-
-**3단계: Dispatcher 업데이트**
+**2단계: Dispatcher 업데이트**
 
 ```typescript
 // src/features/export/utils/trimVideoDispatcher.ts
@@ -1603,27 +1438,7 @@ headers: [
 streamlink: not found
 ```
 
-**원인**: 바이너리 자동 다운로드 실패
-
-**해결**:
-
-**macOS**:
-```bash
-brew install streamlink
-```
-
-**Linux**:
-```bash
-# AppImage 수동 다운로드
-wget https://github.com/streamlink/streamlink-appimage/releases/download/8.2.0-1/streamlink-8.2.0-1-cp314-cp314-manylinux_2_28_x86_64.AppImage
-chmod +x streamlink-*.AppImage
-mv streamlink-*.AppImage .bin/streamlink-linux-x64.AppImage
-```
-
-**Windows**:
-```powershell
-choco install streamlink
-```
+**해결**: `.docs/03_DEPENDENCIES.md` 참조
 
 ---
 
@@ -1639,12 +1454,11 @@ choco install streamlink
 
 ### 프로젝트 문서
 
-- `CLAUDE.md` - 프로젝트 개요 및 커밋 가이드
-- `.docs/PROJECT.md` - 기술 문서
-- `.docs/HISTORY.md` - 개발 히스토리
-- `.docs/API.md` - API 참조
-- `.docs/BINARIES.md` - 바이너리 문서
-- `.docs/SCRIPTS.md` - 스크립트 문서
+- `CLAUDE.md` - 프로젝트 개요 및 커밋 가이드 (Quick Reference)
+- `.docs/01_OVERVIEW.md` - 기술 문서
+- `.docs/02_API.md` - API 참조
+- `.docs/03_DEPENDENCIES.md` - 바이너리/의존성 문서
+- `.docs/05_HISTORY.md` - 개발 히스토리
 
 ### 학습 순서 추천
 
@@ -1686,4 +1500,4 @@ choco install streamlink
 
 **질문이나 개선 사항**이 있다면 GitHub Issues로 제출해주세요.
 
-**Happy Coding!** 🚀
+**Happy Coding!**
