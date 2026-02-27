@@ -52,29 +52,31 @@ export async function ensureFileComplete(filePath: string, timeoutMs = 5000): Pr
       // 1. 파일 열기 시도 (read-only)
       const fd = await fsPromises.open(filePath, 'r');
 
-      // 2. 파일 크기 확인
-      const stats = await fd.stat();
-      if (stats.size < DOWNLOAD.MIN_VALID_FILE_SIZE) {
-        await fd.close();
+      try {
+        // 2. 파일 크기 확인
+        const stats = await fd.stat();
+        if (stats.size < DOWNLOAD.MIN_VALID_FILE_SIZE) {
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          continue;
+        }
+
+        // 3. MP4 ftyp header 읽기 (처음 12 bytes)
+        const buffer = Buffer.allocUnsafe(12);
+        await fd.read(buffer, 0, 12, 0);
+
+        // 4. MP4 signature 검증
+        // MP4 파일은 'ftyp' box로 시작 (offset 4-8)
+        const signature = buffer.toString('ascii', 4, 8);
+        if (signature === 'ftyp') {
+          // 파일이 완전히 쓰여짐
+          return;
+        }
+
+        // 5. signature 불완전 → 재시도
         await new Promise((resolve) => setTimeout(resolve, 50));
-        continue;
+      } finally {
+        await fd.close().catch(() => {});
       }
-
-      // 3. MP4 ftyp header 읽기 (처음 12 bytes)
-      const buffer = Buffer.allocUnsafe(12);
-      await fd.read(buffer, 0, 12, 0);
-      await fd.close();
-
-      // 4. MP4 signature 검증
-      // MP4 파일은 'ftyp' box로 시작 (offset 4-8)
-      const signature = buffer.toString('ascii', 4, 8);
-      if (signature === 'ftyp') {
-        // 파일이 완전히 쓰여짐
-        return;
-      }
-
-      // 5. signature 불완전 → 재시도
-      await new Promise((resolve) => setTimeout(resolve, 50));
     } catch (error) {
       // 파일 아직 쓰기 중 또는 잠김 → 재시도
       await new Promise((resolve) => setTimeout(resolve, 50));
