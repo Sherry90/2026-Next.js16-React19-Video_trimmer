@@ -118,8 +118,8 @@ export const APP_CONFIG = {
     ARIA2C_SPLIT_COUNT: 16,
     /** aria2c 청크 크기 */
     ARIA2C_CHUNK_SIZE: '1M',
-    /** 유효 파일 최소 크기 (bytes) */
-    MIN_VALID_FILE_SIZE: 1024,
+    /** 유효 파일 최소 크기 (bytes) - MP4 헤더(4-8KB) + 실제 데이터 여유 */
+    MIN_VALID_FILE_SIZE: 32 * 1024,
     /** 고아 잡 정리 유예 시간 (ms) - 재연결 허용 시간 */
     JOB_ORPHAN_GRACE_PERIOD_MS: 30_000,
     /** 완료/실패 잡 TTL (ms) - 30분 후 자동 정리 */
