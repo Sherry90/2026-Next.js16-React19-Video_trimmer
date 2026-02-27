@@ -10,7 +10,7 @@ import { spawn } from 'child_process';
 import { existsSync, promises as fsPromises } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { FFmpegProgressTracker, getFileDuration } from './progressParser';
+import { FFmpegProgressTracker } from './progressParser';
 import { getFfmpegPath, getStreamlinkPath } from './binPaths';
 import { safeUnlink, ensureFileComplete, DownloadProgressTracker, type Job, type EventEmitter } from './downloadTypes';
 import { runWithTimeout } from './processUtils';
@@ -52,7 +52,7 @@ export async function downloadWithStreamlink(
       const proc = currentProc;
       setTimeout(() => { if (!proc.killed) proc.kill('SIGKILL'); }, 2000);
     }
-  }, { once: true });
+  });
 
   try {
     const streamlinkBin = getStreamlinkPath();
@@ -116,7 +116,11 @@ export async function downloadWithStreamlink(
       throw new Error('Streamlink 다운로드에 실패했습니다');
     }
 
-    const actualDuration = await getFileDuration(tempFile);
+    // Phase 1→2 전환 중 abort 신호 확인 (레이스 컨디션 방지)
+    if (abortSignal?.aborted) {
+      safeUnlink(tempFile);
+      throw new Error('다운로드가 취소되었습니다');
+    }
 
     // ===== PHASE 2: FFmpeg 타임스탬프 리셋 =====
     tracker.resetForPhase('processing');
