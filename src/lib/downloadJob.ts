@@ -19,8 +19,8 @@ const jobs = new Map<string, Job>();
  * Job 스트림 구독
  */
 export function getJobStream(jobId: string, listener: JobListener): () => void {
-  // 스트림 라우트에서 getJob()으로 먼저 가드하므로 여기 도달 시 job은 항상 존재
-  const job = jobs.get(jobId)!;
+  const job = jobs.get(jobId);
+  if (!job) throw new Error(`Job not found: ${jobId}`);
   job.listeners.push(listener);
 
   return () => {
