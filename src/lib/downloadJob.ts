@@ -30,7 +30,9 @@ export function getJobStream(jobId: string, listener: JobListener): () => void {
     currentJob.listeners = currentJob.listeners.filter((l) => l !== listener);
 
     // 마지막 리스너 이탈 + 잡 실행 중 → grace period 후 abort
-    if (currentJob.listeners.length === 0 && currentJob.status === 'running') {
+    // orphanCleanupScheduled 플래그로 중복 setTimeout 방지
+    if (currentJob.listeners.length === 0 && currentJob.status === 'running' && !currentJob.orphanCleanupScheduled) {
+      currentJob.orphanCleanupScheduled = true;
       setTimeout(() => {
         const job = jobs.get(jobId);
         if (job && job.status === 'running' && job.listeners.length === 0) {

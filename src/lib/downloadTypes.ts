@@ -25,6 +25,7 @@ export type Job = {
   errorMessage?: string;
   createdAt: number;
   abort?: () => void;
+  orphanCleanupScheduled?: boolean;
 };
 
 // Event emitter function type
