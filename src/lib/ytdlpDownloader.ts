@@ -143,7 +143,7 @@ export async function downloadWithYtdlp(
 
     ytdlpProc.stdout?.on('data', (chunk: Buffer) => {
       const text = chunk.toString();
-      stdoutOutput += text;
+      stdoutOutput = (stdoutOutput + text).slice(-50_000);
 
       const lines = text.split('\n');
       lines.forEach(parseProgressLine);
@@ -151,7 +151,7 @@ export async function downloadWithYtdlp(
 
     ytdlpProc.stderr?.on('data', (chunk: Buffer) => {
       const text = chunk.toString();
-      stderrOutput += text;
+      stderrOutput = (stderrOutput + text).slice(-50_000);
 
       const lines = text.split('\n');
       lines.forEach(parseProgressLine);
