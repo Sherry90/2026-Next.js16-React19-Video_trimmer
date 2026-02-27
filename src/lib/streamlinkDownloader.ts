@@ -86,7 +86,7 @@ export async function downloadWithStreamlink(
     let streamlinkStderr = '';
 
     streamlinkProc.stderr?.on('data', (chunk: Buffer) => {
-      streamlinkStderr += chunk.toString();
+      streamlinkStderr = (streamlinkStderr + chunk.toString()).slice(-50_000);
     });
 
     const progressInterval = setInterval(async () => {
