@@ -46,6 +46,62 @@ npm run build
 npm start
 ```
 
+### Docker
+
+이미지 빌드:
+
+```bash
+docker build -t video-trimmer .
+```
+
+진행도 추적 빌드:
+
+```bash
+npm run docker:build
+```
+
+컨테이너 실행:
+
+```bash
+docker run --rm -p 3000:3000 video-trimmer
+```
+
+브라우저에서 `http://localhost:3000`으로 접속할 수 있습니다.
+
+참고:
+- Docker 빌드는 `npm ci --ignore-scripts`로 `postinstall`의 외부 바이너리 다운로드를 건너뜁니다.
+- 대신 이미지 안에서 `ffmpeg`, `yt-dlp`, `streamlink`를 시스템 레벨로 설치합니다.
+- 프로덕션 빌드는 안정성을 위해 webpack 경로(`next build --webpack`)를 사용합니다.
+- Next standalone 출력을 사용해 최종 이미지 크기와 export 시간을 줄입니다.
+- progress 스크립트는 `--progress=plain`을 사용하고 로그를 `.logs/`에 저장합니다.
+
+### Docker Compose
+
+빌드 및 실행:
+
+```bash
+docker compose up --build
+```
+
+빌드 진행도 추적:
+
+```bash
+npm run docker:compose:build
+```
+
+백그라운드 실행:
+
+```bash
+docker compose up --build -d
+```
+
+중지:
+
+```bash
+docker compose down
+```
+
+
 ## 테스트
 
 ### 단위 테스트
