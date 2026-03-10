@@ -1,0 +1,14 @@
+services:
+  video-trimmer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: trimvideo-app:latest
+    hostname: trimvideo.com
+    ports:
+      - "3000:3000"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3000
+      NODE_ENV: production
+    restart: unless-stopped
