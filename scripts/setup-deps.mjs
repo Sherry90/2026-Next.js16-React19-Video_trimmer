@@ -16,6 +16,17 @@ const require = createRequire(import.meta.url);
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const projectRoot = join(__dirname, '..');
 const binDir = join(projectRoot, '.bin');
+const skipOptionalBinaryDownloads =
+  process.env.SKIP_OPTIONAL_BINARY_DOWNLOADS === '1' ||
+  process.env.SKIP_OPTIONAL_BINARY_DOWNLOADS === 'true';
+const downloadTimeoutMs = Number.parseInt(
+  process.env.SETUP_DEPS_DOWNLOAD_TIMEOUT_MS || '45000',
+  10,
+);
+const childProcessTimeoutMs = Number.parseInt(
+  process.env.SETUP_DEPS_CHILD_TIMEOUT_MS || '300000',
+  10,
+);
 
 function hasCommand(cmd) {
   try {
@@ -31,7 +42,7 @@ function hasCommand(cmd) {
  */
 async function downloadFile(url, dest) {
   return new Promise((resolve, reject) => {
-    https.get(url, {
+    const request = https.get(url, {
       headers: { 'User-Agent': 'Video-Trimmer' },
     }, (res) => {
       // Handle redirects
@@ -50,7 +61,13 @@ async function downloadFile(url, dest) {
       pipeline(res, fileStream)
         .then(resolve)
         .catch(reject);
-    }).on('error', reject);
+    });
+
+    request.setTimeout(downloadTimeoutMs, () => {
+      request.destroy(new Error(`Download timed out after ${downloadTimeoutMs}ms`));
+    });
+
+    request.on('error', reject);
   });
 }
 
@@ -146,13 +163,19 @@ async function downloadStreamlink() {
     const destPath = join(binDir, `streamlink-linux-${arch === 'arm64' ? 'arm64' : 'x64'}.AppImage`);
     console.log(`    Downloading from ${url}`);
     await downloadFile(url, destPath);
-    execFileSync('chmod', ['+x', destPath]);
+    execFileSync('chmod', ['+x', destPath], { timeout: childProcessTimeoutMs });
   } else if (platform === 'darwin') {
     // macOS: install via Python venv (Python 3 is built-in since macOS 12.3)
     const venvDir = join(binDir, 'streamlink-venv');
     console.log('    Installing streamlink via Python venv...');
-    execFileSync('python3', ['-m', 'venv', venvDir], { stdio: 'inherit' });
-    execFileSync(join(venvDir, 'bin', 'pip'), ['install', 'streamlink', '--quiet'], { stdio: 'inherit' });
+    execFileSync('python3', ['-m', 'venv', venvDir], {
+      stdio: 'inherit',
+      timeout: childProcessTimeoutMs,
+    });
+    execFileSync(join(venvDir, 'bin', 'pip'), ['install', 'streamlink', '--quiet'], {
+      stdio: 'inherit',
+      timeout: childProcessTimeoutMs,
+    });
     console.log(`    Installed to ${venvDir}`);
   }
 }
@@ -247,7 +270,13 @@ function checkFfmpeg() {
 
 console.log('\nVideo Trimmer - Dependencies\n');
 checkFfmpeg();
-await setupYtDlp();
-await setupStreamlink();
+
+if (skipOptionalBinaryDownloads) {
+  console.log('  optional binaries: skipped (SKIP_OPTIONAL_BINARY_DOWNLOADS)');
+} else {
+  await setupYtDlp();
+  await setupStreamlink();
+}
+
 copyWasmFiles();
 console.log('');
