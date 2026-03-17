@@ -6,9 +6,9 @@ services:
     image: trimvideo-app:latest
     hostname: trimvideo.com
     ports:
-      - "3000:3000"
+      - "443:443"
+    volumes:
+      - ./certificates:/app/certificates:ro
     environment:
-      HOST: 0.0.0.0
-      PORT: 3000
-      NODE_ENV: production
+      HOSTNAME: "0.0.0.0"
     restart: unless-stopped
