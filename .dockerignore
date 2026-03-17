@@ -25,3 +25,5 @@ public/ffmpeg
 .bin
 *.log
 *.pem
+public/*.mp4
+.logs
