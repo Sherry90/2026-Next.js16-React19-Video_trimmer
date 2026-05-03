@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
     image: trimvideo-app:latest
-    hostname: trimvideo.com
+    hostname: trimvideo.net
     ports:
       - "443:443"
     volumes:

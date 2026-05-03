@@ -35,8 +35,8 @@ const serverPath = '.next/standalone/server.js';
 const shim = `require('http').createServer = function(opts, listener) {
   if (typeof opts === 'function') { listener = opts; }
   return require('https').createServer({
-    key: require('fs').readFileSync(require('path').join(__dirname, 'certificates', 'trimvideo.com-key.pem')),
-    cert: require('fs').readFileSync(require('path').join(__dirname, 'certificates', 'trimvideo.com.pem'))
+    key: require('fs').readFileSync(require('path').join(__dirname, 'certificates', 'trimvideo.net-key.pem')),
+    cert: require('fs').readFileSync(require('path').join(__dirname, 'certificates', 'trimvideo.net.pem'))
   }, listener);
 };
 `;
