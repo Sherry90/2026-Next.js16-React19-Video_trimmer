@@ -8,8 +8,8 @@ import next from 'next';
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = dev ? 'localhost' : '0.0.0.0';
 const certsDir = join(__dirname, 'certificates');
-const useHttps = existsSync(join(certsDir, 'trimvideo.com-key.pem'))
-  && existsSync(join(certsDir, 'trimvideo.com.pem'));
+const useHttps = existsSync(join(certsDir, 'trimvideo.net-key.pem'))
+  && existsSync(join(certsDir, 'trimvideo.net.pem'));
 const defaultPort = useHttps ? 443 : 3000;
 const port = parseInt(process.env.PORT || String(defaultPort), 10);
 
@@ -29,8 +29,8 @@ app.prepare().then(() => {
 
   const server = useHttps
     ? createHttpsServer({
-        key: readFileSync(join(certsDir, 'trimvideo.com-key.pem')),
-        cert: readFileSync(join(certsDir, 'trimvideo.com.pem')),
+        key: readFileSync(join(certsDir, 'trimvideo.net-key.pem')),
+        cert: readFileSync(join(certsDir, 'trimvideo.net.pem')),
       }, handler)
     : createHttpServer(handler);
 
