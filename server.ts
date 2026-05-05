@@ -10,7 +10,7 @@ const hostname = dev ? 'localhost' : '0.0.0.0';
 const certsDir = join(__dirname, 'certificates');
 const useHttps = existsSync(join(certsDir, 'trimvideo.net-key.pem'))
   && existsSync(join(certsDir, 'trimvideo.net.pem'));
-const defaultPort = useHttps ? 443 : 3000;
+const defaultPort = useHttps ? 3443 : 3000;
 const port = parseInt(process.env.PORT || String(defaultPort), 10);
 
 const app = next({ dev, hostname, port, turbopack: dev });
@@ -35,7 +35,7 @@ app.prepare().then(() => {
     : createHttpServer(handler);
 
   const protocol = useHttps ? 'https' : 'http';
-  const portSuffix = (useHttps && port === 443) || (!useHttps && port === 80) ? '' : `:${port}`;
+  const portSuffix = `:${port}`;
 
   server
     .once('error', (err: any) => { console.error(err); process.exit(1); })
