@@ -44,6 +44,27 @@ fs.writeFileSync(serverPath, shim + fs.readFileSync(serverPath, 'utf8'));
 console.log('[patch] HTTPS shim prepended to server.js');
 PATCH
 
+RUN node - <<'PATCH'
+const fs = require('fs');
+const logPath = '.next/standalone/node_modules/next/dist/server/lib/app-info-log.js';
+let source = fs.readFileSync(logPath, 'utf8');
+const original = source;
+source = source
+  .replace(
+    "_log.bootstrap(`- Local:         ${appUrl}`);",
+    "_log.bootstrap(`- Container:     https://localhost:${process.env.PORT || '443'}`);"
+  )
+  .replace(
+    "_log.bootstrap(`- Network:       ${networkUrl}`);",
+    "_log.bootstrap(`- Host:          https://localhost:${process.env.PORT || '443'}`);"
+  );
+if (source === original) {
+  throw new Error('Next startup URL log patch did not match expected source');
+}
+fs.writeFileSync(logPath, source);
+console.log('[patch] Next startup URLs rewritten for HTTPS container access');
+PATCH
+
 FROM base AS runner
 
 WORKDIR /app
