@@ -63,10 +63,22 @@ npm run docker:build
 컨테이너 실행:
 
 ```bash
-docker run --rm -p 3000:3000 video-trimmer
+docker run --rm -p 443:443 \
+  -v "$PWD/certificates:/app/certificates:ro" \
+  -e HOSTNAME=0.0.0.0 \
+  -e APP_URL=https://trimvideo.net \
+  video-trimmer
 ```
 
-브라우저에서 `http://localhost:3000`으로 접속할 수 있습니다.
+브라우저에서 `https://trimvideo.net`으로 접속할 수 있습니다.
+
+현재 Docker Compose 구성은 컨테이너의 `443/tcp`를 호스트의 `443/tcp`에 바인딩합니다. 따라서 외부에서는 다음 조건이 맞으면 `https://trimvideo.net`으로 접근할 수 있습니다.
+
+- DNS의 `trimvideo.net` A/AAAA 레코드가 이 Docker 호스트의 공인 IP를 가리켜야 합니다.
+- 서버 방화벽, 공유기, 클라우드 보안 그룹에서 인바운드 `443/tcp`가 열려 있어야 합니다.
+- `./certificates/trimvideo.net.pem`과 `./certificates/trimvideo.net-key.pem`이 있어야 합니다. 현재 저장소의 로컬 개발 인증서는 mkcert 인증서라, 접속하는 클라이언트가 해당 mkcert CA를 신뢰하지 않으면 브라우저 인증서 경고가 표시됩니다. 공개 서비스라면 Let's Encrypt 같은 공인 인증서로 교체하세요.
+
+로컬 테스트만 할 때는 호스트에서 `https://localhost`로 접속하거나, `/etc/hosts`에 Docker 호스트 IP와 `trimvideo.net`을 매핑한 뒤 `https://trimvideo.net`으로 접속할 수 있습니다.
 
 참고:
 - Docker 빌드는 `npm ci --ignore-scripts`로 `postinstall`의 외부 바이너리 다운로드를 건너뜁니다.

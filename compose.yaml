@@ -11,4 +11,5 @@ services:
       - ./certificates:/app/certificates:ro
     environment:
       HOSTNAME: "0.0.0.0"
+      APP_URL: "https://trimvideo.net"
     restart: unless-stopped
