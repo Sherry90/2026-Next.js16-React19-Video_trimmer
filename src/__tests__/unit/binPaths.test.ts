@@ -98,17 +98,16 @@ describe('binPaths - Dependency Installation Verification', () => {
       }
     });
 
-    it('yt-dlp should use system > .bin > yt-dlp-wrap (in priority order)', () => {
+    it('yt-dlp should use .bin > system (in priority order)', () => {
       const ytdlpPath = getYtdlpPath();
 
-      // 경로가 있어야 함
       expect(ytdlpPath).toBeTruthy();
 
-      // 시스템 또는 .bin 또는 yt-dlp-wrap 경로여야 함
+      // 번들 (.bin/yt-dlp or .bin/yt-dlp.exe) 또는 시스템 ('yt-dlp')
       const isValid =
-        ytdlpPath === 'yt-dlp' || // system
-        ytdlpPath.includes('.bin/yt-dlp') || // local download
-        ytdlpPath.includes('node_modules'); // yt-dlp-wrap
+        ytdlpPath === 'yt-dlp' ||
+        ytdlpPath.includes('.bin/yt-dlp') ||
+        ytdlpPath.includes('.bin\\yt-dlp');
 
       expect(
         isValid,

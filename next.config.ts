@@ -2,7 +2,7 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  serverExternalPackages: ['@ffmpeg-installer/ffmpeg', 'yt-dlp-wrap'],
+  serverExternalPackages: ['@ffmpeg-installer/ffmpeg'],
   async headers() {
     return [
       {

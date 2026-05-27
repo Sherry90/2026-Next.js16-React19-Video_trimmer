@@ -106,8 +106,34 @@ function getStreamlinkBinPath() {
   return null;
 }
 
+/**
+ * Resolve yt-dlp GitHub release asset name for current platform
+ */
+function getYtdlpAssetName() {
+  const { platform, arch } = process;
+  if (platform === 'win32') return 'yt-dlp.exe';
+  if (platform === 'darwin') return 'yt-dlp_macos';
+  if (platform === 'linux') {
+    return arch === 'arm64' ? 'yt-dlp_linux_aarch64' : 'yt-dlp_linux';
+  }
+  throw new Error(`Unsupported platform for yt-dlp bundling: ${platform} ${arch}`);
+}
+
 async function setupYtDlp() {
-  // Check if yt-dlp is already available on the system
+  const ytdlpBinPath = join(binDir, process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp');
+
+  // 1. Already downloaded to .bin/
+  if (existsSync(ytdlpBinPath)) {
+    try {
+      const version = execFileSync(ytdlpBinPath, ['--version'], { encoding: 'utf-8' }).trim();
+      console.log(`  yt-dlp: v${version} (.bin/)`);
+    } catch {
+      console.log('  yt-dlp: found (.bin/)');
+    }
+    return;
+  }
+
+  // 2. System yt-dlp (skip bundling if present)
   if (hasCommand('yt-dlp')) {
     try {
       const version = execFileSync('yt-dlp', ['--version'], { encoding: 'utf-8' }).trim();
@@ -118,26 +144,26 @@ async function setupYtDlp() {
     return;
   }
 
-  // Check if already downloaded to .bin/
-  const ytdlpBinPath = join(binDir, process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp');
-  if (existsSync(ytdlpBinPath)) {
-    console.log(`  yt-dlp: found (.bin/yt-dlp)`);
-    return;
+  // 3. Download from GitHub release (pinned version)
+  const version = '2026.03.17';
+  const asset = getYtdlpAssetName();
+  const url = `https://github.com/yt-dlp/yt-dlp/releases/download/${version}/${asset}`;
+
+  console.log('  yt-dlp: not found, downloading...');
+  console.log(`    Downloading from ${url}`);
+
+  if (!existsSync(binDir)) {
+    mkdirSync(binDir, { recursive: true });
   }
 
-  // Download via yt-dlp-wrap
-  console.log('  yt-dlp: not found, downloading...');
-  try {
-    const { default: YTDlpWrap } = await import('yt-dlp-wrap');
-    if (!existsSync(binDir)) {
-      mkdirSync(binDir, { recursive: true });
-    }
-    await YTDlpWrap.downloadFromGithub(ytdlpBinPath);
-    console.log(`  yt-dlp: downloaded to .bin/yt-dlp`);
-  } catch (error) {
-    console.warn(`  yt-dlp: download failed - ${error.message}`);
-    console.warn('          manual install: https://github.com/yt-dlp/yt-dlp#installation');
+  await downloadFile(url, ytdlpBinPath);
+
+  // Make executable on Unix-like systems
+  if (process.platform !== 'win32') {
+    execFileSync('chmod', ['+x', ytdlpBinPath], { timeout: childProcessTimeoutMs });
   }
+
+  console.log(`  yt-dlp: downloaded to .bin/${process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp'}`);
 }
 
 /**

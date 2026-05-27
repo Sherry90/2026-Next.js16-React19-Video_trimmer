@@ -3,7 +3,7 @@
  *
  * Priority: bundled binary > system binary
  * - ffmpeg: @ffmpeg-installer/ffmpeg (bundled)
- * - yt-dlp: yt-dlp-wrap downloads binary on first use
+ * - yt-dlp: auto-downloaded to .bin/ (postinstall), system fallback
  * - streamlink: auto-downloaded to .bin/ (postinstall), system fallback
  */
 
@@ -37,35 +37,27 @@ function getFfmpegPath() {
 
 /**
  * Get yt-dlp binary path
- * Tries bundled (via yt-dlp-wrap download), then system
+ * Priority: bundled .bin/ > system
  */
 function getYtdlpPath() {
   if (_ytdlpPath) return _ytdlpPath;
 
-  // Try system yt-dlp first (more up-to-date usually)
+  // 1. Bundled binary in .bin/
+  const binName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
+  const bundled = join(process.cwd(), '.bin', binName);
+  if (existsSync(bundled)) {
+    _ytdlpPath = bundled;
+    return bundled;
+  }
+
+  // 2. System fallback
   try {
     execFileSync('which', ['yt-dlp'], { stdio: 'ignore' });
     _ytdlpPath = 'yt-dlp';
     return 'yt-dlp';
   } catch {
-    // Try .bin/yt-dlp (downloaded by setup-deps.mjs)
-    const binPath = join(process.cwd(), '.bin', 'yt-dlp');
-    if (existsSync(binPath)) {
-      _ytdlpPath = binPath;
-      return binPath;
-    }
-
-    // Fallback to yt-dlp-wrap
-    try {
-      const YTDlpWrap = require('yt-dlp-wrap').default;
-      const ytdlp = new YTDlpWrap();
-      _ytdlpPath = ytdlp.getBinaryPath();
-      return ytdlp.getBinaryPath();
-    } catch {
-      // Last resort: assume system yt-dlp exists
-      _ytdlpPath = 'yt-dlp';
-      return 'yt-dlp';
-    }
+    _ytdlpPath = 'yt-dlp';
+    return 'yt-dlp';
   }
 }
 
