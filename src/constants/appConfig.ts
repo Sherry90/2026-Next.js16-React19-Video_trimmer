@@ -92,6 +92,12 @@ export const APP_CONFIG = {
     PREVIEW_LONG_SEGMENT_THRESHOLD_SEC: 10,
     /** Preview Edges 재생 길이 (초) */
     PREVIEW_EDGE_DURATION_SEC: 5,
+    /**
+     * 스트리밍 소스 seek 후 버퍼 준비 대기 상한 (ms).
+     * canplay/playing이 이 시간 내 안 오면 강제로 play 시도하고 isScrubbing 해제
+     * (stuck isScrubbing이 일반 timeupdate를 영구 차단하는 것 방지).
+     */
+    PREVIEW_BUFFER_TIMEOUT_MS: 5000,
   },
 
   /**
