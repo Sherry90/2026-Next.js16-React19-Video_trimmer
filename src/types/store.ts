@@ -3,23 +3,10 @@ import type { DownloadPhase } from './sse';
 export type AppPhase =
   | 'idle'           // 초기 상태
   | 'uploading'      // 파일 업로드 중
-  | 'url_preview'    // URL 메타데이터 미리보기 + 구간 설정
-  | 'editing'        // 편집 중
+  | 'editing'        // 편집 중 (파일/URL 스트리밍 공통)
   | 'processing'     // 트리밍 처리 중
   | 'completed'      // 완료
   | 'error';         // 에러 발생
-
-export interface UrlPreviewState {
-  title: string;
-  duration: number;
-  thumbnail: string;
-  originalUrl: string;
-  streamUrl: string;
-  streamType: 'hls' | 'mp4';
-  inPoint: number | null;   // null = 처음부터 (0)
-  outPoint: number | null;  // null = 끝까지 (min(duration, maxSegment))
-  tbr: number | null; // Total bitrate (kbps)
-}
 
 export interface VideoFile {
   file: File | null;       // null for URL sources
@@ -34,6 +21,7 @@ export interface VideoFile {
   streamType?: 'hls' | 'mp4'; // 스트림 형식
   thumbnail?: string;      // 영상 썸네일 URL
   originalUrl?: string;    // 사용자가 입력한 원본 URL
+  tbr?: number | null;     // Total bitrate (kbps) — 다운로드 품질 힌트
 }
 
 export interface TimelineState {
