@@ -162,6 +162,7 @@ export function usePreviewPlayback(inPoint: number, outPoint: number) {
   }, [player]);
 
   return {
+    handlePreview,
     handlePreviewEdges,
   };
 }
