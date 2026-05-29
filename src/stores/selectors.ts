@@ -57,15 +57,6 @@ export const usePlayerActions = createStateSelector((state) => ({
 
 export const useCurrentTime = createSimpleSelector((state) => state.player.currentTime);
 
-// URL Preview Selectors
-export const useUrlPreview = createSimpleSelector((state) => state.urlPreview);
-
-export const useUrlPreviewActions = createStateSelector((state) => ({
-  setUrlPreview: state.setUrlPreview,
-  setUrlPreviewRange: state.setUrlPreviewRange,
-  clearUrlPreview: state.clearUrlPreview,
-}));
-
 // Phase & Processing Selectors
 export const usePhase = createSimpleSelector((state) => state.phase);
 

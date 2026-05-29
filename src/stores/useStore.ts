@@ -7,7 +7,6 @@ import type {
   PlayerState,
   ErrorState,
   ExportState,
-  UrlPreviewState,
 } from '@/types/store';
 import { runAllCleanups } from '@/lib/cleanup';
 import {
@@ -25,9 +24,6 @@ export interface StoreState {
 
   // 비디오 파일
   videoFile: VideoFile | null;
-
-  // URL 미리보기
-  urlPreview: UrlPreviewState | null;
 
   // 타임라인
   timeline: TimelineState;
@@ -54,11 +50,6 @@ interface StoreActions {
   // 파일 관련
   setVideoFile: (file: VideoFile | null) => void;
   setVideoDuration: (duration: number) => void;
-
-  // URL 미리보기 관련
-  setUrlPreview: (data: Omit<UrlPreviewState, 'inPoint' | 'outPoint'>) => void;
-  setUrlPreviewRange: (inPoint: number | null, outPoint: number | null) => void;
-  clearUrlPreview: () => void;
 
   // 타임라인 관련
   setInPoint: (time: number) => void;
@@ -104,7 +95,6 @@ interface StoreActions {
 const initialState: StoreState = {
   phase: 'idle',
   videoFile: null,
-  urlPreview: null,
   timeline: {
     inPoint: 0,
     outPoint: 0,
@@ -160,44 +150,6 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
         },
       });
     }
-  },
-
-  // URL 미리보기 관련
-  setUrlPreview: (data) => {
-    set({
-      urlPreview: {
-        ...data,
-        inPoint: null,   // null = 처음부터 (0)
-        outPoint: null,  // null = 끝까지 (min(duration, maxSegment))
-      },
-      phase: 'url_preview',
-    });
-  },
-
-  setUrlPreviewRange: (inPoint, outPoint) => {
-    const { urlPreview } = get();
-    if (!urlPreview) return;
-
-    // null이 포함된 경우 그대로 저장 (constraint 적용 안 함)
-    if (inPoint === null || outPoint === null) {
-      set({ urlPreview: { ...urlPreview, inPoint, outPoint } });
-      return;
-    }
-
-    // 둘 다 number인 경우 [0, duration] 범위만 보장
-    const constrainedIn = Math.max(0, Math.min(inPoint, urlPreview.duration));
-    const constrainedOut = Math.max(0, Math.min(outPoint, urlPreview.duration));
-    set({
-      urlPreview: {
-        ...urlPreview,
-        inPoint: constrainedIn,
-        outPoint: constrainedOut,
-      },
-    });
-  },
-
-  clearUrlPreview: () => {
-    set({ urlPreview: null, phase: 'idle' });
   },
 
   // 타임라인 관련
@@ -345,7 +297,14 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
       URL.revokeObjectURL(videoFile.url);
     }
     if (exportState.outputUrl) {
-      URL.revokeObjectURL(exportState.outputUrl);
+      // URL 소스 직행 다운로드: 서버 /tmp 파일 즉시 정리 (DELETE)
+      const match = exportState.outputUrl.match(/^\/api\/download\/([^/?]+)/);
+      if (match) {
+        fetch(`/api/download/${match[1]}`, { method: 'DELETE' }).catch(() => {});
+      } else {
+        // 파일 소스: 클라이언트 blob URL 해제 (비-blob 문자열엔 no-op)
+        URL.revokeObjectURL(exportState.outputUrl);
+      }
     }
     // Run all registered cleanup functions
     runAllCleanups();
