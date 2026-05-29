@@ -8,12 +8,13 @@ import { UploadZone } from '@/features/upload/components/UploadZone';
 import { UploadProgress } from '@/features/upload/components/UploadProgress';
 import { FileValidationError } from '@/features/upload/components/FileValidationError';
 
-// Editing section
-import { EditingSection } from '@/components/EditingSection';
-
 // Export feature (eager load button and error, lazy load progress/download)
 import { ExportButton } from '@/features/export/components/ExportButton';
 import { ErrorDisplay } from '@/features/export/components/ErrorDisplay';
+
+// Editing section은 video.js(~546KB)+wavesurfer를 끌어오므로 editing 진입 전까지
+// 초기 번들에서 분리(랜딩/업로드 화면이 무거운 미디어 라이브러리를 안 받음).
+const EditingSection = lazy(() => import('@/components/EditingSection').then(m => ({ default: m.EditingSection })));
 
 // Lazy load components only needed during/after export to reduce initial bundle
 const ExportProgress = lazy(() => import('@/features/export/components/ExportProgress').then(m => ({ default: m.ExportProgress })));
@@ -45,7 +46,11 @@ export default function HomePage() {
 
           {phase === 'idle' && <UploadZone />}
           <UploadProgress />
-          {phase === 'editing' && <EditingSection />}
+          {phase === 'editing' && (
+            <Suspense fallback={<div className="text-[#74808c] text-sm">Loading editor…</div>}>
+              <EditingSection />
+            </Suspense>
+          )}
           <Suspense fallback={null}>
             <ExportProgress />
           </Suspense>
