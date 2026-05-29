@@ -4,6 +4,7 @@ import { useCommonActions, useProgressActions } from '@/stores/selectors';
 import { trimVideo } from '@/features/export/utils/trimVideoDispatcher';
 import { generateTrimFilename } from '@/features/export/utils/generateFilename';
 import { requiresFFmpegDownload } from '@/features/export/utils/formatDetector';
+import { startStreamDownload } from '@/features/url-input/utils/streamDownloadController';
 import { useFFmpegLoader } from './useFFmpegLoader';
 import type { VideoFile } from '@/types/store';
 
@@ -34,18 +35,10 @@ export function useExportState(
       setPhase('processing');
       setTrimProgress(0);
 
-      // URL source: already trimmed on server, use existing file
+      // URL source: 확정된 구간을 서버에서 실제 다운로드 (SSE).
+      // 컨트롤러가 진행률/완료/에러(completed 합류)를 직접 처리한다.
       if (videoFile.source === 'url') {
-        console.log(
-          '[ExportButton] URL source - using existing trimmed file'
-        );
-        const outputUrl = videoFile.url;
-        const outputFilename = generateTrimFilename(videoFile.name, inPoint, outPoint);
-
-        console.log('[ExportButton] URL:', outputUrl);
-        console.log('[ExportButton] Filename:', outputFilename);
-
-        setExportResultAndComplete(outputUrl, outputFilename);
+        await startStreamDownload();
         return;
       }
 
