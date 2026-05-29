@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rewriteM3U8, isHlsResponse } from '@/lib/hlsProxy';
 
 export async function GET(request: NextRequest) {
   const streamUrl = request.nextUrl.searchParams.get('url');
@@ -27,10 +28,27 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Build response headers
+    const upstreamContentType = response.headers.get('content-type');
+
+    // HLS playlist: rewrite inner URIs to route through this proxy (CORS fix)
+    if (isHlsResponse(streamUrl, upstreamContentType)) {
+      const playlist = await response.text();
+      const rewritten = rewriteM3U8(playlist, streamUrl);
+
+      const responseHeaders = new Headers();
+      responseHeaders.set('content-type', 'application/vnd.apple.mpegurl');
+      responseHeaders.set('access-control-allow-origin', '*');
+      responseHeaders.set('cache-control', 'no-store');
+
+      return new NextResponse(rewritten, {
+        status: 200,
+        headers: responseHeaders,
+      });
+    }
+
+    // Non-HLS (segments, MP4): byte passthrough with Range support
     const responseHeaders = new Headers();
 
-    // Forward essential headers from upstream
     const forwardHeaders = [
       'content-type',
       'content-length',
