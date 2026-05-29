@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import videojs from 'video.js';
 import type Player from 'video.js/dist/types/player';
 import { useStore } from '@/stores/useStore';
@@ -120,14 +120,12 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
 
   const setIsScrubbing = useStore((state) => state.setIsScrubbing);
 
-  const contextValue = {
-    player,
-    play,
-    pause,
-    seek,
-    togglePlay,
-    setIsScrubbing,
-  };
+  // 안정적인 context value: player(state)나 콜백이 바뀔 때만 새 객체 → consumer 불필요 재렌더 방지.
+  // player를 deps에 포함해야 인스턴스 생성 시 consumer가 갱신됨(누락 시 null-player 버그 재발).
+  const contextValue = useMemo(
+    () => ({ player, play, pause, seek, togglePlay, setIsScrubbing }),
+    [player, play, pause, seek, togglePlay, setIsScrubbing]
+  );
 
   return (
     <VideoPlayerProvider value={contextValue}>
