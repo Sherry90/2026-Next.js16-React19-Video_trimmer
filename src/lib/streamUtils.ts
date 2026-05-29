@@ -9,6 +9,8 @@ export interface StreamFileOptions {
   filePath: string;
   /** Content-Type 헤더 값 */
   contentType: string;
+  /** Content-Disposition 헤더 값 (예: 'attachment') — 지정 시 브라우저가 디스크로 다운로드 */
+  contentDisposition?: string;
   /** 스트림 종료 후 실행할 콜백 (cleanup 등) */
   onStreamEnd?: () => void | Promise<void>;
   /** 스트림 에러 발생 시 실행할 콜백 */
@@ -36,7 +38,7 @@ export interface StreamFileOptions {
  * ```
  */
 export function streamFile(options: StreamFileOptions): NextResponse {
-  const { filePath, contentType, onStreamEnd, onStreamError } = options;
+  const { filePath, contentType, contentDisposition, onStreamEnd, onStreamError } = options;
 
   const stat = statSync(filePath);
   const fileStream = createReadStream(filePath);
@@ -68,11 +70,16 @@ export function streamFile(options: StreamFileOptions): NextResponse {
     },
   });
 
+  const headers: Record<string, string> = {
+    'Content-Type': contentType,
+    'Content-Length': String(stat.size),
+  };
+  if (contentDisposition) {
+    headers['Content-Disposition'] = contentDisposition;
+  }
+
   return new NextResponse(stream, {
     status: 200,
-    headers: {
-      'Content-Type': contentType,
-      'Content-Length': String(stat.size),
-    },
+    headers,
   });
 }
