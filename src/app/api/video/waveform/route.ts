@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { spawn } from 'child_process';
+import { tmpdir } from 'os';
 import { getYtdlpPath, getFfmpegPath } from '@/lib/binPaths';
 import { DOWNLOAD } from '@/constants/appConfig';
 
@@ -62,10 +63,16 @@ function extractPcm(ytdlp: string, ffmpeg: string, url: string): Promise<Buffer>
       '--no-playlist',
       // HLS 세그먼트 오디오 동시 다운로드 → 긴 소스(Chzzk 등) 추출 가속
       '-N', String(DOWNLOAD.YTDLP_CONCURRENT_FRAGMENTS),
+      // 출력이 stdout(`-o -`)이면 yt-dlp가 fragment 임시파일을 outtmpl 기준(=루트)에
+      // 떨어뜨린다. temp 경로를 tmp로 명시 격리해 서버 루트 오염 방지
+      // (다운로더는 -o가 절대 tmp 경로라 무관). cwd도 tmp로 belt-and-suspenders.
+      '-P', `temp:${tmpdir()}`,
       '--ffmpeg-location', ffmpeg,
       '-o', '-',
       url,
-    ]);
+    ], {
+      cwd: tmpdir(),
+    });
 
     const ff = spawn(ffmpeg, [
       '-hide_banner',
