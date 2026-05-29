@@ -14,7 +14,7 @@ import { ErrorDisplay } from '@/features/export/components/ErrorDisplay';
 
 // Editing section은 video.js(~546KB)+wavesurfer를 끌어오므로 editing 진입 전까지
 // 초기 번들에서 분리(랜딩/업로드 화면이 무거운 미디어 라이브러리를 안 받음).
-const EditingSection = lazy(() => import('@/components/EditingSection').then(m => ({ default: m.EditingSection })));
+const EditingSection = lazy(() => import('@/widgets/EditingSection').then(m => ({ default: m.EditingSection })));
 
 // Lazy load components only needed during/after export to reduce initial bundle
 const ExportProgress = lazy(() => import('@/features/export/components/ExportProgress').then(m => ({ default: m.ExportProgress })));

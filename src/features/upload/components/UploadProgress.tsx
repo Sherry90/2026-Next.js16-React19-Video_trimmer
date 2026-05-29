@@ -1,7 +1,7 @@
 'use client';
 
 import { useStore } from '@/stores/useStore';
-import { ProgressBar } from '@/components/ProgressBar';
+import { ProgressBar } from '@/shared/ui/ProgressBar';
 import { formatBytes } from '@/utils/formatBytes';
 
 export function UploadProgress() {
