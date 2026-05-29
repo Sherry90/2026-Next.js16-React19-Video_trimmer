@@ -8,6 +8,11 @@ import { toProcessError } from '@/types/process';
 
 const execFileAsync = promisify(execFile);
 
+// 인메모리 resolve 캐시: 같은 URL 재요청을 즉시 응답(yt-dlp 스킵).
+// TTL은 스트림 URL 만료(googlevideo ~6h)보다 충분히 짧게 잡아 stale URL 방지.
+const RESOLVE_CACHE_TTL_MS = 5 * 60 * 1000;
+const resolveCache = new Map<string, { body: Record<string, unknown>; expires: number }>();
+
 export async function POST(request: NextRequest) {
   try {
     const { url } = await request.json();
@@ -26,6 +31,15 @@ export async function POST(request: NextRequest) {
         { error: '유효하지 않은 URL입니다' },
         { status: 400 }
       );
+    }
+
+    // 캐시 히트 시 즉시 반환
+    const cached = resolveCache.get(url);
+    if (cached) {
+      if (cached.expires > Date.now()) {
+        return NextResponse.json(cached.body);
+      }
+      resolveCache.delete(url); // lazy 만료
     }
 
     // Step 1: Get metadata with -J
@@ -71,7 +85,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({
+    const body = {
       title: info.title || 'Untitled',
       duration: info.duration || 0,
       thumbnail: info.thumbnail || '',
@@ -79,7 +93,10 @@ export async function POST(request: NextRequest) {
       ext: 'mp4',
       streamType,
       tbr: formatSelection?.tbr || null, // Total bitrate (kbps)
-    });
+    };
+
+    resolveCache.set(url, { body, expires: Date.now() + RESOLVE_CACHE_TTL_MS });
+    return NextResponse.json(body);
   } catch (error: unknown) {
     const processError = toProcessError(error);
     const { message, status } = parseYtdlpError(processError);
