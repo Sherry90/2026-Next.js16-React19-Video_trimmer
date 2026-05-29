@@ -1,7 +1,7 @@
 'use client';
 
 import { useStore } from '@/stores/useStore';
-import { ProgressBar } from '@/components/ProgressBar';
+import { ProgressBar } from '@/shared/ui/ProgressBar';
 import { getTrimmerType, getTrimmerName } from '@/features/export/utils/formatDetector';
 
 export function ExportProgress() {
