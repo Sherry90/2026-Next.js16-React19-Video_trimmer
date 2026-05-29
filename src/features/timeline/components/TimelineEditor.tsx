@@ -2,6 +2,7 @@
 
 import { useRef } from 'react';
 import { useStore } from '@/stores/useStore';
+import { useTimelineActions } from '@/stores/selectors';
 import { TimelineBar } from './TimelineBar';
 import { TrimHandle } from './TrimHandle';
 import { Playhead } from './Playhead';
@@ -24,12 +25,9 @@ export function TimelineEditor() {
   const isInPointLocked = useStore((state) => state.timeline.isInPointLocked);
   const isOutPointLocked = useStore((state) => state.timeline.isOutPointLocked);
 
-  // Get actions from store
-  const setInPoint = useStore((state) => state.setInPoint);
-  const setOutPoint = useStore((state) => state.setOutPoint);
-  const setZoom = useStore((state) => state.setZoom);
-  const setInPointLocked = useStore((state) => state.setInPointLocked);
-  const setOutPointLocked = useStore((state) => state.setOutPointLocked);
+  // Actions (identity 불변 → 그룹 셀렉터로 묶어도 재렌더 무해, 스토어 액션 결합 일원화)
+  const { setInPoint, setOutPoint, setZoom, setInPointLocked, setOutPointLocked } =
+    useTimelineActions();
 
   // Use custom hooks for preview and zoom functionality
   const { handlePreviewEdges } = usePreviewPlayback(inPoint, outPoint);
