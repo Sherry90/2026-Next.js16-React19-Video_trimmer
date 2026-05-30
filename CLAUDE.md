@@ -46,6 +46,8 @@ npm run test:e2e:ui   # Playwright UI
 - **State**: Zustand 단일 스토어 (`src/stores/useStore.ts`), Selector 패턴
 - **Phase**: idle → uploading → editing → processing → completed | error
 - **Features**: `src/features/` 하위에 upload, url-input, player, timeline, export
+- **Widgets**: `src/widgets/` — feature 합성 컴포지션 (예: `EditingSection` = player+timeline)
+- **Shared**: `src/shared/ui/` — 재사용 UI 프리미티브 (예: `ProgressBar`)
 - **Processing**: MP4Box.js (primary) / FFmpeg.wasm (fallback)
 - **Dependencies**: ffmpeg, yt-dlp, streamlink (자동 다운로드)
 
