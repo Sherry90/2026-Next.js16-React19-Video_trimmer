@@ -42,7 +42,7 @@ Video Trimmer
 | 바이너리 | 우선순위 |
 |---------|----------|
 | FFmpeg | 번들 (`@ffmpeg-installer`) → 시스템 (`ffmpeg`) |
-| yt-dlp | 시스템 (`yt-dlp`) → 번들 (`.bin/yt-dlp`) → npm (`yt-dlp-wrap`) |
+| yt-dlp | 번들 (`.bin/yt-dlp`) → 시스템 (`yt-dlp`) |
 | Streamlink | 번들 (`.bin/streamlink`) → 시스템 (`streamlink`) |
 
 ### Next.js 빌드 설정
@@ -51,16 +51,13 @@ Video Trimmer
 
 ```typescript
 const nextConfig = {
-  serverExternalPackages: [
-    '@ffmpeg-installer/ffmpeg',
-    'yt-dlp-wrap',
-  ],
+  serverExternalPackages: ['@ffmpeg-installer/ffmpeg'],
 };
 ```
 
 **왜 필요한가?**
 - `@ffmpeg-installer/ffmpeg`는 dynamic require 사용
-- Turbopack이 번들링 시도 → 실패
+- 번들러가 번들링 시도 → 실패
 - external로 지정 → node_modules에서 직접 require
 
 ---
@@ -78,10 +75,10 @@ const nextConfig = {
 2. **yt-dlp 내부 의존성**
    - yt-dlp가 muxing (비디오+오디오 병합)에 사용
    - YouTube 1-phase 다운로드에서 postprocessor로 FFmpeg 호출
-3. **브라우저 내 처리** (FFmpeg.wasm, fallback용)
-   - 짧은 클립(≤60초) + 작은 파일(≤100MB)에서 자동 선택
-   - `trimVideoDispatcher.ts`가 조건에 따라 MP4Box 대신 선택
+3. **브라우저 내 처리** (FFmpeg.wasm, 비-ISO 형식용)
+   - `trimVideoDispatcher.ts`가 형식에 따라 선택: ISO(mp4/mov/m4v)는 MP4Box, 그 외는 FFmpeg.wasm
    - **자체 호스팅**: `@ffmpeg/core` npm 패키지에서 `public/ffmpeg/`로 복사 (CDN 미사용)
+   - 비-ISO 파일 내보내기 시점에만 런타임 로드
 
 ### 번들 버전
 
@@ -181,13 +178,11 @@ YouTube, Twitch 등 다양한 플랫폼에서 비디오 정보와 스트리밍 U
 
 **자동 다운로드:**
 - **트리거:** `npm postinstall` → `scripts/setup-deps.mjs`
-- **다운로드 위치:** `.bin/yt-dlp` (Git 무시됨)
-- **소스:** GitHub Releases (yt-dlp-wrap 통해 다운로드)
+- **다운로드 위치:** `.bin/yt-dlp`(`.exe`) (Git 무시됨)
+- **소스:** GitHub Releases에서 **고정 버전(pinned)** 바이너리를 직접 다운로드
 - **플랫폼:** Linux, macOS, Windows
 
-**Fallback:** `yt-dlp-wrap` npm 패키지
-- yt-dlp 바이너리를 npm으로 설치
-- 크기 큼 (~100MB)
+**Fallback:** 시스템 PATH의 `yt-dlp`
 
 ### 포맷 선택 로직
 
@@ -333,18 +328,18 @@ export function getFfmpegPath(): string {
 
 ```typescript
 export function getYtdlpPath(): string {
+  // 1. 번들 yt-dlp (.bin/)
+  const binName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
+  const bundled = join(process.cwd(), '.bin', binName);
+  if (existsSync(bundled)) {
+    return bundled;
+  }
+  // 2. 시스템 yt-dlp (없으면 'yt-dlp' 리터럴 반환 → ENOENT로 사용자 에러 유도)
   try {
-    // 1. 시스템 yt-dlp
-    execSync('which yt-dlp', { stdio: 'ignore' });
+    execFileSync('which', ['yt-dlp'], { stdio: 'ignore' });
     return 'yt-dlp';
   } catch {
-    // 2. 번들 yt-dlp (.bin/)
-    const bundledPath = path.join(process.cwd(), '.bin', 'yt-dlp');
-    if (existsSync(bundledPath)) {
-      return bundledPath;
-    }
-    // 3. npm yt-dlp-wrap
-    return 'yt-dlp'; // yt-dlp-wrap이 PATH에 추가
+    return 'yt-dlp';
   }
 }
 ```
@@ -415,9 +410,9 @@ postinstall 훅 실행
   ↓
 ┌─────────────────────────────────────┐
 │ 2. setupYtDlp()                     │
-│    - 시스템 yt-dlp 확인              │
 │    - .bin/yt-dlp 확인                │
-│    - 없으면 yt-dlp-wrap로 다운로드   │
+│    - 없으면 GitHub 릴리스(고정 버전) │
+│      에서 직접 다운로드              │
 └─────────────────────────────────────┘
   ↓
 ┌─────────────────────────────────────┐
@@ -708,4 +703,3 @@ npm test -- binPaths.test.ts
 - [yt-dlp GitHub](https://github.com/yt-dlp/yt-dlp)
 - [Streamlink 문서](https://streamlink.github.io/)
 - [@ffmpeg-installer/ffmpeg](https://www.npmjs.com/package/@ffmpeg-installer/ffmpeg)
-- [yt-dlp-wrap](https://www.npmjs.com/package/yt-dlp-wrap)
