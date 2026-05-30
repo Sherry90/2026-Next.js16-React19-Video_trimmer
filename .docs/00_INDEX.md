@@ -1,7 +1,5 @@
 # Video Trimmer - 문서 인덱스
 
-> **최종 업데이트**: 2026-02-25
-
 ---
 
 ## 목적별 읽기 경로
@@ -12,7 +10,6 @@
 | API 연동/호출 | → `02_API.md` |
 | 설치/의존성 관리 | → `03_DEPENDENCIES.md` |
 | 기술 깊이 학습 | → `04_DEVELOPER_GUIDE.md` |
-| 개발 배경/이력 | → `05_HISTORY.md` |
 
 ---
 
@@ -22,48 +19,31 @@
 
 **대상**: 처음 프로젝트를 파악하려는 개발자, 아키텍처를 이해하려는 협업자
 
-프로젝트의 전체 그림을 담은 문서. 기술 스택, 기능별 디렉터리 구조, Phase-based 워크플로, 비디오 처리 흐름(로컬 파일/URL 영상), 플레이어-타임라인 동기화 패턴, 메모리 관리, 성능 특성, 제약사항을 다룬다.
-
-**예상 읽기 시간**: 30-45분
-
----
+프로젝트의 전체 그림. 기술 스택, 레이어 구조(features / widgets / shared), Phase 기반 워크플로, 비디오 처리 흐름(로컬 파일 / URL 스트리밍 에디터), 플레이어-타임라인 동기화, 메모리 관리, 번들 전략, 성능 특성, 제약사항을 다룬다.
 
 ### `02_API.md` — API 레퍼런스
 
 **대상**: 서버 API를 호출하거나 연동 로직을 수정하는 개발자
 
-모든 Next.js API 엔드포인트의 스펙 문서. Video API(`/api/video/resolve`, `/api/video/proxy`, `/api/video/trim`)와 Download API(`/api/download/start`, `stream/:jobId`, `:jobId`)의 요청/응답 형식, 플랫폼별 다운로드 전략(Chzzk 2-phase, YouTube 1-phase), SSE 이벤트 타입, 타입 정의, 에러 처리 패턴을 다룬다.
-
-참고: Streamlink 2-phase 프로세스의 원형인 `cut_video.sh`와 현재 TypeScript 구현의 비교도 포함.
-
-**예상 읽기 시간**: 20-30분
-
----
+모든 Next.js API 엔드포인트 스펙. Video API(`/api/video/resolve`, `/api/video/proxy`, `/api/video/waveform`, `/api/video/trim`)와 Download API(`/api/download/start`, `stream/:jobId`, `:jobId`)의 요청/응답, 플랫폼별 다운로드 전략, SSE 이벤트 타입, 타입 정의, 에러 처리를 다룬다.
 
 ### `03_DEPENDENCIES.md` — 외부 의존성 관리
 
 **대상**: 설치·배포 환경을 구성하거나 바이너리 문제를 디버깅하는 개발자
 
-FFmpeg, yt-dlp, Streamlink 세 가지 외부 바이너리의 역할, 번들 방식, 경로 해석 전략을 상세히 다룬다. `setup-deps.mjs` 실행 흐름과 플랫폼별(Linux/macOS/Windows) 설치 처리, `binPaths.ts` 코드 레벨 경로 관리, 문제 해결 가이드를 포함한다.
-
-**예상 읽기 시간**: 15-20분
-
----
+FFmpeg, yt-dlp, Streamlink 세 외부 바이너리의 역할, 번들 방식, 경로 해석 전략. `setup-deps.mjs` 실행 흐름과 플랫폼별(Linux/macOS/Windows) 처리, `binPaths.ts` 경로 관리, FFmpeg.wasm 자체 호스팅, 문제 해결 가이드를 포함한다.
 
 ### `04_DEVELOPER_GUIDE.md` — 개발자 학습 가이드
 
-**대상**: 웹 개발 경험 1-2년, 코드 패턴을 심층 학습하고 싶은 개발자
+**대상**: 코드 패턴을 심층 학습하고 싶은 개발자
 
-Video Trimmer 코드베이스를 통해 현대 웹 개발 패턴을 배우는 교육용 문서. 5단계 학습 경로(기초 이해 → 상태 관리 → 비디오 처리 → SSE → 고급 패턴), 아키텍처 심층 분석, 핵심 개념 설명(MP4Box, FFmpeg.wasm, HLS, SSE), 디버깅 가이드, 테스팅 전략, 실전 예제를 포함한다.
-
-**예상 읽기 시간**: 2-4시간 (전체 학습 기준 10-12주)
+코드베이스를 통해 현대 웹 개발 패턴을 배우는 교육용 문서. 단계별 학습 경로, 아키텍처 심층 분석, 핵심 개념(MP4Box, FFmpeg.wasm, HLS, SSE), 디버깅 가이드, 테스팅 전략, 실전 예제를 포함한다.
 
 ---
 
-### `05_HISTORY.md` — 개발 히스토리
+## 루트 레벨 문서
 
-**대상**: 설계 결정의 배경을 이해하거나 프로젝트 진화 과정을 파악하고 싶은 개발자
-
-프로젝트 시작(2026-01-20)부터 현재까지의 주요 마일스톤 기록. 각 결정의 동기, 구현 세부사항, 결과, 교훈을 담는다. Playhead 버그 수정, MP4Box 전환, SSE 마이그레이션, YouTube 지원 추가, 성능 최적화 등 주요 아키텍처 결정의 "왜"를 설명한다.
-
-**예상 읽기 시간**: 40-60분
+- `README.md` — 프로젝트 개요, 설치, 사용법
+- `CLAUDE.md` — Claude Code 작업 가이드 (Quick Reference)
+- `scripts/README.md` — 스크립트 문서
+- `src/lib/README.md`, `src/utils/README.md` — 디렉터리별 코드 설명
