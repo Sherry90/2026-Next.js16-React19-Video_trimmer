@@ -1,137 +1,129 @@
 # Video Trimmer - 프로젝트 개요
 
-> **문서 버전**: 2.2
-> **최종 업데이트**: 2026-02-25
-
 ---
 
 ## 목차
 
-1. [기술 개념 (Technical Concepts)](#기술-개념-technical-concepts)
+1. [기술 개념](#기술-개념)
 2. [개요](#개요)
 3. [기술 스택](#기술-스택)
 4. [아키텍처](#아키텍처)
-5. [개발 워크플로](#개발-워크플로)
-6. [성능 특성](#성능-특성)
-7. [제약사항 및 한계](#제약사항-및-한계)
-8. [문서 구조](#문서-구조)
+5. [비디오 처리 흐름](#비디오-처리-흐름)
+6. [번들 전략](#번들-전략)
+7. [성능 특성](#성능-특성)
+8. [제약사항 및 한계](#제약사항-및-한계)
+9. [문서 구조](#문서-구조)
 
 ---
 
-## 기술 개념 (Technical Concepts)
+## 기술 개념
 
-> 💡 **선택적 읽기**: 이 섹션은 문서 전체를 이해하는 데 필요한 기술 용어를 정의합니다. 이미 익숙한 개념은 건너뛰셔도 됩니다.
+> 💡 이미 익숙한 개념은 건너뛰어도 됩니다.
 
 ### 비디오 처리
 
 | 기술 | 설명 | 장점 | 단점 |
 |------|------|------|------|
-| **MP4Box.js** | 재인코딩 없는 MP4 트리밍 | 10-20배 빠름, 품질 유지 | ±1-2초 정확도 (키프레임) |
-| **FFmpeg** | 비디오/오디오 변환 도구 | ±0.02초 정확도 | 느림, 재인코딩 필요 |
-| **HLS** | 적응형 스트리밍 프로토콜 | 세그먼트 기반 다운로드 | ±1초 정확도 (세그먼트) |
-| **Stream Copy** | 재인코딩 없이 재패키징 | 품질 손실 없음, 빠름 | 키프레임 의존 |
-| **Keyframe** | 다른 프레임이 참조하는 기준 | 트리밍 스냅 지점 | 1-2초마다 위치 |
+| **MP4Box.js** | 재인코딩 없는 MP4 트리밍 | 빠름, 품질 유지 | ±1-2초 정확도 (키프레임) |
+| **FFmpeg.wasm** | 브라우저 내 비디오 변환 | ±0.02초 정확도 | 느림, WASM 로드 필요 |
+| **HLS** | 적응형 세그먼트 스트리밍 | 부분 재생/시킹 | 세그먼트 단위 |
+| **Stream Copy** | 재인코딩 없는 재패키징 | 품질 손실 없음, 빠름 | 키프레임 의존 |
 
 ### 상태 관리 & 브라우저 API
 
 | 기술/패턴 | 설명 | 프로젝트 사용 |
 |-----------|------|---------------|
 | **Zustand** | 최소주의 상태 관리 | 단일 스토어 (`useStore.ts`) |
-| **Race Condition** | 경쟁적 상태 업데이트 | `isScrubbing` 플래그로 제어 |
 | **Selector Pattern** | 특정 슬라이스만 구독 | `useShallow` 최적화 |
-| **COEP** | Cross-origin 격리 정책 | `credentialless` (SAB 허용) |
+| **Race Condition 제어** | 경쟁적 상태 업데이트 방지 | `isScrubbing` 플래그 |
+| **COEP** | Cross-origin 격리 | `credentialless` (SAB 허용) |
 | **SharedArrayBuffer** | Worker 간 메모리 공유 | FFmpeg.wasm 멀티스레드 |
-| **Object URL** | Blob → URL 변환 | `revokeObjectURL` 메모리 관리 |
+| **Code Splitting** | 지연 로딩으로 번들 분리 | `React.lazy` (에디터/내보내기) |
 
 ### 아키텍처 패턴
 
 | 패턴 | 설명 | 예시 |
 |------|------|------|
-| **Dispatcher** | 조건별 구현체 자동 선택 | MP4Box vs FFmpeg |
-| **Feature-based** | 기능별 폴더 구성 | `timeline/` (components, hooks, utils) |
-| **Phase-based Workflow** | FSM 패턴 상태 관리 | idle → uploading → editing → processing → completed |
-| **Strategy Pattern** | 런타임 알고리즘 선택 | Chzzk → Streamlink, YouTube → yt-dlp |
+| **Layered (FSD 정렬)** | features / widgets / shared 계층 | `widgets/EditingSection` |
+| **Dispatcher** | 조건별 구현체 자동 선택 | MP4Box vs FFmpeg.wasm vs 서버 |
+| **Strategy** | 런타임 알고리즘 선택 | Chzzk → Streamlink, YouTube → yt-dlp |
+| **Phase-based Workflow** | FSM 상태 관리 | idle → editing → completed |
+| **Streaming Editor** | 다운로드 전 스트림 위 편집 | URL 소스 편집 |
 
-### 용어 대조표
+### 용어
 
 | 한국어 | 영어 | 설명 |
 |--------|------|------|
 | 트리밍 | Trimming | 비디오 구간 잘라내기 |
-| 인 포인트 | In Point | 트리밍 시작 지점 |
-| 아웃 포인트 | Out Point | 트리밍 종료 지점 |
-| 플레이헤드 | Playhead | 현재 재생 위치 표시 |
-| 타임라인 | Timeline | 비디오 전체 시각화 바 |
-| 핸들 | Handle | In/Out Point 드래그 UI |
+| 인/아웃 포인트 | In/Out Point | 트리밍 시작/종료 지점 |
+| 플레이헤드 | Playhead | 현재 재생 위치 |
 | 스크러빙 | Scrubbing | 플레이헤드 드래그 탐색 |
-| 시킹 | Seeking | 특정 시간으로 점프 |
 
 ---
 
 ## 개요
 
-**Video Trimmer**는 서버 업로드 없이 브라우저에서 완전히 동영상을 트리밍할 수 있는 클라이언트 사이드 웹 애플리케이션입니다.
+**Video Trimmer**는 브라우저에서 동영상을 트리밍하는 클라이언트 사이드 웹 애플리케이션이다. 로컬 파일은 서버 업로드 없이 브라우저에서 직접 처리하고, URL 영상은 다운로드 전에 스트림 위에서 구간을 정한 뒤 확정 시점에만 해당 구간을 서버에서 받아 디스크로 직행 전달한다.
 
 ### 핵심 기능
 
-**입력 방식**:
-- ✅ **로컬 파일**: 드래그 앤 드롭 업로드 (17개 형식 지원)
-- ✅ **URL**: YouTube, 치지직 등 온라인 영상 (yt-dlp + streamlink)
+**입력**
+- **로컬 파일**: 드래그 앤 드롭 업로드 (17개 형식)
+- **URL**: YouTube, 치지직 등 온라인 영상
 
-**편집 기능**:
-- ✅ **타임라인 편집기**: 핸들 드래그, 플레이헤드, 오디오 파형, 줌 (0.1x-10x)
-- ✅ **키보드 단축키**: Space (재생), I/O (In/Out), 화살표 (1초), Shift+화살표 (0.1초)
-- ✅ **미리보기**: 가장자리 (처음 5초 + 마지막 5초)
-- ✅ **프레임 단위 탐색**: Shift+화살표로 0.1초 단위 이동
+**편집**
+- 타임라인 에디터: 핸들 드래그, 플레이헤드, 오디오 파형, 줌(0.1x–10x)
+- 키보드 단축키: Space, I/O, 화살표(1초), Shift+화살표(0.1초), Home/End, A(미리보기)
+- 미리보기: 선택 구간의 처음 5초 + 마지막 5초
 
-**트리밍 방법**:
-- ✅ **하이브리드 자동 선택**: MP4Box (빠름, ±1-2초) / FFmpeg (정확, ±0.02초)
-- ✅ **URL 영상**: SSE 기반 비동기 다운로드, 플랫폼별 최적화 전략
+**트리밍**
+- 로컬 파일: 형식에 따라 MP4Box 또는 FFmpeg.wasm 자동 선택
+- URL 영상: 확정 구간을 서버에서 다운로드(SSE 진행률), 플랫폼별 전략
 
-**개인정보 보호**:
-- ✅ **완전한 클라이언트 사이드**: 로컬 파일은 서버 업로드 없음
-- ✅ **URL 영상**: 서버에서 처리하지만 스트리밍으로 브라우저 전달
+**개인정보**
+- 로컬 파일은 서버 업로드 없음(완전 클라이언트 사이드)
+- URL 영상은 서버에서 구간만 받아 브라우저를 거치지 않고 디스크로 직행
 
 ### 기술적 특징
 
 - **Next.js 16** (App Router, Turbopack)
-- **Zustand** 단일 스토어 상태 관리
-- **Phase-based workflow**: idle → uploading → editing → processing → completed
-- **Feature-based organization**: upload, url-input, player, timeline, export
+- **Zustand** 단일 스토어 + selector
+- **Phase 기반 워크플로**: idle → uploading → editing → processing → completed | error
+- **계층 구조**: `features/` · `widgets/` · `shared/`
 - **자동 의존성 관리**: ffmpeg, yt-dlp, streamlink 자동 다운로드
 
 ---
 
 ## 기술 스택
 
-### 핵심 기술
+### 핵심
 
 | 기술 | 버전 | 목적 |
 |------|------|------|
-| **Next.js** | 16.1.1 | React 프레임워크, App Router |
+| **Next.js** | 16.1 | React 프레임워크, App Router, API Routes |
 | **React** | 19.x | UI 라이브러리 |
 | **TypeScript** | 5.x | 타입 안전성 |
-| **Turbopack** | 내장 | 빠른 개발 빌드 |
 | **Zustand** | 5.x | 상태 관리 |
 | **Tailwind CSS** | 4.x | 스타일링 |
 
 ### 비디오 처리
 
-| 기술 | 역할 | 성능 |
+| 기술 | 버전 | 역할 |
 |------|------|------|
-| **MP4Box.js** | 로컬 파일 트리밍 (주요) | 500MB 파일 2-5초 |
-| **FFmpeg.wasm** | 로컬 파일 트리밍 (대체) | 500MB 파일 30-60초 |
-| **Video.js** | 비디오 재생 | 부드러운 재생 |
-| **wavesurfer.js** | 오디오 파형 시각화 | 실시간 렌더링 |
-| **yt-dlp** | URL 해석 | 자동 다운로드 |
-| **streamlink** | HLS 트리밍 | 자동 다운로드 |
-| **ffmpeg (CLI)** | 서버 트리밍 | 번들 포함 |
+| **MP4Box.js** | — | 로컬 ISO 파일 트리밍 (주 경로) |
+| **FFmpeg.wasm** | `@ffmpeg/*` | 로컬 비-ISO 파일 트리밍 (대체) |
+| **video.js** | 8.x | 비디오 재생 (HLS 포함) |
+| **wavesurfer.js** | 7.x | 오디오 파형 렌더 |
+| **yt-dlp** | 핀 버전 | URL 메타데이터/스트림 추출, YouTube/Generic 다운로드 |
+| **streamlink** | 자동 설치 | Chzzk HLS 구간 다운로드 |
+| **ffmpeg (CLI)** | `@ffmpeg-installer` | 서버 측 구간 추출/타임스탬프 처리 |
 
 ### 테스팅
 
 | 기술 | 목적 |
 |------|------|
-| **Vitest** | 유닛 테스팅 (149개) |
-| **Playwright** | E2E 테스팅 |
+| **Vitest** | 유닛 테스트 (169개, happy-dom) |
+| **Playwright** | E2E (핵심 워크플로) |
 
 ---
 
@@ -139,465 +131,250 @@
 
 ### 1. 상태 관리 (Zustand)
 
-**단일 스토어 패턴**: `src/stores/useStore.ts`
+**단일 스토어**: `src/stores/useStore.ts`
 
-**Phase 기반 워크플로우**:
+**Phase 워크플로**:
 ```
 idle → uploading → editing → processing → completed
-  ↓                                          ↓
-error ←──────────────────────────────────────┘
+  ↑                                          │
+  └──────────────── error ←──────────────────┘
 ```
 
-**상태 구조**:
+**상태 구조(요약)**:
 ```typescript
 {
   phase: 'idle' | 'uploading' | 'editing' | 'processing' | 'completed' | 'error',
   videoFile: {
-    source: 'file' | 'url',    // 파일 또는 URL 소스
-    file: File | null,          // null for URL sources
-    url: string,                // Object URL or proxy URL
-    originalUrl?: string,       // URL sources only
-    streamType?: 'hls' | 'mp4', // URL sources only
-    // ... 메타데이터
+    source: 'file' | 'url',     // 소스 구분
+    file: File | null,           // URL 소스는 null
+    url: string,                 // Object URL(파일) 또는 프록시 URL(URL)
+    originalUrl?: string,        // URL 소스 전용 (다운로드 재해석용)
+    streamUrl?: string,          // resolve가 추출한 실제 스트림 URL
+    streamType?: 'hls' | 'mp4',  // 재생 전략 결정
+    duration, thumbnail, tbr, ...
   },
-  timeline: { inPoint, outPoint, currentTime, zoom, locks },
-  processing: { uploadProgress, trimProgress, waveformProgress },
-  player: { isPlaying, isScrubbing, isSeeking },
-  error: { errorMessage, errorCode },
-  export: { trimmedUrl, filename },
-  downloadPhase: string | null,  // URL 다운로드 진행 phase
-  downloadProgress: number,
+  timeline: { inPoint, outPoint, playhead, zoom, isInPointLocked, isOutPointLocked },
+  processing: { uploadProgress, trimProgress, waveformProgress, downloadPhase, downloadMessage, activeDownloadJobId },
+  player: { isPlaying, currentTime, volume, isMuted, isScrubbing },
+  error: { hasError, errorMessage, errorCode },
+  export: { outputUrl, outputFilename },
 }
 ```
 
-**Selector 패턴** (`src/stores/selectors.ts`, `src/stores/selectorFactory.ts`):
-- `useTimelineState()` - 타임라인 데이터
-- `useTimelineActions()` - 타임라인 액션
-- `usePlayerState()` - 플레이어 상태
-- `usePhase()` - 현재 phase
-- `useVideoSource()` - 비디오 소스 타입
-- `useDownloadPhase()` - 다운로드 phase
-- `useShallow` 사용으로 불필요한 리렌더링 방지
+**Selector**(`src/stores/selectors.ts`, `selectorFactory.ts`): `useTimelineState`, `useTimelineActions`, `useTrimPoints`, `usePhase`, `useVideoSource`, `useDownloadPhase` 등. `useShallow`로 불필요한 리렌더 방지.
 
-### 2. 기능별 구조
+### 2. 계층 구조
 
 ```
 src/
-├── features/
-│   ├── upload/          # 파일 업로드, 드래그 앤 드롭
-│   │   ├── components/  UploadZone, UploadProgress
-│   │   ├── hooks/       useFileUpload
-│   │   └── utils/       validateFile
-│   │
-│   ├── url-input/       # URL 입력 (2026-02-08, 리팩토링 2026-02-12)
-│   │   ├── components/
-│   │   │   ├── UrlInputZone.tsx
-│   │   │   ├── UrlPreviewSection.tsx
-│   │   │   ├── UrlPreviewCard.tsx
-│   │   │   └── UrlPreviewRangeControl.tsx
-│   │   ├── hooks/
-│   │   │   ├── useUrlInput.ts
-│   │   │   ├── useUrlDownload.ts
-│   │   │   └── useStreamDownload.ts
-│   │   └── utils/
-│   │       └── sseProgressUtils.ts
-│   │
-│   ├── player/          # Video.js 플레이어
-│   │   ├── components/  VideoPlayerView
-│   │   └── context/     VideoPlayerContext
-│   │
-│   ├── timeline/        # 타임라인 에디터
-│   │   ├── components/
-│   │   │   ├── TimelineEditor.tsx       (64줄, 오케스트레이터)
-│   │   │   ├── TrimHandle.tsx           (통합 In/Out 핸들)
-│   │   │   ├── Playhead.tsx             (~145줄)
-│   │   │   ├── TimelineControls.tsx
-│   │   │   ├── PreviewButtons.tsx
-│   │   │   └── WaveformBackground.tsx
-│   │   ├── hooks/
-│   │   │   ├── useDragHandle.ts
-│   │   │   ├── useKeyboardShortcuts.ts
-│   │   │   ├── usePreviewPlayback.ts
-│   │   │   ├── useTimelineZoom.ts
-│   │   │   └── usePlayheadSeek.ts
-│   │   └── utils/
-│   │       ├── timeFormatter.ts
-│   │       └── constrainPosition.ts
-│   │
-│   └── export/          # 내보내기 및 트리밍
-│       ├── components/
-│       │   ├── ExportButton.tsx
-│       │   ├── ExportProgress.tsx       (지연 로딩)
-│       │   ├── DownloadButton.tsx       (지연 로딩)
-│       │   └── ErrorDisplay.tsx
-│       ├── hooks/
-│       │   └── useExportState.ts
-│       └── utils/
-│           ├── trimVideoDispatcher.ts
-│           ├── trimVideoMP4Box.ts
-│           ├── trimVideoFFmpeg.ts
-│           ├── generateFilename.ts      (트림 구간 포함 파일명)
-│           ├── mp4boxHelpers.ts
-│           └── FFmpegSingleton.ts
+├── features/                # 기능 모듈
+│   ├── upload/              # 파일 업로드 (UploadZone, useFileUpload, validateFile)
+│   ├── url-input/           # URL 입력
+│   │   ├── components/      UrlInputZone
+│   │   ├── hooks/           useUrlInput
+│   │   └── utils/           sseProgressUtils, waveformCache, streamDownloadController
+│   ├── player/              # video.js 플레이어
+│   │   ├── components/      VideoPlayerView   (player 인스턴스를 context로 노출)
+│   │   └── context/         VideoPlayerContext
+│   ├── timeline/            # 타임라인 에디터
+│   │   ├── components/      TimelineEditor, TrimHandle, Playhead, TimelineControls,
+│   │   │                    PreviewButtons, WaveformBackground
+│   │   └── hooks/           useDragHandle, useKeyboardShortcuts, usePreviewPlayback,
+│   │                        useTimelineZoom, usePlayheadSeek
+│   └── export/              # 내보내기 및 트리밍
+│       ├── components/      ExportButton, ExportProgress, DownloadButton, ErrorDisplay
+│       ├── hooks/           useExportState, useFFmpegLoader
+│       └── utils/           trimVideoDispatcher, trimVideoMP4Box, trimVideoFFmpeg,
+│                            trimVideoServer, FFmpegSingleton, formatDetector, generateFilename
 │
-├── lib/                 # 공통 유틸리티
+├── widgets/                 # feature 합성 위젯
+│   └── EditingSection.tsx   # VideoPlayerView + TimelineEditor + 키보드 단축키
+│
+├── shared/                  # 재사용 UI 프리미티브
+│   └── ui/ProgressBar.tsx
+│
+├── lib/                     # 서버 전용 유틸리티
 │   ├── binPaths.ts          # 바이너리 경로 해석
-│   ├── downloadJob.ts       # 다운로드 Job 오케스트레이터
-│   ├── downloadTypes.ts     # DownloadProgressTracker 공통 클래스
-│   ├── streamlinkDownloader.ts  # Chzzk 다운로더 (2-phase)
-│   ├── ytdlpDownloader.ts       # YouTube/Generic 다운로더 (1-phase)
-│   ├── platformDetector.ts  # 도메인 기반 플랫폼 감지
-│   ├── progressParser.ts    # Streamlink/FFmpeg stdout 파싱
-│   ├── formatSelector.ts    # yt-dlp 포맷 선택
-│   ├── streamUtils.ts       # ensureFileComplete() 등
-│   ├── cleanup.ts           # Cleanup 레지스트리
-│   ├── processUtils.ts      # 프로세스 타임아웃/종료
-│   └── apiErrorHandler.ts   # API 에러 처리
+│   ├── downloadJob.ts       # 다운로드 Job 오케스트레이터 (플랫폼 전략 선택)
+│   ├── streamlinkDownloader.ts / ytdlpDownloader.ts / platformDetector.ts
+│   ├── progressParser.ts / formatSelector.ts / downloadTypes.ts
+│   ├── hlsProxy.ts          # m3u8 세그먼트 URI 재작성
+│   ├── streamUtils.ts       # 파일 스트리밍 (Content-Disposition 등)
+│   └── cleanup.ts           # cleanup 레지스트리
 │
-└── stores/              # 상태 관리
-    ├── useStore.ts
-    ├── selectors.ts
-    └── selectorFactory.ts
+├── stores/                  # Zustand 스토어 + selector
+├── constants/ types/ utils/ # 설정·타입·순수 유틸
+└── app/                     # App Router (page, layout, api routes)
 ```
 
-### 3. 비디오 처리 흐름
+### 3. 플레이어-타임라인 동기화
 
-#### 로컬 파일 편집
+사용자가 플레이헤드를 드래그하거나 미리보기로 프로그램적 seek을 하는 동안, 플레이어는 `timeupdate`를 계속 발생시킨다. 두 경로가 동시에 `currentTime`을 쓰면 플레이헤드가 튄다.
+
+**해결**(`isScrubbing` 플래그):
+```
+video.timeupdate 발생 시:
+  IF isScrubbing OR video.seeking():
+    무시 (스토어 미갱신)        ← 핵심
+  ELSE:
+    currentTime 스토어 갱신 + outPoint 도달 시 자동 정지
+```
+구현: `Playhead.tsx`(드래그), `VideoPlayerView.tsx`(timeupdate 가드), `usePreviewPlayback.ts`(프로그램적 seek 동안 `isScrubbing` true).
+
+### 4. 핵심 설계 패턴
+
+**통합 핸들 (TrimHandle)**: `type` prop 하나로 In/Out 핸들을 단일 컴포넌트로 처리.
+```tsx
+<TrimHandle type="in" /> <TrimHandle type="out" />
+```
+
+**플레이어 인스턴스 노출**: `VideoPlayerView`가 video.js player를 React state로 보관해 context(`useVideoPlayerContext`)로 제공한다. 소비자(`usePreviewPlayback`, 키보드 단축키 등)는 항상 실제 player 인스턴스를 받는다. context value는 `useMemo`로 안정화한다.
+
+**Buffer-aware 미리보기**(`usePreviewPlayback.ts`): 스트리밍 소스는 seek 후 타겟 세그먼트가 버퍼링되어야 재생 가능하다. `seekAndPlay`는 seek → `seeked` + 준비(`readyState`/`canplay`) 대기 → `play()` 순으로 진행하고, 프로그램적 seek 동안 `isScrubbing`을 켜 경합을 막는다. 안전 타임아웃으로 stuck을 방지한다. 버튼·키보드 미리보기가 동일 경로를 공유한다.
+
+**Cleanup 레지스트리**(`lib/cleanup.ts`): 스토어가 feature를 직접 참조하지 않고, 모듈이 cleanup 함수를 등록한다.
+```typescript
+registerCleanup(() => FFmpegSingleton.cleanup());   // 모듈 로드 시
+reset: () => { runAllCleanups(); set(initialState); } // 스토어 reset 시
+```
+
+### 5. 메모리 관리
+
+- **Object URL**: 파일 소스는 `URL.createObjectURL`/`revokeObjectURL`로 관리. URL 소스의 `videoFile.url`은 프록시 문자열이라 revoke 대상 아님.
+- **서버 파일 정리**: URL 다운로드 결과(`outputUrl = /api/download/:jobId`)는 reset 시 `DELETE /api/download/:jobId`로 서버 임시 파일을 정리.
+- **dispose**: video.js `player.dispose()`, wavesurfer `destroy()`를 언마운트 시 호출.
+
+---
+
+## 비디오 처리 흐름
+
+### 로컬 파일
 
 ```
 1. 업로드 (idle → uploading → editing)
-   - 드래그 앤 드롭 / 파일 선택
-   - validateFile() 검증 (형식, 크기)
-   - Object URL 생성
-   - phase: 'editing'
+   - 드래그 앤 드롭 / 파일 선택 → validateFile() (형식·크기)
+   - Object URL 생성 → phase: editing
 
 2. 편집 (editing)
-   - Video.js 플레이어 초기화
-   - WaveformBackground 오디오 로드
-   - TimelineEditor로 In/Out Point 설정
-   - 미리보기, 줌, 키보드 단축키
+   - video.js 초기화, WaveformBackground가 로컬 미디어에서 파형 디코드
+   - TimelineEditor로 In/Out 설정, 미리보기·줌·단축키
 
 3. 내보내기 (editing → processing → completed)
-   - trimVideoDispatcher() 방법 선택:
-     • 짧은 클립 (≤60초) + 작은 파일 (≤100MB): FFmpeg (±0.02초)
-     • 긴 클립 또는 큰 파일: MP4Box (2-5초, ±1-2초)
-   - 진행률 추적
-   - Blob URL 생성
-   - phase: 'completed'
+   - trimVideoDispatcher가 형식으로 방법 선택:
+       ISO(mp4/mov/m4v) → MP4Box.js (재인코딩 없음, ±1-2초)
+       그 외           → FFmpeg.wasm (WASM 로드, ±0.02초)
+   - Blob 생성 → Object URL → phase: completed
 
 4. 다운로드/재설정
-   - 파일명: {원본파일명}(MMmSSs-MMmSSs).{확장자}
-   - URL.revokeObjectURL() 정리
-   - 재설정 버튼으로 idle 복귀
+   - 파일명: {원본}(MMmSSs-MMmSSs).{확장자}
+   - revokeObjectURL 정리 후 idle 복귀
 ```
 
-#### URL 영상 편집 (2026-02-08, SSE 전환 2026-02-14)
+### URL 영상 (스트리밍 에디터)
+
+URL 소스는 **다운로드 전에** 스트림 위에서 바로 편집한다. 미리보기에서 구간을 옮기는 것이 곧 전체 소스에 대한 구간 editing이며, 확정 시점에만 해당 구간을 받는다.
 
 ```
-1. URL 입력 (idle → uploading → editing)
-   - POST /api/video/resolve
-   - yt-dlp로 메타데이터 + 스트림 URL 추출
-   - streamType 결정 (HLS or MP4)
-   - VideoFile 생성 (source: 'url')
+1. URL 입력 (idle → editing)
+   - POST /api/video/resolve → yt-dlp 메타데이터 + 스트림 URL (HLS 우선)
+   - VideoFile 생성 (source: 'url', streamType, originalUrl)
+   - resolve와 병렬로 /api/video/waveform prefetch 시작
 
-2. 재생 (editing)
-   - HLS: 직접 URL 사용
-   - MP4: /api/video/proxy?url=<encoded> 프록시
-   - Video.js 플레이어 초기화
-   - Range 요청 지원으로 시킹 가능
+2. 편집 (editing) — 전체 소스 위 구간 선택
+   - HLS: 프록시가 m3u8 내부 세그먼트 URI를 /api/video/proxy 경유로 재작성 (CORS)
+   - MP4: /api/video/proxy?url=… 로 Range 패스스루
+   - WaveformBackground는 prefetch된 서버 peaks를 소비 (영상 전체 다운로드 없음)
 
 3. 다운로드 (editing → processing → completed)
-   - POST /api/download/start → jobId 즉시 반환
+   - 확정 시 streamDownloadController가 originalUrl + in/out으로
+     POST /api/download/start → jobId
    - GET /api/download/stream/:jobId → SSE 실시간 진행률
-   - 플랫폼별 전략 자동 선택:
-     • Chzzk: Streamlink 2-phase (downloading + processing)
-     • YouTube/Generic: yt-dlp 1-phase (downloading only)
-   - GET /api/download/:jobId → 완성 파일 다운로드
+       Chzzk:          Streamlink (2-phase: 구간 추출 → 타임스탬프 리셋)
+       YouTube/Generic: yt-dlp (1-phase: 구간 다운로드 + 후처리 통합)
+   - 완료 시 outputUrl = /api/download/:jobId
+   - 브라우저는 <a download>로 서버에서 디스크로 직행 (JS 힙 blob 없음)
 
-4. 의존성 관리
-   - yt-dlp: system > .bin/yt-dlp > yt-dlp-wrap
-   - streamlink: bundled (.bin/streamlink-venv) > system (postinstall 자동 설치)
-   - ffmpeg: @ffmpeg-installer/ffmpeg (v4.4 번들)
-   - ffmpeg.wasm: @ffmpeg/core → public/ffmpeg/ (자체 호스팅, CDN 미사용)
+4. 재설정
+   - reset 시 DELETE /api/download/:jobId 로 서버 임시 파일 정리
 ```
 
-### 4. 플레이어-타임라인 동기화
-
-**경쟁 조건 방지 패턴**:
-
-사용자가 플레이헤드를 드래그하는 동안, 비디오 플레이어는 계속 `timeupdate` 이벤트를 발생시킵니다.
-이 두 이벤트가 동시에 `currentTime`을 업데이트하려 하면 플레이헤드가 튀는 현상 발생.
-
-**해결 방법** (`isScrubbing` 플래그):
-
-```
-// 드래그 시작
-사용자가 플레이헤드 드래그 시작 → isScrubbing = true
-
-// 드래그 중
-매 프레임마다:
-  IF isScrubbing:
-    플레이헤드 위치만 업데이트 (스토어 X)
-
-// 비디오 이벤트 무시
-video.timeupdate 이벤트 발생 시:
-  IF isScrubbing OR video.seeking:
-    이벤트 무시 (스토어 업데이트 안 함)  // 핵심!
-  ELSE:
-    currentTime 스토어 업데이트
-
-// 드래그 종료
-사용자가 드래그 종료 → isScrubbing = false → 정상 동기화 재개
-```
-
-**구현**: `src/features/timeline/components/Playhead.tsx`, `src/features/player/components/VideoPlayerView.tsx`
-
-### 5. 핵심 설계 패턴
-
-#### 통합 컴포넌트 (TrimHandle)
-
-**문제**: InPointHandle + OutPointHandle 85% 중복 (130줄)
-
-**해결**: `type` prop으로 단일 컴포넌트 (85줄)
-
-```typescript
-<TrimHandle type="in" />   // In Point
-<TrimHandle type="out" />  // Out Point
-```
-
-#### 지연 로딩 (코드 분할)
-
-```typescript
-const ExportProgress = lazy(() => import('./ExportProgress'));
-const DownloadButton = lazy(() => import('./DownloadButton'));
-
-<Suspense fallback={null}>
-  {phase === 'processing' && <ExportProgress />}
-  {phase === 'completed' && <DownloadButton />}
-</Suspense>
-```
-
-**효과**: 초기 번들 크기 감소
-
-### 6. 메모리 관리
-
-#### Object URL 생명주기
-
-```typescript
-// 스토어 reset
-reset: () => {
-  const { videoFile, export: exportState } = get();
-
-  // URL 소스는 Object URL이 아니므로 revoke 스킵
-  if (videoFile?.source === 'file' && videoFile.url) {
-    URL.revokeObjectURL(videoFile.url);
-  }
-
-  // 내보내기 결과는 항상 Blob URL
-  if (exportState.trimmedUrl) {
-    URL.revokeObjectURL(exportState.trimmedUrl);
-  }
-
-  set(initialState);
-}
-```
-
-#### Cleanup 레지스트리 (`src/lib/cleanup.ts`)
-
-Store가 Features를 직접 참조하지 않고 cleanup 함수를 등록해두는 패턴:
-
-```typescript
-// 모듈 로드 시 등록
-registerCleanup(() => FFmpegSingleton.cleanup());
-
-// Store reset 시 호출
-reset: () => {
-  runAllCleanups();  // 레지스트리만 의존
-  set(initialState);
-}
-```
-
-### 7. 오류 처리
-
-**중앙 집중식 핸들러** (`src/utils/errorHandler.ts`):
-
-```typescript
-export type VideoTrimError =
-  | 'FILE_TOO_LARGE'
-  | 'UNSUPPORTED_FORMAT'
-  | 'CORRUPTED_FILE'
-  | 'MEMORY_EXCEEDED'
-  | 'BROWSER_NOT_SUPPORTED'
-  | 'NETWORK_ERROR'
-  | 'UNKNOWN_ERROR';
-```
-
-**ErrorDisplay 컴포넌트**:
-- 사용자 친화적 메시지
-- 실행 가능한 제안
-- 복구 옵션 (재시도, 재설정)
-- 기술 세부사항 (접을 수 있음)
-
-### 8. 의존성 관리
-
-**자동 다운로드** (`scripts/setup-deps.mjs`):
-- `npm install` 시 postinstall 훅으로 자동 다운로드
-- 플랫폼별 바이너리 (Windows: .zip, Linux: AppImage, macOS: system)
-
-**경로 해석** (`src/lib/binPaths.ts`):
-
-| 바이너리 | 우선순위 |
-|---------|----------|
-| FFmpeg | 번들 (`@ffmpeg-installer`) → 시스템 (`ffmpeg`) |
-| yt-dlp | 시스템 (`yt-dlp`) → 번들 (`.bin/yt-dlp`) → npm (`yt-dlp-wrap`) |
-| Streamlink | 번들 (`.bin/streamlink`) → 시스템 (`streamlink`) |
-
-**플랫폼별 전략**:
-- **Windows**: streamlink portable .zip → `adm-zip` 압축 해제
-- **Linux**: streamlink AppImage (x64/ARM64) → `--appimage-extract-and-run`
-- **macOS**: Python venv 자동 설치 (`.bin/streamlink-venv/`) → `brew install streamlink` 불필요
+URL 편집은 사실상 스크립트/UI 편집이므로, 최종 출력 크기가 브라우저 메모리가 아니라 서버 임시 디스크와 다운로드 시간에만 좌우된다.
 
 ---
 
-> 💡 **Claude Code 개발자**: 구현 세부사항은 `/CLAUDE.md`를 참조하세요.
-> 특히 Player-Timeline Synchronization, Scrubbing State Management, Memory Management 패턴.
+## 번들 전략
 
----
+에디터는 video.js와 wavesurfer 등 큰 미디어 라이브러리에 의존한다. 랜딩/업로드 화면에서는 이들이 필요 없으므로 **에디터를 지연 로딩**한다.
 
-## 개발 워크플로
+```tsx
+const EditingSection = lazy(() => import('@/widgets/EditingSection') …);
+const ExportProgress = lazy(() => import('@/features/export/components/ExportProgress') …);
+const DownloadButton = lazy(() => import('@/features/export/components/DownloadButton') …);
 
-### 명령어
-
-```bash
-# 개발
-npm run dev           # 개발 서버 시작 (localhost:3000, Turbopack)
-npm run build         # 프로덕션 빌드
-npm start             # 프로덕션 서버 시작
-npm run lint          # ESLint 실행
-npm run type-check    # TypeScript 타입 체크
-
-# 테스팅
-npm test              # Vitest 유닛 테스트 (149개)
-npm run test:ui       # Vitest UI
-npm run test:coverage # 커버리지 리포트
-npm run test:e2e      # Playwright E2E (대부분 스킵)
-npm run test:e2e:ui   # Playwright UI
+{phase === 'editing' && (
+  <Suspense fallback={…}><EditingSection /></Suspense>
+)}
 ```
 
-### 환경 변수
+**효과**: video.js(가장 큰 청크) + wavesurfer가 editing 진입 시점에만 로드되어 초기 진입 번들이 크게 줄어든다. 내보내기 진행/다운로드 UI도 해당 phase에서만 로드된다.
 
-```bash
-# .env.local (선택적)
-NEXT_PUBLIC_MAX_FILE_SIZE=5368709120  # 5GB (기본값)
-```
+FFmpeg.wasm 코어는 CDN이 아니라 `public/ffmpeg/`에서 자체 호스팅하며, 비-ISO 파일 내보내기 시점에만 런타임 로드된다.
 
 ---
 
 ## 성능 특성
 
-### 트리밍 속도
+### 트리밍 (로컬 파일, stream copy 기준)
 
-| 파일 크기 | MP4Box (스트림 복사) | FFmpeg (스트림 복사) | FFmpeg (재인코딩) |
-|-----------|---------------------|---------------------|-------------------|
-| 100MB     | ~1초                | ~3초                | ~15초             |
-| 500MB     | ~3초                | ~10초               | ~60초             |
-| 1GB       | ~5초                | ~20초               | ~2분              |
+| 파일 크기 | MP4Box | FFmpeg.wasm |
+|-----------|--------|-------------|
+| 100MB | ~1초 | ~3초 |
+| 500MB | ~3초 | ~10초 |
+| 1GB | ~5초 | ~20초 |
 
-**하이브리드 디스패처**: 최적 방법 자동 선택
+| 방법 | 정확도 | 사용 |
+|------|--------|------|
+| MP4Box | ±1-2초 (키프레임) | ISO 형식 |
+| FFmpeg.wasm | ±0.02초 | 그 외 형식 |
 
-### 트리밍 정확도
-
-| 방법 | 정확도 | 사용 사례 |
-|------|--------|----------|
-| MP4Box | ±1-2초 (키프레임) | 빠른 트리밍, 긴 클립 |
-| FFmpeg | ±0.02초 (거의 프레임 단위) | 정밀 트리밍, 짧은 클립 |
-| Streamlink | ±1초 (세그먼트) | URL 영상 (Chzzk HLS) |
-
-### URL 다운로드 속도 (1분 영상 기준)
+### URL 구간 다운로드 (1분 영상 기준)
 
 | 플랫폼 | 시간 | 방법 | 병목 |
 |--------|------|------|------|
-| **Chzzk** | 15-20초 | Streamlink (HLS 세그먼트 병렬) | 네트워크 |
-| **YouTube** | ~30-32초 | yt-dlp (구간 다운로드 + FFmpeg 통합) | FFmpeg 구간 추출 |
+| **Chzzk** | 15–20초 | Streamlink (세그먼트 병렬) | 네트워크 |
+| **YouTube** | ~30–32초 | yt-dlp (구간 다운로드 + 후처리 통합) | 구간 추출 |
 
-**YouTube 성능 상세** (2026-02-17 최적화 후):
-- 1-phase 최적화로 기존 ~36초에서 **~30-32초**로 단축 (~15% 개선)
-- `--postprocessor-args`로 Phase 2 FFmpeg를 yt-dlp 내부에 통합
-- 병목: `--download-sections`의 내부 FFmpeg 구간 추출 (최적화 불가)
-- 설계 의도: 긴 영상(1시간+)에서 효율적 (30초 vs 전체 다운로드 4분+)
+YouTube는 `--download-sections` + `--postprocessor-args`로 다운로드와 타임스탬프/faststart 후처리를 단일 패스로 통합한다. 긴 영상(1시간+)에서는 전체 다운로드 대비 효율적이다.
 
-### 메모리 사용
+### 메모리 (로컬 파일)
 
-| 크기 범위 | 상태 | 설명 |
-|-----------|------|------|
-| < 500MB | ✅ 권장 | 안전한 처리 |
-| 500MB - 1GB | ⚠️ 경고 | 처리 가능하지만 주의 |
-| 1GB - 2GB | 🟠 소프트 | 메모리 체크 필요 |
-| 2GB - 5GB | 🔴 위험 | 메모리 부족 가능성 높음 |
-| > 5GB | ⛔ 차단 | 절대 제한 |
+| 범위 | 상태 |
+|------|------|
+| < 500MB | ✅ 권장 |
+| 500MB–1GB | ⚠️ 경고 |
+| 1–2GB | 🟠 소프트(메모리 체크) |
+| 2–5GB | 🔴 위험 |
+| > 5GB | ⛔ 차단 |
+
+URL 소스는 브라우저 메모리에 적재하지 않으므로(서버→디스크 직행) 이 한계의 영향을 받지 않는다.
 
 ---
 
 ## 제약사항 및 한계
 
-### 기술적 제약
+**기술**
+- MP4Box는 키프레임 단위(±1-2초). 정밀이 필요한 비-ISO 형식은 FFmpeg.wasm.
+- 긴 HLS 소스의 파형 추출은 전체 오디오를 받으므로 느릴 수 있다(비차단 로딩으로 보완).
+- 로컬 큰 파일(>1GB)은 브라우저 메모리 영향. 5GB 하드 제한.
 
-1. **키프레임 정확도 (MP4Box)**:
-   - ±1-2초 정확도 (키프레임 기반)
-   - 짧은 클립은 FFmpeg로 자동 전환
+**설계 결정**
+- 로컬 파일은 서버 업로드 없음. URL 영상은 스트리밍 특성상 서버에서 구간을 받되 브라우저 blob을 거치지 않는다.
+- 단일 In/Out 구간(멀티 클립 없음).
+- 데스크톱 중심(큰 파일·정밀 편집).
 
-2. **브라우저 메모리**:
-   - 큰 파일 (>1GB) 속도 저하 가능
-   - 5GB 하드 제한
+**지원 형식 (입력 17종)**: MP4·WebM·OGG·MOV·M4V·AVI·WMV·MKV·FLV·TS·3GP·3G2·MPEG·MPG 등. 출력은 입력 형식 유지(stream copy).
 
-3. **HLS 트리밍 (Streamlink)**:
-   - 세그먼트 기반, 약간의 부정확성
-   - streamlink 설치 필요 (자동 다운로드)
-
-4. **형식 호환성**:
-   - MP4Box는 MP4 최적화
-   - 다른 형식은 FFmpeg 사용
-   - 일부 희귀 코덱 미지원
-
-### 설계 결정
-
-1. **서버 업로드 없음**:
-   - 완전한 클라이언트 사이드 (개인정보 보호)
-   - URL 영상은 서버 트리밍 (스트리밍 특성상 불가피)
-
-2. **단일 트리밍 범위**:
-   - 하나의 In Point, 하나의 Out Point
-   - 멀티 클립 편집 없음
-
-3. **데스크톱 중심**:
-   - 모바일은 브라우저 기능 제한
-   - 큰 파일은 데스크톱 권장
-
-### 브라우저 지원
-
-**최소 요구사항**:
-- Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
-- File API, Blob URL, ES2020+
-
-**권장**:
-- 최신 Chrome/Edge
-- 4GB+ RAM
-- 좋은 CPU (FFmpeg 재인코딩 시)
-
-**지원 안 함**:
-- Internet Explorer (모든 버전)
-
-### 지원 형식
-
-**입력** (17개 형식):
-- **Core**: MP4 ✅ (최고 성능 - MP4Box 최적화), WebM ✅, OGG ✅
-- **Apple/QuickTime**: MOV ✅, M4V ✅
-- **Microsoft/Windows**: AVI ✅, WMV ✅
-- **Matroska**: MKV ✅
-- **Streaming/Mobile**: FLV ✅, TS ✅, 3GP ✅, 3G2 ✅
-- **MPEG variants**: MPEG ✅, MPG ✅
-
-**출력**: 입력 형식 유지 (stream copy)
+**브라우저**: Chrome/Edge 90+, Firefox 88+, Safari 14+ (File API, Blob URL, ES2020+). IE 미지원.
 
 ---
 
@@ -605,14 +382,11 @@ NEXT_PUBLIC_MAX_FILE_SIZE=5368709120  # 5GB (기본값)
 
 ```
 .docs/
-├── 00_INDEX.md          # 문서 안내/인덱스
-├── 01_OVERVIEW.md       # 이 문서 (프로젝트 기술 개요)
-├── 02_API.md            # API 레퍼런스
-├── 03_DEPENDENCIES.md   # 외부 의존성 관리 (FFmpeg, yt-dlp, Streamlink)
-├── 04_DEVELOPER_GUIDE.md # 개발자 학습 가이드
-└── 05_HISTORY.md        # 개발 히스토리
+├── 00_INDEX.md           # 문서 안내/인덱스
+├── 01_OVERVIEW.md        # 이 문서 (프로젝트 기술 개요)
+├── 02_API.md             # API 레퍼런스
+├── 03_DEPENDENCIES.md    # 외부 의존성 관리
+└── 04_DEVELOPER_GUIDE.md # 개발자 학습 가이드
 ```
 
-**루트 레벨**:
-- `README.md` - 프로젝트 개요, 설치, 사용법
-- `CLAUDE.md` - Claude Code 가이드 (Quick Reference)
+**루트**: `README.md`(개요·설치·사용법), `CLAUDE.md`(Claude Code 가이드), `scripts/README.md`, `src/lib/README.md`, `src/utils/README.md`.

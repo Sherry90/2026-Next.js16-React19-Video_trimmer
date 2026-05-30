@@ -1,26 +1,25 @@
 # Video Trimmer
 
-웹 브라우저에서 동영상을 트리밍할 수 있는 클라이언트 사이드 웹 애플리케이션입니다.
+웹 브라우저에서 동영상을 트리밍하는 클라이언트 사이드 웹 애플리케이션. 로컬 파일은 서버 업로드 없이 브라우저에서 직접 처리하고, URL 영상(YouTube·치지직 등)은 다운로드 전에 스트림 위에서 구간을 정한 뒤 확정 구간만 서버에서 받아 디스크로 직행 전달한다.
 
 ## 주요 기능
 
-- 🎬 브라우저에서 직접 동영상 트리밍 (서버 업로드 없음)
-- ⚡ MP4Box.js를 사용한 스트림 복사 트리밍 (재인코딩 없음)
-- 🎨 Video.js 기반 비디오 플레이어
-- 🎵 wavesurfer.js를 사용한 오디오 파형 시각화
-- ⌨️ 키보드 단축키 지원
-- 🔒 In/Out Point 잠금 기능
-- 🔍 타임라인 줌 (Ctrl + 휠)
+- 🎬 **로컬 파일**: 서버 업로드 없이 브라우저에서 직접 트리밍 (17개 형식)
+- 🌐 **URL 영상**: 스트리밍 에디터 — 다운로드 전 스트림 위에서 구간 편집, 확정 시 서버 구간 다운로드(SSE)
+- ⚡ **하이브리드 트리밍**: 형식에 따라 MP4Box.js(빠름) / FFmpeg.wasm(정밀) 자동 선택
+- 🎨 **video.js** 기반 플레이어 (HLS 재생 지원)
+- 🎵 **wavesurfer.js** 오디오 파형 (URL 소스는 서버 peaks)
+- ⌨️ 키보드 단축키, In/Out Point 잠금, 타임라인 줌(Ctrl+휠)
+- 🔎 가장자리 미리보기(처음 5초 + 마지막 5초)
 
 ## 기술 스택
 
-- **Framework**: Next.js 16 with Turbopack
+- **Framework**: Next.js 16 (App Router, Turbopack)
 - **Language**: TypeScript
 - **UI**: React 19, Tailwind CSS
-- **Video Processing**: MP4Box.js (GPAC MP4 Parser/Muxer)
-- **Video Player**: Video.js
-- **Audio Visualization**: wavesurfer.js
-- **State Management**: Zustand
+- **State**: Zustand (단일 스토어 + selector)
+- **Video**: MP4Box.js, FFmpeg.wasm, video.js, wavesurfer.js
+- **Server tools**: yt-dlp, streamlink, ffmpeg (자동 다운로드)
 - **Testing**: Vitest (Unit), Playwright (E2E)
 
 ## 시작하기
@@ -31,13 +30,15 @@
 npm install
 ```
 
+`postinstall` 훅(`scripts/setup-deps.mjs`)이 ffmpeg·yt-dlp·streamlink 바이너리와 FFmpeg.wasm 코어를 자동으로 준비한다.
+
 ### 개발 서버 실행
 
 ```bash
 npm run dev
 ```
 
-브라우저에서 [http://localhost:3000](http://localhost:3000)을 열어 앱을 확인하세요.
+브라우저에서 [http://localhost:3000](http://localhost:3000)을 연다.
 
 ### 빌드
 
@@ -89,128 +90,69 @@ docker run --rm -p 443:443 \
 
 ### Docker Compose
 
-빌드 및 실행:
-
 ```bash
-docker compose up --build
+docker compose up --build        # 빌드 및 실행
+npm run docker:compose:build     # 빌드 진행도 추적
+docker compose up --build -d     # 백그라운드 실행
+docker compose down              # 중지
 ```
-
-빌드 진행도 추적:
-
-```bash
-npm run docker:compose:build
-```
-
-백그라운드 실행:
-
-```bash
-docker compose up --build -d
-```
-
-중지:
-
-```bash
-docker compose down
-```
-
 
 ## 테스트
 
-### 단위 테스트
-
 ```bash
-# 테스트 실행
-npm test
-
-# 테스트 UI
-npm run test:ui
-
-# 커버리지 리포트
-npm run test:coverage
+npm test               # Vitest 유닛 테스트
+npm run test:ui        # Vitest UI
+npm run test:coverage  # 커버리지 리포트
+npm run test:e2e       # Playwright E2E
+npm run test:e2e:ui    # Playwright UI
 ```
 
-### E2E 테스트
+**참고**: 대부분의 E2E 테스트는 실제 비디오 파일이 필요하여 skip 처리되어 있습니다.
 
-```bash
-# E2E 테스트 실행
-npm run test:e2e
-
-# E2E 테스트 UI
-npm run test:e2e:ui
-```
-
-**참고**: 대부분의 E2E 테스트는 실제 비디오 파일이 필요하여 현재 skip 처리되어 있습니다.
-
-## 키보드 단축키
+## 키보드 단축키 (편집 화면)
 
 | 키 | 기능 |
 |----|------|
 | Space | 재생/일시정지 |
-| ← / → | 프레임 단위 이동 |
-| Shift + ← / → | 1초 단위 이동 |
-| I | 현재 위치에 In Point 설정 |
-| O | 현재 위치에 Out Point 설정 |
-| Home | In Point로 이동 |
-| End | Out Point로 이동 |
-| Ctrl + 휠 | 타임라인 줌 |
+| I / O | In / Out Point 설정 |
+| ← / → | 1초 이동 |
+| Shift + ← / → | 0.1초(프레임) 이동 |
+| Home / End | In / Out Point로 점프 |
+| A | 미리보기(선택 구간 재생) |
+| Ctrl + 휠 | 타임라인 줌 (0.1x ~ 10x) |
+
+단축키는 입력 필드 포커스 시 비활성화된다.
 
 ## 지원 포맷
 
-- MP4 (video/mp4)
-- WebM (video/webm)
-- OGG (video/ogg)
-- QuickTime (video/quicktime)
-- AVI (video/x-msvideo)
-- MKV (video/x-matroska)
+입력 17종: MP4, WebM, OGG, MOV, M4V, AVI, WMV, MKV, FLV, TS, 3GP, 3G2, MPEG, MPG 등.
 
-**처리 방식**: 스트림 복사 (재인코딩 없음)
-- 원본 화질 유지
-- 키프레임 기반 트리밍 (1-2초 정확도)
-- 빠른 처리 속도
-- 파일 크기 제한 없음
+**처리 방식**: stream copy(재인코딩 없음)로 원본 화질 유지.
+- ISO 형식(MP4/MOV/M4V) → MP4Box.js (±1-2초, 키프레임 기반, 빠름)
+- 그 외 형식 → FFmpeg.wasm (±0.02초, 정밀)
+- 출력은 입력 형식 유지
 
 ## 브라우저 지원
 
-- 최신 웹 브라우저 (Chrome, Edge, Firefox, Safari 등)
-- File API 및 Blob 지원 필수
-
-## 개발 과정
-
-이 프로젝트는 Phase별로 점진적으로 개발되었습니다:
-
-- ✅ **Phase 1-6**: 프로젝트 설정부터 테스트까지 완료 (2026-01-20 ~ 2026-01-28)
-- ✅ **MP4Box Migration**: FFmpeg → MP4Box 전환 (10-20x 속도 향상, 2026-01-28)
-- ✅ **Accuracy Improvement**: FFmpeg 정확도 개선 ±0.5s → ±0.02s (2026-01-28)
-- ✅ **Feature Enhancements**: 하이브리드 트리머, 에러 핸들링 강화 (2026-01-29)
-- ✅ **Refactoring**: 6단계 리팩토링 완료 (787줄 감소, 2026-01-30)
-
-**현재 상태**: 프로덕션 준비 완료 (4,252줄, 92개 테스트 통과)
+- 최신 브라우저 (Chrome/Edge 90+, Firefox 88+, Safari 14+)
+- File API, Blob URL, ES2020+ 필요
 
 ## 문서
 
-프로젝트 문서는 `.docs/` 디렉토리에 체계적으로 정리되어 있습니다:
+프로젝트 문서는 `.docs/` 디렉터리에 정리되어 있다.
 
-### 📁 `.docs/01-design/` - 초기 설계
-- `project-specification.md` - 초기 설계 문서 (역사적 기록)
+| 문서 | 내용 |
+|------|------|
+| `.docs/00_INDEX.md` | 문서 인덱스 |
+| `.docs/01_OVERVIEW.md` | 프로젝트 기술 개요 |
+| `.docs/02_API.md` | API 레퍼런스 |
+| `.docs/03_DEPENDENCIES.md` | 외부 의존성 관리 |
+| `.docs/04_DEVELOPER_GUIDE.md` | 개발자 학습 가이드 |
 
-### 📁 `.docs/02-history/` - 개발 과정
-- `DEVELOPMENT-HISTORY.md` - 전체 개발 히스토리 (2026-01-21 ~ 2026-01-30)
+루트의 `CLAUDE.md`는 Claude Code 작업용 Quick Reference다.
 
-### 📁 `.docs/03-current/` - 현재 상태
-- `PROJECT-STATUS.md` - **프로젝트 현황** (메인 문서)
-- `ARCHITECTURE.md` - 기술 아키텍처 상세
-- `FUTURE-IMPROVEMENTS.md` - 향후 개선 계획
-
-### 🤖 개발 가이드
-- `CLAUDE.md` - Claude Code를 위한 개발 가이드
-- `TESTING.md` - 테스트 가이드
-
-**추천 읽기 순서**: PROJECT-STATUS.md → ARCHITECTURE.md → DEVELOPMENT-HISTORY.md
+**추천 읽기 순서**: `01_OVERVIEW` → `02_API` → `03_DEPENDENCIES` → `04_DEVELOPER_GUIDE`
 
 ## 라이센스
 
 ISC
-
-## 기여
-
-이 프로젝트는 개인 학습 프로젝트입니다.
