@@ -54,7 +54,7 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
       playerInstance.on('loadedmetadata', () => {
         const duration = playerInstance.duration();
         // URL 스트리밍 소스는 resolve 메타데이터로 duration을 미리 설정하므로
-        // (이미 >0) 여기서 덮어쓰지 않는다 — outPoint(20분 제한/사용자 구간) 보존.
+        // (이미 >0) 여기서 덮어쓰지 않는다 — 사용자가 정한 outPoint 구간 보존.
         // 파일 소스는 duration=0으로 시작하므로 이때 설정된다.
         const hasDuration = (useStore.getState().videoFile?.duration ?? 0) > 0;
         if (!hasDuration && duration && !isNaN(duration)) {
