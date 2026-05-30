@@ -56,11 +56,6 @@ export class FFmpegSingleton {
 
       const ffmpeg = new FFmpeg();
 
-      // Set up logging
-      ffmpeg.on('log', ({ message }) => {
-        console.log('[FFmpeg]', message);
-      });
-
       // Set up progress callback
       ffmpeg.on('progress', ({ progress }) => {
         // progress is 0-1, convert to 0-100

@@ -47,10 +47,9 @@ export async function trimVideo(options: TrimVideoOptions): Promise<Blob> {
   const { inputFile, source, originalUrl, filename, startTime, endTime, onProgress, onFFmpegLoadStart, onFFmpegLoadProgress, onFFmpegLoadComplete } =
     options;
 
-  // URL source: use server-side streamlink trimming
+  // URL source: 서버 측 트리밍(streamlink/yt-dlp)
   if (source === 'url') {
     if (!originalUrl) throw new Error('originalUrl is required for URL source');
-    console.log('[Trimmer] Using server trimming for URL source');
     return trimVideoServer({
       originalUrl,
       startTime,
@@ -60,46 +59,35 @@ export async function trimVideo(options: TrimVideoOptions): Promise<Blob> {
     });
   }
 
-  // File source: use client-side trimming
+  // File source: 클라이언트 측 트리밍
   if (!inputFile) throw new Error('inputFile is required for file source');
 
   const trimmerType = getTrimmerType(inputFile);
 
+  // MP4 계열: MP4Box stream-copy (다운로드/인코딩 없음)
   if (trimmerType === 'mp4box') {
-    // Use MP4Box (no download needed)
-    console.log('[Trimmer] Using MP4Box for', inputFile.type);
     return trimVideoMP4Box({
       inputFile,
       startTime,
       endTime,
       onProgress,
     });
-  } else {
-    // Use FFmpeg (lazy load if needed)
-    console.log('[Trimmer] Using FFmpeg for', inputFile.type);
+  }
 
-    // Notify that FFmpeg loading has started
-    onFFmpegLoadStart?.();
-
-    try {
-      // Load FFmpeg with progress tracking
-      const ffmpeg = await FFmpegSingleton.getInstance(onFFmpegLoadProgress);
-
-      // Notify that FFmpeg loading is complete
-      onFFmpegLoadComplete?.();
-
-      // Trim with FFmpeg
-      return trimVideoFFmpeg({
-        ffmpeg,
-        inputFile,
-        startTime,
-        endTime,
-        onProgress,
-      });
-    } catch (error) {
-      // Notify that FFmpeg loading failed
-      onFFmpegLoadComplete?.();
-      throw error;
-    }
+  // 그 외 포맷: FFmpeg.wasm (wasm core는 최초 1회 lazy load)
+  onFFmpegLoadStart?.();
+  try {
+    const ffmpeg = await FFmpegSingleton.getInstance(onFFmpegLoadProgress);
+    onFFmpegLoadComplete?.();
+    return trimVideoFFmpeg({
+      ffmpeg,
+      inputFile,
+      startTime,
+      endTime,
+      onProgress,
+    });
+  } catch (error) {
+    onFFmpegLoadComplete?.(); // 로드 실패도 완료로 통지(스피너 정리)
+    throw error;
   }
 }

@@ -16,7 +16,6 @@ interface TrimVideoServerOptions {
 export async function trimVideoServer(options: TrimVideoServerOptions): Promise<Blob> {
   const { originalUrl, startTime, endTime, filename, onProgress, onResponseStart } = options;
 
-  console.log('[trimVideoServer] Starting fetch to /api/video/trim');
   onProgress?.(0);
 
   const response = await fetch('/api/video/trim', {
@@ -67,7 +66,6 @@ export async function trimVideoServer(options: TrimVideoServerOptions): Promise<
   onProgress?.(100);
 
   const blob = new Blob(chunks, { type: 'video/mp4' });
-  console.log(`[trimVideoServer] Received blob: ${blob.size} bytes (${(blob.size / 1024 / 1024).toFixed(2)} MB)`);
 
   return blob;
 }
