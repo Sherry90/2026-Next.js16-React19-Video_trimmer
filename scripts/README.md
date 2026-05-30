@@ -1,53 +1,46 @@
 # Scripts
 
-프로젝트 관련 스크립트 모음
+프로젝트 관련 스크립트 모음.
 
 ## setup-deps.mjs
 
-**목적**: 프로젝트 의존성 바이너리 자동 다운로드
+**목적**: 외부 의존성 바이너리와 FFmpeg.wasm 코어를 자동 준비
 
-**실행**: `npm install` 시 postinstall 훅으로 자동 실행
+**실행**: `npm install` 시 `postinstall` 훅으로 자동 실행
 
 **기능**:
-- yt-dlp 다운로드 (GitHub releases)
-- streamlink 다운로드 (플랫폼별)
-  - Windows: portable .exe
-  - Linux: AppImage (x64/ARM64)
-  - macOS: 시스템 설치 권장 (brew install streamlink)
+- **yt-dlp**: GitHub 릴리스에서 고정 버전 바이너리를 `.bin/`에 직접 다운로드
+- **streamlink**: 플랫폼별로 `.bin/`에 준비
+  - Windows: portable 빌드(.zip)를 받아 `adm-zip`으로 추출
+  - Linux: AppImage(x64/ARM64)
+  - macOS: Python venv 자동 생성 후 `pip install streamlink` (Python 3 미설치 시 경고 후 계속)
+- **FFmpeg.wasm**: `@ffmpeg/core`를 `public/ffmpeg/`로 복사 (`copyWasmFiles`, CDN 미사용)
+
+다운로드 실패는 경고만 출력하고 `npm install`을 중단하지 않는다.
+
+## copy-wasm.mjs
+
+**목적**: `@ffmpeg/core`의 `ffmpeg-core.js`/`ffmpeg-core.wasm`을 `public/ffmpeg/`로 복사 (자체 호스팅)
+
+**실행**: `prebuild` 훅 및 `setup-deps.mjs`에서 호출
 
 ## cut_video.sh (참조용)
 
-**목적**: 원본 쉘 스크립트 참조 자료
+Streamlink + FFmpeg 2단계 트리밍(구간 추출 → 타임스탬프 리셋)의 참조 쉘 구현. **실행되지 않으며** 로직 참조용이다. 서버 구현은 `src/app/api/video/trim/route.ts` 및 `src/lib/streamlinkDownloader.ts`에 있다.
 
-**설명**: 이 프로젝트의 URL 트리밍 기능 (`src/app/api/video/trim/route.ts`)은 이 쉘 스크립트의 로직을 TypeScript로 포팅한 것입니다.
-
-**핵심 로직** (2단계 프로세스):
 ```bash
-# Stage 1: streamlink로 세그먼트 다운로드
-streamlink --hls-start-offset "$START" \
-           --stream-segmented-duration "$DUR" \
-           "$URL" best -o "temp.mp4"
-
-# Stage 2: ffmpeg로 타임스탬프 리셋
-ffmpeg -i "temp.mp4" \
-       -c copy \
-       -avoid_negative_ts make_zero \
-       -fflags +genpts \
-       "$OUTPUT"
+# Stage 1: streamlink 구간 다운로드
+streamlink --hls-start-offset "$START" --hls-duration "$DUR" "$URL" best -o temp.mp4
+# Stage 2: ffmpeg 타임스탬프 리셋
+ffmpeg -i temp.mp4 -c copy -avoid_negative_ts make_zero -fflags +genpts "$OUTPUT"
 ```
 
-**TypeScript 구현**: `src/app/api/video/trim/route.ts`의 `trimWithStreamlink()` 함수
+## docker-build-progress.sh
 
-**차이점**:
-- 쉘: 동기 실행, 사용자 대화형
-- TypeScript: 비동기 Promise, HTTP API
-- 쉘: 로컬 파일 출력
-- TypeScript: 스트림 응답 (Range 지원)
+**목적**: 진행도(`--progress=plain`)를 추적하며 Docker 이미지를 빌드하고 로그를 `.logs/`에 저장
 
-**사용하지 않음**: 이 파일은 실행되지 않으며, 디버깅 및 로직 참조 목적으로만 존재합니다.
+**실행**: `npm run docker:build` / `npm run docker:compose:build`
 
 ## generate-test-video.sh
 
 **목적**: E2E 테스트용 비디오 파일 생성
-
-**사용**: 테스트 환경 설정 시

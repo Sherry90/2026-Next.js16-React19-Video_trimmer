@@ -96,9 +96,9 @@
 export const useExportState = () =>
   useStore(
     useShallow((state) => ({
-      phase: state.processing.phase,
-      progress: state.processing.progress,
-      canExport: state.processing.phase === 'editing',
+      phase: state.phase,
+      trimProgress: state.processing.trimProgress,
+      canExport: state.phase === 'editing',
     }))
   );
 
@@ -303,9 +303,9 @@ const cleanup = () => {
 - 키보드 단축키 지원 (Space, I/O, 화살표)
 
 **3. 기술적 우수성**
-- Feature-based 아키텍처 (확장 가능)
+- 계층 아키텍처 (features / widgets / shared)
 - 자동 의존성 관리 (postinstall)
-- 149개 테스트 통과 (안정성)
+- 169개 유닛 테스트 통과 (안정성)
 
 ### 기술 스택
 
@@ -356,72 +356,46 @@ Tools & Scripts
 
 ## 아키텍처 심층 분석
 
-### 1. Feature-Based 구조
+### 1. 계층 구조 (features / widgets / shared)
 
-**철학**: 기능별로 완결된 모듈 (components + hooks + utils)
+**철학**: 기능은 `features/`에 완결 모듈(components + hooks + utils)로, 여러 feature를 합성하는 컴포지션은 `widgets/`에, 재사용 UI 프리미티브는 `shared/`에 둔다.
 
 ```
-src/features/
-├── upload/              # 파일 업로드
-│   ├── components/
-│   │   ├── UploadZone.tsx
-│   │   └── FileInfo.tsx
-│   ├── hooks/
-│   │   └── useFileUpload.ts
-│   └── utils/
-│       └── validateFile.ts
+src/
+├── features/
+│   ├── upload/              # UploadZone, UploadProgress, FileValidationError
+│   │   ├── hooks/           useFileUpload
+│   │   └── utils/           validateFile
+│   ├── url-input/           # 스트리밍 에디터 입력
+│   │   ├── components/      UrlInputZone
+│   │   ├── hooks/           useUrlInput
+│   │   └── utils/           sseProgressUtils, waveformCache, streamDownloadController
+│   ├── player/
+│   │   ├── components/      VideoPlayerView   (player 인스턴스를 context로 노출)
+│   │   └── context/         VideoPlayerContext
+│   ├── timeline/
+│   │   ├── components/      TimelineEditor, TrimHandle, Playhead,
+│   │   │                    TimelineControls, PreviewButtons, WaveformBackground
+│   │   └── hooks/           useDragHandle, useKeyboardShortcuts, usePreviewPlayback,
+│   │                        useTimelineZoom, usePlayheadSeek
+│   └── export/
+│       ├── components/      ExportButton, ExportProgress, DownloadButton, ErrorDisplay
+│       ├── hooks/           useExportState, useFFmpegLoader
+│       └── utils/           trimVideoDispatcher, trimVideoMP4Box, trimVideoFFmpeg,
+│                            trimVideoServer, FFmpegSingleton, formatDetector, generateFilename
 │
-├── url-input/           # URL 입력 및 다운로드
-│   ├── components/
-│   │   ├── UrlInputZone.tsx
-│   │   ├── UrlPreviewCard.tsx
-│   │   └── UrlPreviewRangeControl.tsx
-│   ├── hooks/
-│   │   ├── useUrlInput.ts
-│   │   ├── useUrlDownload.ts
-│   │   └── useStreamDownload.ts
-│   └── utils/
-│       └── sseProgressUtils.ts
+├── widgets/
+│   └── EditingSection.tsx   # VideoPlayerView + TimelineEditor + 키보드 단축키 합성
 │
-├── player/              # 비디오 플레이어
-│   ├── components/
-│   │   ├── VideoPlayer.tsx
-│   │   └── PlaybackControls.tsx
-│   ├── context/
-│   │   └── VideoPlayerContext.tsx
-│   └── hooks/
-│       └── useVideoPlayer.ts
-│
-├── timeline/            # 타임라인 편집기
-│   ├── components/
-│   │   ├── TimelineEditor.tsx
-│   │   ├── TrimHandle.tsx
-│   │   ├── Playhead.tsx
-│   │   └── WaveformBackground.tsx
-│   ├── hooks/
-│   │   ├── usePreviewPlayback.ts
-│   │   ├── useTimelineZoom.ts
-│   │   └── usePlayheadSeek.ts
-│   └── utils/
-│       └── constrainPosition.ts
-│
-└── export/              # 내보내기
-    ├── components/
-    │   └── ExportButton.tsx
-    ├── hooks/
-    │   └── useExportState.ts
-    └── utils/
-        ├── trimVideoDispatcher.ts
-        ├── trimVideoMP4Box.ts
-        ├── trimVideoFFmpeg.ts
-        └── FFmpegSingleton.ts
+└── shared/
+    └── ui/ProgressBar.tsx   # 재사용 UI 프리미티브
 ```
 
 **장점**:
 1. **모듈성**: 각 feature는 독립적으로 개발/테스트 가능
-2. **확장성**: 새 기능 추가 시 새 폴더만 생성
-3. **가독성**: 기능별로 코드가 그룹화되어 찾기 쉬움
-4. **재사용성**: hooks와 utils는 feature 내에서 재사용
+2. **확장성**: 새 기능은 새 폴더로 추가
+3. **결합도 관리**: 합성은 widgets, 공용 UI는 shared로 분리해 feature 간 결합을 낮춤
+4. **재사용성**: hooks와 utils는 feature 내/계층 간에서 재사용
 
 ---
 
@@ -432,71 +406,74 @@ src/features/
 ```typescript
 // src/stores/useStore.ts
 export interface StoreState {
-  // Phase-based workflow
-  processing: {
-    phase: AppPhase;
-    progress: number;
-    videoUrl: string | null;
-    processedVideoUrl: string | null;
-  };
+  // Phase-based workflow (최상위)
+  phase: AppPhase;
+
+  // 비디오 소스 (파일 또는 URL)
+  videoFile: VideoFile | null;   // source: 'file' | 'url'
 
   // Timeline 상태
   timeline: {
-    currentTime: number;
-    duration: number;
     inPoint: number;
     outPoint: number;
+    playhead: number;
     zoom: number;
-    inLocked: boolean;
-    outLocked: boolean;
+    isInPointLocked: boolean;
+    isOutPointLocked: boolean;
+  };
+
+  // 진행률 상태
+  processing: {
+    uploadProgress: number;
+    trimProgress: number;
+    waveformProgress: number;
+    downloadPhase: 'downloading' | 'processing' | 'completed' | null;
+    downloadMessage: string | null;
+    activeDownloadJobId: string | null;
   };
 
   // Player 상태
   player: {
     isPlaying: boolean;
+    currentTime: number;
+    volume: number;
+    isMuted: boolean;
     isScrubbing: boolean;
-    isSeeking: boolean;
   };
 
-  // Export 상태
+  // Export 결과
   export: {
-    trimmedUrl: string | null;
-    filename: string;
+    outputUrl: string | null;      // 파일: Blob URL / URL: /api/download/:jobId
+    outputFilename: string | null;
   };
 
-  // URL Preview (URL 입력 전용)
-  urlPreview: VideoFile | null;
-  downloadPhase: string | null;
-  downloadProgress: number;
+  error: { hasError: boolean; errorMessage: string | null; errorCode: string | null };
 
-  // Actions
-  setPhase: (phase: AppPhase) => void;
-  setVideoUrl: (url: string, duration: number) => void;
-  setInPoint: (time: number) => void;
-  setOutPoint: (time: number) => void;
-  // ... 30+ actions
+  // Actions (setPhase, setVideoFile, setInPoint, setOutPoint, setDownloadPhase, reset, ...)
 }
 ```
 
 **Selector Pattern**: 최적화된 상태 구독
 
 ```typescript
-// src/stores/selectors.ts
-export const useTimelineState = () =>
-  useStore(
-    useShallow((state) => ({
-      currentTime: state.timeline.currentTime,
-      duration: state.timeline.duration,
-      inPoint: state.timeline.inPoint,
-      outPoint: state.timeline.outPoint,
-      zoom: state.timeline.zoom,
-    }))
-  );
+// src/stores/selectors.ts (createStateSelector = useShallow 래핑)
+export const useTimelineState = createStateSelector((state) => ({
+  inPoint: state.timeline.inPoint,
+  outPoint: state.timeline.outPoint,
+  playhead: state.timeline.playhead,
+  isInPointLocked: state.timeline.isInPointLocked,
+  isOutPointLocked: state.timeline.isOutPointLocked,
+  zoom: state.timeline.zoom,
+}));
+export const useTimelineActions = createStateSelector((state) => ({
+  setInPoint: state.setInPoint, setOutPoint: state.setOutPoint, /* ... */
+}));
 
 // 사용
 function TimelineEditor() {
-  const { currentTime, inPoint, outPoint } = useTimelineState();
-  // 이 컴포넌트는 timeline 상태 변경 시에만 리렌더
+  const { inPoint, outPoint } = useTrimPoints();
+  const { setInPoint, setOutPoint } = useTimelineActions();
+  // 구독한 슬라이스가 실제로 변경될 때만 리렌더
 }
 ```
 
@@ -544,17 +521,17 @@ idle → uploading → editing → processing → completed
 
 ```typescript
 // src/app/page.tsx
-export default function Home() {
-  const phase = useStore((state) => state.processing.phase);
+export default function HomePage() {
+  const phase = useStore((state) => state.phase);
 
   return (
     <main>
-      {phase === 'idle' && <UploadView />}
-      {phase === 'uploading' && <LoadingSpinner />}
-      {phase === 'editing' && <EditorView />}
-      {phase === 'processing' && <ProcessingView />}
-      {phase === 'completed' && <CompletedView />}
-      {phase === 'error' && <ErrorView />}
+      {phase === 'idle' && <UploadZone />}
+      <UploadProgress />
+      {phase === 'editing' && (
+        <Suspense fallback={…}><EditingSection /></Suspense>  // lazy 로드
+      )}
+      {/* ExportProgress / DownloadButton 도 phase에 따라 lazy */}
     </main>
   );
 }
@@ -823,7 +800,7 @@ export async function GET(request: Request) {
 **SSE 클라이언트 구현**:
 
 ```typescript
-// src/features/url-input/hooks/useStreamDownload.ts
+// src/features/url-input/utils/streamDownloadController.ts (모듈 싱글톤 — React 생명주기 독립)
 const eventSource = new EventSource(`/api/download/stream/${jobId}`);
 
 eventSource.onmessage = (event) => {
@@ -1401,7 +1378,7 @@ Error: Cannot find module '@ffmpeg-installer/ffmpeg'
 **해결**:
 ```typescript
 // next.config.ts
-serverExternalPackages: ['@ffmpeg-installer/ffmpeg', 'yt-dlp-wrap'],
+serverExternalPackages: ['@ffmpeg-installer/ffmpeg'],
 ```
 
 ---
@@ -1458,7 +1435,6 @@ streamlink: not found
 - `.docs/01_OVERVIEW.md` - 기술 문서
 - `.docs/02_API.md` - API 참조
 - `.docs/03_DEPENDENCIES.md` - 바이너리/의존성 문서
-- `.docs/05_HISTORY.md` - 개발 히스토리
 
 ### 학습 순서 추천
 
