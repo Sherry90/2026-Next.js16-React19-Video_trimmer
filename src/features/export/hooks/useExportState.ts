@@ -60,10 +60,6 @@ export function useExportState(
       const outputUrl = URL.createObjectURL(outputBlob);
       const outputFilename = generateTrimFilename(videoFile.name, inPoint, outPoint);
 
-      console.log('[ExportButton] Created Blob URL:', outputUrl);
-      console.log('[ExportButton] Blob size:', outputBlob.size, 'bytes');
-      console.log('[ExportButton] Filename:', outputFilename);
-
       setExportResultAndComplete(outputUrl, outputFilename);
     } catch (error) {
       // Check if error has AppError attached (from parseFFmpegError)

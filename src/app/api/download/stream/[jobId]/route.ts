@@ -12,10 +12,6 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
   const { jobId } = await params;
 
-  // console.log(`[SSE] ========== SSE STREAM REQUEST ==========`);
-  // console.log(`[SSE] 🔌 Client connected to stream: ${jobId}`);
-  // console.log(`[SSE] 🔌 Request URL: ${request.url}`);
-
   // ReadableStream 생성
   const stream = new ReadableStream({
     start(controller) {
@@ -66,7 +62,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
       // 클라이언트 연결 끊김 처리
       request.signal.addEventListener('abort', () => {
-        // console.log(`[SSE] Client disconnected: ${jobId}`);
         controller.close();
         unsubscribe();
       });
