@@ -4,10 +4,11 @@
 
 ## 파일 목록
 
-### API 관련
+### API / 에러 관련
 - **apiUtils.ts** - API 요청/응답 유틸리티
   - 요청 검증 (validateTrimRequest, validateDownloadRequest)
   - 에러 처리 (handleApiError, parseYtdlpError)
+- **errorHandler.ts** - 도메인 에러 타입과 사용자 친화 메시지 매핑 (parseFFmpegError 등)
 
 ### 시간 관련
 - **timeFormatter.ts** - 시간 형식 변환 유틸리티
