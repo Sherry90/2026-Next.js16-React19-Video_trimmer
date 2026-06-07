@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { shouldSkipWaveform } from '@/features/url-input/utils/waveformCache';
+import { shouldSkipWaveform } from '@/shared/lib/waveformCache';
 import { WAVEFORM } from '@/constants/appConfig';
 
 describe('shouldSkipWaveform', () => {

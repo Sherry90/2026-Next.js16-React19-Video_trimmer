@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateOverallProgress, getPhaseMessage } from '@/features/url-input/utils/sseProgressUtils';
+import { calculateOverallProgress, getPhaseMessage } from '@/shared/lib/sseProgressUtils';
 
 describe('sseProgressUtils', () => {
   describe('calculateOverallProgress', () => {
