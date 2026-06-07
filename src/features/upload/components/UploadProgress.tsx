@@ -2,7 +2,7 @@
 
 import { useStore } from '@/stores/useStore';
 import { ProgressBar } from '@/shared/ui/ProgressBar';
-import { formatBytes } from '@/utils/formatBytes';
+import { formatBytes } from '@/shared/lib/formatBytes';
 
 export function UploadProgress() {
   const videoFile = useStore((state) => state.videoFile);

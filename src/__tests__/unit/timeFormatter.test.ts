@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatTime, parseFlexibleTime } from '@/utils/timeFormatter';
+import { formatTime, parseFlexibleTime } from '@/shared/lib/timeFormatter';
 
 describe('formatTime', () => {
   it('초를 HH:MM:SS.mmm 형식으로 변환', () => {

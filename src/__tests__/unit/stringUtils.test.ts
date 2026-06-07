@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { stripAnsi, isEmpty, safeString } from '@/utils/stringUtils';
+import { stripAnsi, isEmpty, safeString } from '@/shared/lib/stringUtils';
 
 describe('stringUtils', () => {
   it('stripAnsi should remove ANSI escape codes', () => {

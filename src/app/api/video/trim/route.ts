@@ -7,8 +7,8 @@ import { randomUUID } from 'crypto';
 import { getFfmpegPath, getStreamlinkPath, hasStreamlink } from '@/lib/binPaths';
 
 import { runWithTimeout } from '@/lib/processUtils';
-import { formatTime } from '@/utils/timeFormatter';
-import { validateTrimRequest, handleApiError } from '@/utils/apiUtils';
+import { formatTime } from '@/shared/lib/timeFormatter';
+import { validateTrimRequest, handleApiError } from '@/lib/apiUtils';
 import { streamFile } from '@/lib/streamUtils';
 
 /**

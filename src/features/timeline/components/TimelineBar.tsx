@@ -1,7 +1,7 @@
 'use client';
 
 import { useStore } from '@/stores/useStore';
-import { formatSimpleTime } from '@/utils/timeFormatter';
+import { formatSimpleTime } from '@/shared/lib/timeFormatter';
 import { WaveformBackground } from './WaveformBackground';
 
 interface TimelineBarProps {

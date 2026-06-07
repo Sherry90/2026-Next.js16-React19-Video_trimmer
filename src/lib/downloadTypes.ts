@@ -7,7 +7,7 @@
 
 import { unlinkSync, existsSync, promises as fsPromises } from 'fs';
 import type { SSEProgressEvent, SSECompleteEvent, SSEErrorEvent, DownloadPhase } from '@/types/sse';
-import { clamp } from '@/utils/mathUtils';
+import { clamp } from '@/shared/lib/mathUtils';
 import { DOWNLOAD } from '@/constants/appConfig';
 
 // Server-side event types (extends SSE types with jobId)
