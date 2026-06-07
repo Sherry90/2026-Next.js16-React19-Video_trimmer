@@ -20,7 +20,7 @@ export function useExportState(
 ) {
   const { setPhase, setErrorAndTransition, setExportResultAndComplete } =
     useCommonActions();
-  const { setTrimProgress } = useProgressActions();
+  const { setProgress } = useProgressActions();
 
   // FFmpeg loading state (delegated to separate hook)
   const ffmpegLoader = useFFmpegLoader();
@@ -33,7 +33,7 @@ export function useExportState(
 
     try {
       setPhase('processing');
-      setTrimProgress(0);
+      setProgress('trim', 0);
 
       // URL source: 확정된 구간을 서버에서 실제 다운로드 (SSE).
       // 컨트롤러가 진행률/완료/에러(completed 합류)를 직접 처리한다.
@@ -51,7 +51,7 @@ export function useExportState(
         startTime: inPoint,
         endTime: outPoint,
         onProgress: (progress) => {
-          setTrimProgress(progress);
+          setProgress('trim', progress);
         },
         ...ffmpegLoader.handlers,
       });
@@ -83,7 +83,7 @@ export function useExportState(
     inPoint,
     outPoint,
     setPhase,
-    setTrimProgress,
+    setProgress,
     setExportResultAndComplete,
     setErrorAndTransition,
   ]);

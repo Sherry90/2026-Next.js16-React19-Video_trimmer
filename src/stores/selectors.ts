@@ -103,7 +103,5 @@ export const useCommonActions = createStateSelector((state) => ({
 }));
 
 export const useProgressActions = createStateSelector((state) => ({
-  setUploadProgress: state.setUploadProgress,
-  setTrimProgress: state.setTrimProgress,
-  setWaveformProgress: state.setWaveformProgress,
+  setProgress: state.setProgress,
 }));
