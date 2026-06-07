@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { detectPlatform } from '@/lib/platformDetector';
-import { getChzzkVideoNo } from '@/features/url-input/utils/chzzkVideo';
+import { getChzzkVideoNo } from '@/shared/lib/platformUrl';
 
 /**
  * 즉시 프리뷰 (플랫폼별 메타데이터 소스).

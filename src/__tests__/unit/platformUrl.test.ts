@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getChzzkVideoNo } from '@/features/url-input/utils/chzzkVideo';
+import { getChzzkVideoNo } from '@/shared/lib/platformUrl';
 
 describe('getChzzkVideoNo', () => {
   it('chzzk VOD URL에서 videoNo 추출', () => {
