@@ -5,10 +5,24 @@ services:
       dockerfile: Dockerfile
     image: trimvideo-app:latest
     ports:
-      - "443:443"
+      # 외부 노출: 0.0.0.0의 HOST_PORT(기본 3443)을 컨테이너 3443에 매핑.
+      # 로컬(https://localhost:3443) + 외부망(https://<host-ip>:3443, 방화벽 허용 시) 접근.
+      - "${HOST_PORT:-3443}:3443"
     volumes:
-      - ./certificates:/app/certificates:ro
+      # self-signed 인증서 영속용 named volume.
+      # 실제 인증서를 쓰려면 아래를 호스트 바인드로 교체:
+      #   - ./certificates:/app/certificates:ro
+      - trimvideo-certs:/app/certificates
     environment:
+      NODE_ENV: production
       HOSTNAME: "0.0.0.0"
-      APP_URL: "https://trimvideo.net"
+      PORT: "3443"
+      # 선택 오버라이드:
+      # TLS_CERT_PATH: /app/certificates/cert.pem
+      # TLS_KEY_PATH: /app/certificates/key.pem
+      # TLS_CN: trimvideo.net
+      # ENABLE_SELF_SIGNED: "false"   # 인증서 없을 때 HTTP로만 기동
     restart: unless-stopped
+
+volumes:
+  trimvideo-certs:

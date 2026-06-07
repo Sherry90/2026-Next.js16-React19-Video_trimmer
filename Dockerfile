@@ -1,82 +1,61 @@
 # syntax=docker/dockerfile:1
+
+# ── base: 런타임/빌드 공통 베이스 + 외부 바이너리 (ffmpeg, yt-dlp, streamlink, openssl) ──
+# 프로젝트가 로컬에서 쓰는 바이너리를 이미지에 내장한다. binPaths.ts의 system 폴백 경로로
+# 해석된다(ffmpeg: @ffmpeg-installer 우선 → apt, yt-dlp/streamlink: system `which`).
 FROM node:22-bookworm-slim AS base
-
 WORKDIR /app
-
 ENV NEXT_TELEMETRY_DISABLED=1 \
-    SKIP_OPTIONAL_BINARY_DOWNLOADS=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    ffmpeg \
-    python3 \
-    python3-pip \
+      ca-certificates \
+      ffmpeg \
+      python3 \
+      python3-pip \
+      openssl \
   && pip3 install --break-system-packages --timeout 60 yt-dlp streamlink \
   && apt-get purge -y python3-pip \
   && apt-get autoremove -y \
   && rm -rf /var/lib/apt/lists/*
 
+# ── deps: 전체 의존성 설치 (빌드용). package*.json 미변경 시 레이어 캐시 재사용 ──
 FROM base AS deps
-
 COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --ignore-scripts
 
+# ── builder: Next 빌드 + server.ts 컴파일 ──
 FROM deps AS builder
-
 COPY . .
-RUN npm run build \
- && rm -rf .next/standalone/node_modules/@ffmpeg-installer
+# prebuild(copy-wasm.mjs)가 public/ffmpeg로 wasm 복사 후 next build
+RUN npm run build
+# server.ts를 tsx 없이 실행하려고 단일 cjs로 번들 (next/node_modules는 런타임 external)
+RUN npx --no-install esbuild server.ts \
+      --bundle --platform=node --target=node22 --packages=external \
+      --outfile=server.cjs
 
-RUN node - <<'PATCH'
-const fs = require('fs');
-const serverPath = '.next/standalone/server.js';
-const shim = `require('http').createServer = function(opts, listener) {
-  if (typeof opts === 'function') { listener = opts; }
-  return require('https').createServer({
-    key: require('fs').readFileSync(require('path').join(__dirname, 'certificates', 'trimvideo.net-key.pem')),
-    cert: require('fs').readFileSync(require('path').join(__dirname, 'certificates', 'trimvideo.net.pem'))
-  }, listener);
-};
-`;
-fs.writeFileSync(serverPath, shim + fs.readFileSync(serverPath, 'utf8'));
-console.log('[patch] HTTPS shim prepended to server.js');
-PATCH
+# ── prod-deps: 런타임 prod 의존성만 (slim) ──
+FROM base AS prod-deps
+COPY package.json package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --ignore-scripts
 
-RUN node - <<'PATCH'
-const fs = require('fs');
-const logPath = '.next/standalone/node_modules/next/dist/server/lib/app-info-log.js';
-let source = fs.readFileSync(logPath, 'utf8');
-const original = source;
-source = source
-  .replace(
-    "_log.bootstrap(`- Local:         ${appUrl}`);",
-    "_log.bootstrap(`- Container:     https://localhost:${process.env.PORT || '443'}`);"
-  )
-  .replace(
-    "_log.bootstrap(`- Network:       ${networkUrl}`);",
-    "_log.bootstrap(`- Host:          https://localhost:${process.env.PORT || '443'}`);"
-  );
-if (source === original) {
-  throw new Error('Next startup URL log patch did not match expected source');
-}
-fs.writeFileSync(logPath, source);
-console.log('[patch] Next startup URLs rewritten for HTTPS container access');
-PATCH
-
+# ── runner: 최종 이미지 ──
 FROM base AS runner
-
-WORKDIR /app
-
 ENV NODE_ENV=production \
     HOSTNAME=0.0.0.0 \
-    PORT=443
+    PORT=3443
+COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=builder   /app/.next ./.next
+COPY --from=builder   /app/public ./public
+COPY --from=builder   /app/server.cjs ./server.cjs
+COPY package.json ./
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
+  && mkdir -p /app/certificates \
+  && chown -R node:node /app
 
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
-
-EXPOSE 443
-
-CMD ["node", "server.js"]
+# 비루트 실행 (3443은 비특권 포트라 바인드 가능)
+USER node
+EXPOSE 3443
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["node", "server.cjs"]
