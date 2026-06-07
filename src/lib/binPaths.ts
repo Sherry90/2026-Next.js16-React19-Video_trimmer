@@ -29,9 +29,15 @@ export function getFfmpegPath(): string {
     _ffmpegPath = path;
     return path;
   } catch {
-    // Fallback to system ffmpeg
-    _ffmpegPath = 'ffmpeg';
-    return 'ffmpeg';
+    // Fallback to system ffmpeg. 절대 경로로 해석한다 — yt-dlp `--ffmpeg-location`은
+    // PATH 탐색이 아닌 실제 경로를 요구하므로 bare 'ffmpeg'는 "does not exist"로 실패한다.
+    try {
+      const resolved = execFileSync('which', ['ffmpeg'], { encoding: 'utf-8' }).trim();
+      _ffmpegPath = resolved || 'ffmpeg';
+    } catch {
+      _ffmpegPath = 'ffmpeg';
+    }
+    return _ffmpegPath;
   }
 }
 
