@@ -11,6 +11,7 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates \
       ffmpeg \
+      aria2 \
       python3 \
       python3-pip \
       openssl \
@@ -50,7 +51,10 @@ COPY --from=builder   /app/public ./public
 COPY --from=builder   /app/server.cjs ./server.cjs
 COPY package.json ./
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
+# @ffmpeg-installer의 정적 ffmpeg는 컨테이너에서 DNS 해석 불가("Failed to resolve hostname").
+# 제거해 getFfmpegPath()가 시스템 ffmpeg(apt, DNS 정상)로 폴백하게 한다. (서버 트림 필수)
+RUN rm -rf /app/node_modules/@ffmpeg-installer \
+  && chmod +x /usr/local/bin/docker-entrypoint.sh \
   && mkdir -p /app/certificates \
   && chown -R node:node /app
 
