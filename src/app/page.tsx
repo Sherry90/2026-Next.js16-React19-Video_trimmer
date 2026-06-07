@@ -8,6 +8,9 @@ import { UploadZone } from '@/features/upload/components/UploadZone';
 import { UploadProgress } from '@/features/upload/components/UploadProgress';
 import { FileValidationError } from '@/features/upload/components/FileValidationError';
 
+// URL input feature (랜딩에서 UploadZone과 합성)
+import { UrlInputZone } from '@/features/url-input/components/UrlInputZone';
+
 // Export feature (eager load button and error, lazy load progress/download)
 import { ExportButton } from '@/features/export/components/ExportButton';
 import { ErrorDisplay } from '@/features/export/components/ErrorDisplay';
@@ -44,7 +47,11 @@ export default function HomePage() {
           <ErrorDisplay />
           <FileValidationError />
 
-          {phase === 'idle' && <UploadZone />}
+          {phase === 'idle' && (
+            <UploadZone>
+              <UrlInputZone />
+            </UploadZone>
+          )}
           <UploadProgress />
           {phase === 'editing' && (
             <Suspense fallback={<div className="text-[#74808c] text-sm">Loading editor…</div>}>

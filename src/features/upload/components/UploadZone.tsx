@@ -1,10 +1,11 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { useFileUpload } from '@/features/upload/hooks/useFileUpload';
-import { UrlInputZone } from '@/features/url-input/components/UrlInputZone';
 
-export function UploadZone() {
+// URL 입력 등 부가 소스 UI는 상위(랜딩)에서 children으로 합성한다
+// (upload feature가 url-input feature를 직접 참조하지 않도록 결합 제거).
+export function UploadZone({ children }: { children?: ReactNode }) {
   const [isDragging, setIsDragging] = useState(false);
   const { handleFileSelect } = useFileUpload();
 
@@ -106,7 +107,7 @@ export function UploadZone() {
         Supported formats: MP4, WebM, OGG, MOV, AVI, MKV (Max 1GB)
       </p>
 
-      <UrlInputZone />
+      {children}
     </div>
   );
 }
