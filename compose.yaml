@@ -17,6 +17,9 @@ services:
       NODE_ENV: production
       HOSTNAME: "0.0.0.0"
       PORT: "3443"
+      # HSTS는 기본 미발신(self-signed에 보내면 브라우저가 인증서 경고를 하드 차단).
+      # 실제 유효 인증서로 배포할 때만 활성화:
+      # ENABLE_HSTS: "true"
       # 선택 오버라이드:
       # TLS_CERT_PATH: /app/certificates/cert.pem
       # TLS_KEY_PATH: /app/certificates/key.pem

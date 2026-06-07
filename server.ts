@@ -31,9 +31,19 @@ const port = parseInt(process.env.PORT || String(defaultPort), 10);
 const app = next({ dev, hostname, port, turbopack: dev });
 const handle = app.getRequestHandler();
 
+// HSTS는 유효 인증서일 때만. self-signed에 보내면 브라우저가 인증서 경고를 하드 차단한다.
+// 런타임 토글(ENABLE_HSTS) — next.config는 빌드 타임이라 여기서 처리.
+const enableHsts = useHttps && process.env.ENABLE_HSTS === 'true';
+
 app.prepare().then(() => {
   const handler = async (req: any, res: any) => {
     try {
+      if (enableHsts && !String(req.url || '').startsWith('/api/')) {
+        res.setHeader(
+          'Strict-Transport-Security',
+          'max-age=31536000; includeSubDomains; preload'
+        );
+      }
       await handle(req, res, parse(req.url, true));
     } catch (err: any) {
       console.error('[Server] Error handling', req.url, err);
