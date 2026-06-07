@@ -24,6 +24,12 @@ const TARGET_PEAKS = 1000; // waveform resolution (buckets)
 const TIMEOUT_MS = 120000;
 const MAX_PCM_BYTES = 200 * 1024 * 1024; // safety cap (~3.4h at 8kHz s16le mono)
 
+/**
+ * 소스가 너무 길어 파형을 생략해야 함을 알리는 sentinel.
+ * GET 핸들러가 이를 받으면 502가 아닌 `200 {skipped:true}`로 graceful 반환한다.
+ */
+class WaveformTooLongError extends Error {}
+
 export async function GET(request: NextRequest) {
   const url = request.nextUrl.searchParams.get('url');
 
@@ -40,13 +46,24 @@ export async function GET(request: NextRequest) {
   const ffmpeg = getFfmpegPath();
 
   try {
-    const pcm = await extractPcm(ytdlp, ffmpeg, url);
+    const pcm = await extractPcm(ytdlp, ffmpeg, url, request.signal);
     const { peaks, duration } = computePeaks(pcm);
     return NextResponse.json(
       { peaks, duration },
       { headers: { 'cache-control': 'no-store' } }
     );
   } catch (error) {
+    // 너무 긴 소스: 에러가 아닌 graceful skip (클라가 "파형 생략" 안내)
+    if (error instanceof WaveformTooLongError) {
+      return NextResponse.json(
+        { skipped: true, reason: 'too_long' },
+        { headers: { 'cache-control': 'no-store' } }
+      );
+    }
+    // 클라이언트 abort: 이미 떠난 요청 → benign 응답
+    if (request.signal.aborted) {
+      return NextResponse.json({ skipped: true, reason: 'aborted' });
+    }
     const message = error instanceof Error ? error.message : '파형 추출 실패';
     console.error('[waveform] Error:', message);
     return NextResponse.json({ error: message }, { status: 502 });
@@ -56,7 +73,7 @@ export async function GET(request: NextRequest) {
 /**
  * Pipe yt-dlp audio → ffmpeg → raw mono s16le PCM, buffered into memory.
  */
-function extractPcm(ytdlp: string, ffmpeg: string, url: string): Promise<Buffer> {
+function extractPcm(ytdlp: string, ffmpeg: string, url: string, signal?: AbortSignal): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const dl = spawn(ytdlp, [
       '-f', 'worstaudio/bestaudio/best',
@@ -91,6 +108,7 @@ function extractPcm(ytdlp: string, ffmpeg: string, url: string): Promise<Buffer>
 
     const cleanup = () => {
       clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
       dl.kill('SIGKILL');
       ff.kill('SIGKILL');
     };
@@ -103,9 +121,17 @@ function extractPcm(ytdlp: string, ffmpeg: string, url: string): Promise<Buffer>
     const succeed = () => {
       if (settled) return;
       settled = true;
-      clearTimeout(timer);
+      cleanup();
       resolve(Buffer.concat(chunks, total));
     };
+
+    // 클라이언트 abort(예: 길이 게이트가 prefetch 중단) 시 자식 프로세스 즉시 kill
+    const onAbort = () => fail(new Error('파형 추출 중단됨'));
+    if (signal?.aborted) {
+      fail(new Error('파형 추출 중단됨'));
+      return;
+    }
+    signal?.addEventListener('abort', onAbort, { once: true });
 
     const timer = setTimeout(() => fail(new Error('파형 추출 시간 초과')), TIMEOUT_MS);
 
@@ -122,7 +148,7 @@ function extractPcm(ytdlp: string, ffmpeg: string, url: string): Promise<Buffer>
     ff.stdout.on('data', (chunk: Buffer) => {
       total += chunk.length;
       if (total > MAX_PCM_BYTES) {
-        fail(new Error('오디오가 너무 깁니다'));
+        fail(new WaveformTooLongError('오디오가 너무 깁니다'));
         return;
       }
       chunks.push(chunk);

@@ -129,8 +129,20 @@ export const APP_CONFIG = {
     /** 완료/실패 잡 TTL (ms) - 30분 후 자동 정리 */
     JOB_TTL_MS: 30 * 60 * 1000,
   },
+
+  /**
+   * 파형(waveform) 추출 관련 설정
+   */
+  WAVEFORM: {
+    /**
+     * 파형 추출 최대 길이 (초). 이 값을 넘는 소스는 파형을 생략한다.
+     * 긴 VOD(수시간)는 전체 오디오 추출이 메모리/시간 한도를 초과해 실패하고,
+     * 1000px 타임라인에 수시간 파형은 버킷당 십수 초라 시각적으로도 무의미하다.
+     */
+    MAX_DURATION_SEC: 60 * 60, // 1시간
+  },
 } as const;
 
 // 타입 안전성을 위한 개별 export
-export const { TIMELINE, URL_INPUT, PROCESS, EXPORT, PROGRESS, TIME, UI, PLAYBACK, POLLING, DOWNLOAD } =
+export const { TIMELINE, URL_INPUT, PROCESS, EXPORT, PROGRESS, TIME, UI, PLAYBACK, POLLING, DOWNLOAD, WAVEFORM } =
   APP_CONFIG;

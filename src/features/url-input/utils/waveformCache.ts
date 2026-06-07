@@ -7,9 +7,20 @@
  * 직전 URL 하나만 보관(새 prefetch 시 이전 엔트리 abort+제거)하므로 누수 없음.
  */
 
+import { WAVEFORM } from '@/constants/appConfig';
+
 export interface WaveformPeaks {
   peaks: number[][];
   duration: number;
+  /** 길이 초과 등으로 서버/클라가 파형을 생략한 경우 true */
+  skipped?: boolean;
+}
+
+/**
+ * 주어진 길이(초)가 파형 생략 임계값을 넘는지. 클라이언트 길이 게이트 + 테스트용 순수 함수.
+ */
+export function shouldSkipWaveform(durationSec: number): boolean {
+  return durationSec > WAVEFORM.MAX_DURATION_SEC;
 }
 
 interface Entry {
@@ -25,7 +36,12 @@ async function fetchWaveform(url: string, signal: AbortSignal): Promise<Waveform
   if (!res.ok) {
     throw new Error(`파형 추출 실패 (${res.status})`);
   }
-  return (await res.json()) as WaveformPeaks;
+  const data = (await res.json()) as WaveformPeaks;
+  // 서버가 길이 초과 등으로 생략한 경우: 빈 peaks + skipped 플래그
+  if (data.skipped) {
+    return { peaks: [[]], duration: 0, skipped: true };
+  }
+  return data;
 }
 
 /**
