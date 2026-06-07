@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useStore } from '@/stores/useStore';
 import { prefetchWaveform, clearWaveform } from '../utils/waveformCache';
-import { getYoutubeThumbnail } from '../utils/youtubeThumbnail';
+import { getYoutubeThumbnail } from '@/shared/lib/platformUrl';
 
 export interface UrlPreview {
   title: string | null;
