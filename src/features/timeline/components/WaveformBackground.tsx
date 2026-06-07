@@ -17,7 +17,7 @@ export function WaveformBackground() {
   const videoFile = useStore((state) => state.videoFile);
   const zoom = useStore((state) => state.timeline.zoom);
   const waveformProgress = useStore((state) => state.processing.waveformProgress);
-  const setWaveformProgress = useStore((state) => state.setWaveformProgress);
+  const setProgress = useStore((state) => state.setProgress);
 
   useEffect(() => {
     if (!videoFile) return;
@@ -55,7 +55,7 @@ export function WaveformBackground() {
 
       setIsLoading(true);
       setSkipped(false);
-      setWaveformProgress(0);
+      setProgress('waveform',0);
 
       try {
         // URL 소스: 영상 전체를 받지 않고 서버에서 오디오-only peaks만 가져온다.
@@ -74,7 +74,7 @@ export function WaveformBackground() {
             setSkipped(true);
             setHasAudio(false);
             setIsLoading(false);
-            setWaveformProgress(100);
+            setProgress('waveform',100);
             return;
           }
 
@@ -88,7 +88,7 @@ export function WaveformBackground() {
             if (cancelled) return;
             setHasAudio(false);
             setIsLoading(false);
-            setWaveformProgress(100);
+            setProgress('waveform',100);
             return;
           }
           if (cancelled) return;
@@ -98,7 +98,7 @@ export function WaveformBackground() {
             setSkipped(true);
             setHasAudio(false);
             setIsLoading(false);
-            setWaveformProgress(100);
+            setProgress('waveform',100);
             return;
           }
 
@@ -112,12 +112,12 @@ export function WaveformBackground() {
             console.warn('Waveform render error:', error);
             setHasAudio(false);
             setIsLoading(false);
-            setWaveformProgress(100);
+            setProgress('waveform',100);
           });
 
           setHasAudio(hasPeaks);
           setIsLoading(false);
-          setWaveformProgress(100);
+          setProgress('waveform',100);
           return;
         }
 
@@ -125,17 +125,17 @@ export function WaveformBackground() {
         const wavesurfer = createInstance();
         if (!wavesurfer) return;
 
-        wavesurfer.on('loading', (percent) => setWaveformProgress(percent));
+        wavesurfer.on('loading', (percent) => setProgress('waveform',percent));
         wavesurfer.on('ready', () => {
           setIsLoading(false);
-          setWaveformProgress(100);
+          setProgress('waveform',100);
           setHasAudio(true);
         });
         wavesurfer.on('error', (error) => {
           console.warn('Waveform error (possibly no audio):', error);
           setHasAudio(false);
           setIsLoading(false);
-          setWaveformProgress(100);
+          setProgress('waveform',100);
         });
 
         wavesurfer.load(videoFile.url);
@@ -158,7 +158,7 @@ export function WaveformBackground() {
         wavesurferRef.current = null;
       }
     };
-  }, [videoFile, setWaveformProgress]);
+  }, [videoFile, setProgress]);
 
   // Handle zoom changes with 100ms debounce for smoother experience
   useEffect(() => {

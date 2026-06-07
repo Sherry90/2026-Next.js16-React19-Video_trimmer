@@ -7,7 +7,7 @@ export function useFileUpload() {
   const setVideoFile = useStore((state) => state.setVideoFile);
   const setPhase = useStore((state) => state.setPhase);
   const setErrorAndTransition = useStore((state) => state.setErrorAndTransition);
-  const setUploadProgress = useStore((state) => state.setUploadProgress);
+  const setProgress = useStore((state) => state.setProgress);
 
   const handleFileSelect = useCallback(
     async (file: File) => {
@@ -29,7 +29,7 @@ export function useFileUpload() {
 
       // 업로드 시작
       setPhase('uploading');
-      setUploadProgress(0);
+      setProgress('upload', 0);
 
       try {
         // 파일 URL 생성 (즉시 완료)
@@ -47,7 +47,7 @@ export function useFileUpload() {
         };
 
         setVideoFile(videoFile);
-        setUploadProgress(100);
+        setProgress('upload', 100);
 
         // 편집 단계로 전환 (FFmpeg 불필요)
         setPhase('editing');
@@ -56,7 +56,7 @@ export function useFileUpload() {
         setErrorAndTransition(errorMessage, 'UPLOAD_ERROR');
       }
     },
-    [setVideoFile, setPhase, setErrorAndTransition, setUploadProgress]
+    [setVideoFile, setPhase, setErrorAndTransition, setProgress]
   );
 
   return {

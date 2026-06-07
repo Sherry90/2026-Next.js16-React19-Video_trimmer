@@ -60,10 +60,8 @@ interface StoreActions {
   setZoom: (zoom: number) => void;
   resetTimeline: () => void;
 
-  // 진행률 관련
-  setUploadProgress: (progress: number) => void;
-  setTrimProgress: (progress: number) => void;
-  setWaveformProgress: (progress: number) => void;
+  // 진행률 관련 (type별 단일 setter)
+  setProgress: (type: 'upload' | 'trim' | 'waveform', progress: number) => void;
   setDownloadPhase: (phase: 'downloading' | 'processing' | 'completed' | null, message?: string) => void;
   setActiveDownloadJobId: (jobId: string | null) => void;
 
@@ -218,19 +216,9 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
   },
 
   // 진행률 관련
-  setUploadProgress: (progress) =>
+  setProgress: (type, progress) =>
     set((state) => ({
-      processing: { ...state.processing, uploadProgress: progress },
-    })),
-
-  setTrimProgress: (progress) =>
-    set((state) => ({
-      processing: { ...state.processing, trimProgress: progress },
-    })),
-
-  setWaveformProgress: (progress) =>
-    set((state) => ({
-      processing: { ...state.processing, waveformProgress: progress },
+      processing: { ...state.processing, [`${type}Progress`]: progress },
     })),
 
   setDownloadPhase: (phase, message) =>

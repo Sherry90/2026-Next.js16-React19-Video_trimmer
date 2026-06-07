@@ -67,7 +67,7 @@ function connect(jobId: string) {
 
       if (data.type === 'progress') {
         const s = actions();
-        s.setTrimProgress(calculateOverallProgress(data.phase, data.progress));
+        s.setProgress('trim', calculateOverallProgress(data.phase, data.progress));
         s.setDownloadPhase(data.phase, getPhaseMessage(data.phase, data.processedSeconds, data.totalSeconds));
       } else if (data.type === 'complete') {
         closeStream();
@@ -112,7 +112,7 @@ export async function startStreamDownload(): Promise<void> {
     return;
   }
 
-  state.setTrimProgress(0);
+  state.setProgress('trim', 0);
   state.setDownloadPhase(null);
 
   const startResponse = await fetch('/api/download/start', {

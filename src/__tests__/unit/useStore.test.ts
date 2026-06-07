@@ -206,20 +206,17 @@ describe('useStore', () => {
 
   describe('Progress management', () => {
     it('should set upload progress', () => {
-      const { setUploadProgress } = useStore.getState();
-      setUploadProgress(50);
+      useStore.getState().setProgress('upload', 50);
       expect(useStore.getState().processing.uploadProgress).toBe(50);
     });
 
     it('should set trim progress', () => {
-      const { setTrimProgress } = useStore.getState();
-      setTrimProgress(30);
+      useStore.getState().setProgress('trim', 30);
       expect(useStore.getState().processing.trimProgress).toBe(30);
     });
 
     it('should set waveform progress', () => {
-      const { setWaveformProgress } = useStore.getState();
-      setWaveformProgress(60);
+      useStore.getState().setProgress('waveform', 60);
       expect(useStore.getState().processing.waveformProgress).toBe(60);
     });
   });
