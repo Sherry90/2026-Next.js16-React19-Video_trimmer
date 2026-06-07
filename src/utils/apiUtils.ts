@@ -87,6 +87,23 @@ export function createValidationError(message: string): NextResponse {
 }
 
 /**
+ * startTime/endTime 시간 범위 검증 (trim·download 공통)
+ * @returns 에러 응답 형태 또는 null(통과)
+ */
+function validateTimeRange(
+  startTime: unknown,
+  endTime: unknown
+): { valid: false; error: string; status: number } | null {
+  if (typeof startTime !== 'number' || startTime < 0) {
+    return { valid: false, error: '유효하지 않은 시작 시간입니다', status: 400 };
+  }
+  if (typeof endTime !== 'number' || endTime <= startTime) {
+    return { valid: false, error: '종료 시간은 시작 시간보다 커야 합니다', status: 400 };
+  }
+  return null;
+}
+
+/**
  * Trim 요청 파라미터
  */
 export interface TrimRequestParams {
@@ -110,19 +127,15 @@ export function validateTrimRequest(
   if (!originalUrl || typeof originalUrl !== 'string' || !originalUrl.trim()) {
     return { valid: false, error: '유효하지 않은 URL입니다', status: 400 };
   }
-  if (typeof startTime !== 'number' || startTime < 0) {
-    return { valid: false, error: '유효하지 않은 시작 시간입니다', status: 400 };
-  }
-  if (typeof endTime !== 'number' || endTime <= startTime) {
-    return { valid: false, error: '종료 시간은 시작 시간보다 커야 합니다', status: 400 };
-  }
+  const timeError = validateTimeRange(startTime, endTime);
+  if (timeError) return timeError;
 
   return {
     valid: true,
     data: {
       originalUrl: originalUrl.trim(),
-      startTime,
-      endTime,
+      startTime: startTime as number,
+      endTime: endTime as number,
       filename: typeof filename === 'string' ? filename : undefined,
     },
   };
@@ -153,12 +166,8 @@ export function validateDownloadRequest(
   if (!url || typeof url !== 'string' || !url.trim()) {
     return { valid: false, error: '유효하지 않은 URL입니다', status: 400 };
   }
-  if (typeof startTime !== 'number' || startTime < 0) {
-    return { valid: false, error: '유효하지 않은 시작 시간입니다', status: 400 };
-  }
-  if (typeof endTime !== 'number' || endTime <= startTime) {
-    return { valid: false, error: '종료 시간은 시작 시간보다 커야 합니다', status: 400 };
-  }
+  const timeError = validateTimeRange(startTime, endTime);
+  if (timeError) return timeError;
   if (!filename || typeof filename !== 'string') {
     return { valid: false, error: '파일명이 필요합니다', status: 400 };
   }
@@ -167,8 +176,8 @@ export function validateDownloadRequest(
     valid: true,
     data: {
       url: url.trim(),
-      startTime,
-      endTime,
+      startTime: startTime as number,
+      endTime: endTime as number,
       filename,
       tbr: typeof tbr === 'number' ? tbr : undefined,
     },
