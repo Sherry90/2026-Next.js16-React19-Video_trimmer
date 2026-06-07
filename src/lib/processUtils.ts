@@ -1,19 +1,6 @@
 import { ChildProcess } from 'child_process';
 
 /**
- * 프로세스를 안전하게 종료
- */
-export function killProcess(proc: ChildProcess): void {
-  try {
-    if (proc.pid && !proc.killed) {
-      proc.kill('SIGTERM');
-    }
-  } catch {
-    /* ignore */
-  }
-}
-
-/**
  * 타임아웃이 있는 프로세스 실행 옵션
  */
 export interface ProcessTimeoutOptions {
