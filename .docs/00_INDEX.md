@@ -46,4 +46,4 @@ FFmpeg, yt-dlp, Streamlink 세 외부 바이너리의 역할, 번들 방식, 경
 - `README.md` — 프로젝트 개요, 설치, 사용법
 - `CLAUDE.md` — Claude Code 작업 가이드 (Quick Reference)
 - `scripts/README.md` — 스크립트 문서
-- `src/lib/README.md`, `src/utils/README.md` — 디렉터리별 코드 설명
+- `src/lib/README.md` — 서버 유틸 디렉터리 설명

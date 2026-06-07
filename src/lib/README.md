@@ -5,11 +5,17 @@
 ## 파일 목록
 
 ### 바이너리 관리
-- **binPaths.ts** - FFmpeg, yt-dlp, Streamlink 바이너리 경로 해석 (번들 > 시스템 우선순위)
+- **binPaths.ts** - FFmpeg, yt-dlp, Streamlink 바이너리 경로 해석
+  (yt-dlp: venv > 시스템 > 번들 onefile / ffmpeg·streamlink: 번들 > 시스템)
 
 ### 프로세스 관리
-- **processUtils.ts** - child_process 타임아웃 실행/종료 처리
-- **progressParser.ts** - 진행률 파싱 (Streamlink 세그먼트 기반, FFmpeg `-progress` 출력)
+- **processUtils.ts** - child_process 타임아웃 실행 처리 (`runWithTimeout`)
+- **progressParser.ts** - 진행률 파싱 (`FFmpegProgressTracker`, `YtdlpProgressParser`).
+  Streamlink 진행률은 파일 크기 폴링으로 처리(streamlinkDownloader)라 전용 파서 없음
+
+### API 헬퍼
+- **apiUtils.ts** - 요청 검증(`validateTrimRequest`/`validateDownloadRequest`,
+  공통 `validateTimeRange`), yt-dlp 에러 파싱, 표준 에러 응답
 
 ### 다운로드 (플랫폼 전략)
 - **downloadJob.ts** - SSE 다운로드 Job 오케스트레이터 (플랫폼 감지 → 전략 선택, Job 레지스트리/스트림)
@@ -31,7 +37,7 @@
 ⚠️ **클라이언트 코드에서 import 금지**
 
 이 디렉토리의 코드는 Node.js API를 사용하므로 브라우저에서 실행할 수 없습니다.
-클라이언트에서 사용할 유틸리티는 `/src/utils`에 위치시키세요.
+클라이언트/공유 순수 유틸리티는 `/src/shared/lib`에 위치시키세요 (`/src/utils`는 제거됨).
 
 ## 사용 예시
 
