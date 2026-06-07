@@ -1,7 +1,7 @@
 'use client';
 
 import { useStore } from '@/stores/useStore';
-import { formatTime } from '@/utils/timeFormatter';
+import { formatTime } from '@/shared/lib/timeFormatter';
 
 export function TimeDisplay() {
   const playhead = useStore((state) => state.timeline.playhead);

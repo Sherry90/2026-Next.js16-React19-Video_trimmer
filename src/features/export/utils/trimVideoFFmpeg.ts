@@ -1,8 +1,8 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { toBlobURL, fetchFile } from '@ffmpeg/util';
-import { checkMemoryAvailability } from '@/utils/memoryMonitor';
-import { parseFFmpegError } from '@/utils/errorHandler';
-import { parseFFmpegProgress, calculateProgress } from '@/utils/ffmpegLogParser';
+import { checkMemoryAvailability } from '@/shared/lib/memoryMonitor';
+import { parseFFmpegError } from '@/shared/lib/errorHandler';
+import { parseFFmpegProgress, calculateProgress } from '@/shared/lib/ffmpegLogParser';
 
 export interface TrimOptions {
   ffmpeg: FFmpeg;

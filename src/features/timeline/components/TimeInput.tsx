@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useId } from 'react';
-import { formatTime, parseFlexibleTime } from '@/utils/timeFormatter';
+import { formatTime, parseFlexibleTime } from '@/shared/lib/timeFormatter';
 
 interface TimeInputProps {
   label: string;

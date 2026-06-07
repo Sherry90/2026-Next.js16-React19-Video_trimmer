@@ -1,4 +1,4 @@
-import { toPercentage } from '@/utils/mathUtils';
+import { toPercentage } from '@/shared/lib/mathUtils';
 
 function calculateProgress(processedSeconds: number, totalDuration: number): number {
   return toPercentage(processedSeconds, totalDuration);

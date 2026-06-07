@@ -15,7 +15,7 @@ import { getFfmpegPath, getStreamlinkPath } from './binPaths';
 import { safeUnlink, ensureFileComplete, DownloadProgressTracker, type Job, type EventEmitter } from './downloadTypes';
 import { runWithTimeout } from './processUtils';
 import { PROCESS, EXPORT, POLLING, DOWNLOAD } from '@/constants/appConfig';
-import { formatTime } from '@/utils/timeFormatter';
+import { formatTime } from '@/shared/lib/timeFormatter';
 
 /**
  * Streamlink 기반 다운로드 실행

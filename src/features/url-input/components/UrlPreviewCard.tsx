@@ -1,6 +1,6 @@
 'use client';
 
-import { formatDuration } from '@/utils/timeFormatter';
+import { formatDuration } from '@/shared/lib/timeFormatter';
 
 interface UrlPreviewCardProps {
   title: string;

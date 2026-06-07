@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { getYtdlpPath, getFfmpegPath } from '@/lib/binPaths';
-import { parseYtdlpError } from '@/utils/apiUtils';
+import { parseYtdlpError } from '@/lib/apiUtils';
 import { selectBestFormat } from '@/lib/formatSelector';
 import { toProcessError } from '@/types/process';
 

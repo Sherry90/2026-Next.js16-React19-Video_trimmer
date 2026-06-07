@@ -6,7 +6,7 @@ import {
 import {
   checkMemoryAvailability,
   getMemoryStatusMessage,
-} from '@/utils/memoryMonitor';
+} from '@/shared/lib/memoryMonitor';
 
 export interface FileValidationResult {
   isValid: boolean;

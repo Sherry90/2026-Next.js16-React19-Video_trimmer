@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { clamp, toPercentage } from '@/utils/mathUtils';
+import { clamp, toPercentage } from '@/shared/lib/mathUtils';
 
 describe('mathUtils', () => {
   it('clamp should constrain value to range', () => {
