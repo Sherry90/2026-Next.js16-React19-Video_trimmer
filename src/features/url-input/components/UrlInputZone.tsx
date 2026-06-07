@@ -7,7 +7,7 @@ import { URL_INPUT } from '@/constants/appConfig';
 export function UrlInputZone() {
   const [url, setUrl] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-  const { isLoading, error, handleUrlSubmit, clearError } = useUrlInput();
+  const { isLoading, error, preview, handleUrlSubmit, clearError, clearPreview } = useUrlInput();
 
   const handleSubmit = useCallback(() => {
     if (url.trim() && !isLoading) {
@@ -67,6 +67,7 @@ export function UrlInputZone() {
           onChange={(e) => {
             setUrl(e.target.value);
             if (error) clearError();
+            if (preview) clearPreview();
           }}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
@@ -84,6 +85,26 @@ export function UrlInputZone() {
           {isLoading ? 'Loading...' : 'Load'}
         </button>
       </div>
+
+      {/* Instant Preview (oembed/thumbnail) — resolve가 도는 동안 즉시 영상 정보 표시 */}
+      {isLoading && preview?.thumbnail && (
+        <div
+          className="mt-3 flex gap-3 items-center rounded-sm overflow-hidden bg-[#1a1a1e] border border-white/10 p-2"
+          data-testid="url-preview"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={preview.thumbnail}
+            alt={preview.title ?? 'preview'}
+            className="w-24 aspect-video object-cover rounded-sm bg-black shrink-0"
+          />
+          <p className="text-[12px] text-[#d9dce3] line-clamp-2">
+            {preview.title ?? (
+              <span className="text-[#74808c] animate-pulse">제목 불러오는 중…</span>
+            )}
+          </p>
+        </div>
+      )}
 
       {/* Loading State */}
       {isLoading && (
