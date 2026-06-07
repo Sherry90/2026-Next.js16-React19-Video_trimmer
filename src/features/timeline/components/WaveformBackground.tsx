@@ -4,13 +4,15 @@ import { useEffect, useRef, useState } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import { useStore } from '@/stores/useStore';
 import { UI } from '@/constants/appConfig';
-import { getWaveform } from '@/features/url-input/utils/waveformCache';
+import { getWaveform, clearWaveform, shouldSkipWaveform } from '@/features/url-input/utils/waveformCache';
 
 export function WaveformBackground() {
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
   const [hasAudio, setHasAudio] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  // 길이 초과로 파형을 생략한 상태 (no-audio와 구분된 안내 표시)
+  const [skipped, setSkipped] = useState<boolean>(false);
 
   const videoFile = useStore((state) => state.videoFile);
   const zoom = useStore((state) => state.timeline.zoom);
@@ -52,6 +54,7 @@ export function WaveformBackground() {
       if (!waveformRef.current) return;
 
       setIsLoading(true);
+      setSkipped(false);
       setWaveformProgress(0);
 
       try {
@@ -64,11 +67,23 @@ export function WaveformBackground() {
             return;
           }
 
+          // 길이 게이트: 너무 긴 소스는 파형 생략(전체 오디오 추출이 메모리/시간 한도 초과).
+          // 진행 중인 prefetch 추출도 중단해 서버 낭비를 끊는다.
+          if (shouldSkipWaveform(videoFile.duration)) {
+            clearWaveform(target);
+            setSkipped(true);
+            setHasAudio(false);
+            setIsLoading(false);
+            setWaveformProgress(100);
+            return;
+          }
+
           // URL 입력 시 prefetch된 캐시 Promise 소비 (재요청 없음, 진입~표시 공백 제거)
           let peaks: number[][];
           let duration: number;
+          let serverSkipped: boolean | undefined;
           try {
-            ({ peaks, duration } = await getWaveform(target));
+            ({ peaks, duration, skipped: serverSkipped } = await getWaveform(target));
           } catch {
             if (cancelled) return;
             setHasAudio(false);
@@ -77,6 +92,15 @@ export function WaveformBackground() {
             return;
           }
           if (cancelled) return;
+
+          // 서버가 길이 초과 등으로 생략한 경우도 동일 안내
+          if (serverSkipped) {
+            setSkipped(true);
+            setHasAudio(false);
+            setIsLoading(false);
+            setWaveformProgress(100);
+            return;
+          }
 
           const hasPeaks = Array.isArray(peaks) && peaks[0]?.length > 0;
 
@@ -166,10 +190,12 @@ export function WaveformBackground() {
         </div>
       )}
 
-      {/* No audio overlay */}
+      {/* No audio / skipped overlay */}
       {!isLoading && !hasAudio && (
         <div className="absolute inset-0 flex items-center justify-center bg-[#1c1d20] z-10">
-          <div className="text-xs text-[#74808c]">No audio track</div>
+          <div className="text-xs text-[#74808c]">
+            {skipped ? '영상이 길어 파형을 생략했습니다' : 'No audio track'}
+          </div>
         </div>
       )}
     </div>
