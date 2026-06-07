@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import { useStore } from '@/stores/useStore';
 import { UI } from '@/constants/appConfig';
-import { getWaveform, clearWaveform, shouldSkipWaveform } from '@/features/url-input/utils/waveformCache';
+import { getWaveform, clearWaveform, shouldSkipWaveform } from '@/shared/lib/waveformCache';
 
 export function WaveformBackground() {
   const waveformRef = useRef<HTMLDivElement>(null);
