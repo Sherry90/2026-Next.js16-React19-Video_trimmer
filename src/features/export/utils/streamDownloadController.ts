@@ -1,6 +1,7 @@
 import { useStore } from '@/stores/useStore';
 import type { SSEEvent, DownloadRequest, DownloadJobResponse } from '@/types/sse';
 import { calculateOverallProgress, getPhaseMessage } from './sseProgressUtils';
+import { generateTrimFilename } from './generateFilename';
 
 /**
  * URL 구간 다운로드 컨트롤러 (모듈 싱글톤, React 생명주기와 독립).
@@ -40,8 +41,13 @@ function fail(message: string) {
 function complete(jobId: string) {
   const s = actions();
   const { videoFile, timeline } = s;
-  const baseName = videoFile?.name?.replace(/\.[^.]+$/, '') || 'video';
-  const filename = `${baseName}(${Math.round(timeline.inPoint)}s-${Math.round(timeline.outPoint)}s).mp4`;
+  // URL 소스의 name은 항상 "${title}.mp4" → generateTrimFilename이 .mp4 보존.
+  // 파일 소스 트림과 동일한 MMmSSs 포맷으로 통일.
+  const filename = generateTrimFilename(
+    videoFile?.name || 'video.mp4',
+    timeline.inPoint,
+    timeline.outPoint
+  );
 
   // blob 적재 없음: 완료 파일은 서버에서 디스크로 직행 스트리밍된다.
   // outputUrl = API URL (jobId 내장 → reset 시 정리에 사용).
@@ -129,10 +135,4 @@ export async function startStreamDownload(): Promise<void> {
   const { jobId }: DownloadJobResponse = await startResponse.json();
   state.setActiveDownloadJobId(jobId);
   connect(jobId);
-}
-
-/** HMR/재마운트 시 진행 중 job에 재연결 */
-export function reconnectStreamDownload() {
-  const jobId = useStore.getState().processing.activeDownloadJobId;
-  if (jobId && !eventSource) connect(jobId);
 }

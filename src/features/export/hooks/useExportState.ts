@@ -4,7 +4,7 @@ import { useCommonActions, useProgressActions } from '@/stores/selectors';
 import { trimVideo } from '@/features/export/utils/trimVideoDispatcher';
 import { generateTrimFilename } from '@/features/export/utils/generateFilename';
 import { requiresFFmpegDownload } from '@/features/export/utils/formatDetector';
-import { startStreamDownload } from '@/shared/lib/streamDownloadController';
+import { startStreamDownload } from '@/features/export/utils/streamDownloadController';
 import { useFFmpegLoader } from './useFFmpegLoader';
 import type { VideoFile } from '@/types/store';
 
