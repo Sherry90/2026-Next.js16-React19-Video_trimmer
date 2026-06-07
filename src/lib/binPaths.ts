@@ -37,29 +37,47 @@ export function getFfmpegPath(): string {
 
 /**
  * Get yt-dlp binary path
- * Priority: bundled .bin/ > system
+ * Priority: venv (pip) > system > bundled onefile binary
+ *
+ * 순서가 성능에 직결된다. PyInstaller onefile 바이너리(`.bin/yt-dlp`)는 매 호출마다
+ * Python 런타임을 self-extract → macOS에서 startup ~9초. venv/system yt-dlp는 Python
+ * 모듈이라 startup ~0.1초. 따라서 venv·system을 우선하고 onefile은 최후 fallback.
  */
 export function getYtdlpPath(): string {
   if (_ytdlpPath) return _ytdlpPath;
 
-  // 1. Bundled binary in .bin/
-  const binName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
-  const bundled = join(process.cwd(), '.bin', binName);
-  if (existsSync(bundled)) {
-    _ytdlpPath = bundled;
-    return bundled;
+  const isWin = process.platform === 'win32';
+  const root = process.cwd();
+
+  // 1. venv-installed yt-dlp (fast startup, setup-deps가 생성)
+  const venvBin = isWin
+    ? join(root, '.bin', 'yt-dlp-venv', 'Scripts', 'yt-dlp.exe')
+    : join(root, '.bin', 'yt-dlp-venv', 'bin', 'yt-dlp');
+  if (existsSync(venvBin)) {
+    _ytdlpPath = venvBin;
+    return venvBin;
   }
 
-  // 2. System fallback
+  // 2. System yt-dlp (예: Docker `pip install yt-dlp`) — 역시 모듈이라 빠름
   try {
     execFileSync('which', ['yt-dlp'], { stdio: 'ignore' });
     _ytdlpPath = 'yt-dlp';
     return 'yt-dlp';
   } catch {
-    // Not found — return literal so ENOENT triggers the user-facing error
-    _ytdlpPath = 'yt-dlp';
-    return 'yt-dlp';
+    // not found — 다음 단계로
   }
+
+  // 3. Bundled onefile 바이너리 (startup 느림, 최후 fallback)
+  const binName = isWin ? 'yt-dlp.exe' : 'yt-dlp';
+  const bundled = join(root, '.bin', binName);
+  if (existsSync(bundled)) {
+    _ytdlpPath = bundled;
+    return bundled;
+  }
+
+  // 4. Not found — return literal so ENOENT triggers the user-facing error
+  _ytdlpPath = 'yt-dlp';
+  return 'yt-dlp';
 }
 
 /**
