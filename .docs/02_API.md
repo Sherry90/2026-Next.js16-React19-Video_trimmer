@@ -245,7 +245,7 @@ Content-Disposition: attachment; filename*=UTF-8''video.mp4
 
 ## 공통 에러 처리
 
-**파일:** `src/utils/apiUtils.ts`
+**파일:** `src/lib/apiUtils.ts`
 
 **`parseYtdlpError(error)`** — yt-dlp 에러를 사용자 메시지 + HTTP status로 변환:
 - `ENOENT` → 500 "yt-dlp를 찾을 수 없습니다"

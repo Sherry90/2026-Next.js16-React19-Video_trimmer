@@ -196,9 +196,9 @@ const ffmpegArgs = [
    - Phase별 진행률 계산
 
 4. **Progress Parsing**
-   - `src/lib/progressParser.ts` - Streamlink/FFmpeg stdout 파싱
+   - `src/lib/progressParser.ts` - FFmpeg/yt-dlp stdout 파싱
    - 정규식 패턴 매칭
-   - `src/features/url-input/utils/sseProgressUtils.ts` - 클라이언트 가중치 계산
+   - `src/features/export/utils/sseProgressUtils.ts` - 클라이언트 가중치 계산
 
 **실습 과제**:
 ```typescript
@@ -368,8 +368,7 @@ src/
 │   │   └── utils/           validateFile
 │   ├── url-input/           # 스트리밍 에디터 입력
 │   │   ├── components/      UrlInputZone
-│   │   ├── hooks/           useUrlInput
-│   │   └── utils/           sseProgressUtils, waveformCache, streamDownloadController
+│   │   └── hooks/           useUrlInput
 │   ├── player/
 │   │   ├── components/      VideoPlayerView   (player 인스턴스를 context로 노출)
 │   │   └── context/         VideoPlayerContext
@@ -382,14 +381,21 @@ src/
 │       ├── components/      ExportButton, ExportProgress, DownloadButton, ErrorDisplay
 │       ├── hooks/           useExportState, useFFmpegLoader
 │       └── utils/           trimVideoDispatcher, trimVideoMP4Box, trimVideoFFmpeg,
-│                            trimVideoServer, FFmpegSingleton, formatDetector, generateFilename
+│                            trimVideoServer, FFmpegSingleton, formatDetector, generateFilename,
+│                            streamDownloadController, sseProgressUtils
 │
 ├── widgets/
 │   └── EditingSection.tsx   # VideoPlayerView + TimelineEditor + 키보드 단축키 합성
 │
 └── shared/
-    └── ui/ProgressBar.tsx   # 재사용 UI 프리미티브
+    ├── ui/ProgressBar.tsx   # 재사용 UI 프리미티브
+    └── lib/                 # 클라이언트 공유 순수 유틸 (상위 레이어 미참조 leaf)
+                             waveformCache, platformUrl, timeFormatter, mathUtils,
+                             stringUtils, formatBytes, errorHandler, ffmpegLogParser, memoryMonitor
 ```
+
+> 서버 전용 유틸은 `src/lib/`(예: downloadJob, downloaders, binPaths, apiUtils), API 라우트는
+> `src/app/api/`에 둔다. `src/utils`는 제거되어 client(`shared/lib`) / server(`lib`) 2버킷으로 정리됨.
 
 **장점**:
 1. **모듈성**: 각 feature는 독립적으로 개발/테스트 가능
@@ -800,7 +806,7 @@ export async function GET(request: Request) {
 **SSE 클라이언트 구현**:
 
 ```typescript
-// src/features/url-input/utils/streamDownloadController.ts (모듈 싱글톤 — React 생명주기 독립)
+// src/features/export/utils/streamDownloadController.ts (모듈 싱글톤 — React 생명주기 독립)
 const eventSource = new EventSource(`/api/download/stream/${jobId}`);
 
 eventSource.onmessage = (event) => {

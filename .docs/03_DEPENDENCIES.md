@@ -28,7 +28,7 @@ Video Trimmer
 │   ├── 번들: @ffmpeg/core v0.12.6 → public/ffmpeg/ (자체 호스팅)
 │   └── 용도: 비-MP4 파일 브라우저 내 트리밍
 ├── yt-dlp (필수)
-│   ├── 번들: .bin/yt-dlp (auto-download)
+│   ├── 번들: 번들 Python venv(.bin/yt-dlp-venv)에 pip 설치 (onefile은 fallback)
 │   └── 용도: URL 메타데이터 추출, YouTube/Generic 구간 다운로드
 └── Streamlink (필수)
     ├── 번들: .bin/streamlink (auto-download)
@@ -42,8 +42,8 @@ Video Trimmer
 | 바이너리 | 우선순위 |
 |---------|----------|
 | FFmpeg | 번들 (`@ffmpeg-installer`) → 시스템 (`ffmpeg`) |
-| yt-dlp | 번들 (`.bin/yt-dlp`) → 시스템 (`yt-dlp`) |
-| Streamlink | 번들 (`.bin/streamlink`) → 시스템 (`streamlink`) |
+| yt-dlp | venv (`.bin/yt-dlp-venv`) → 시스템 (`yt-dlp`) → 번들 onefile (`.bin/yt-dlp`) |
+| Streamlink | 번들 (`.bin/streamlink*`) → 시스템 (`streamlink`) |
 
 ### Next.js 빌드 설정
 
@@ -176,13 +176,14 @@ YouTube, Twitch 등 다양한 플랫폼에서 비디오 정보와 스트리밍 U
 
 ### 번들 방식
 
-**자동 다운로드:**
+**자동 설치(우선):**
 - **트리거:** `npm postinstall` → `scripts/setup-deps.mjs`
-- **다운로드 위치:** `.bin/yt-dlp`(`.exe`) (Git 무시됨)
-- **소스:** GitHub Releases에서 **고정 버전(pinned)** 바이너리를 직접 다운로드
-- **플랫폼:** Linux, macOS, Windows
+- **방식:** 프로젝트 번들 Python(.bin/python, 고정 CPython)으로 venv 생성 후 `pip install yt-dlp`
+  (`.bin/yt-dlp-venv`, Git 무시됨). 시스템 Python 미사용 → 환경 간 버전 통일.
+- **버전:** unpinned(최신) — yt-dlp는 YouTube 변경으로 자주 깨지므로 (Dockerfile과 동일 정책)
+- **이유:** 모듈 실행이라 startup ~0.1초 (onefile 바이너리는 매 호출 self-extract로 macOS ~9초)
 
-**Fallback:** 시스템 PATH의 `yt-dlp`
+**Fallback:** 시스템 `yt-dlp` → GitHub Releases 고정 버전 onefile 바이너리(`.bin/yt-dlp`).
 
 ### 포맷 선택 로직
 
@@ -252,9 +253,9 @@ yt-dlp는 1000+ 사이트를 지원합니다:
 | Windows | streamlink.exe | streamlink/windows-builds (portable .zip) |
 | Linux x64 | streamlink-linux-x64.AppImage | streamlink/streamlink-appimage |
 | Linux ARM64 | streamlink-linux-arm64.AppImage | streamlink/streamlink-appimage |
-| macOS | .bin/streamlink-venv/bin/streamlink | Python venv (`pip install streamlink`) |
+| macOS | .bin/streamlink-venv/bin/streamlink | 번들 Python venv (`pip install streamlink`) |
 
-**macOS 설치 방식:** 공식 portable binary 미제공. Python 3 가상환경에 자동 설치 (`npm install` 시 자동 실행). Python 3이 없을 경우 graceful fallback (경고만 출력).
+**macOS 설치 방식:** 공식 portable binary 미제공. 프로젝트 번들 Python(.bin/python, yt-dlp와 동일한 고정 CPython)으로 venv 생성 후 자동 설치 (`npm install` 시). 시스템 Python 불요. 번들 Python 확보 실패 시 graceful fallback (경고만 출력).
 
 ### 주요 사용 사례
 
@@ -293,13 +294,20 @@ Docker 등 FUSE가 없는 환경에서 자동 처리됨.
 **파일:** `src/lib/progressParser.ts`
 
 ```typescript
-class StreamlinkProgressParser {
+class FFmpegProgressTracker {
+  pushChunk(chunk: Buffer | string): number {
+    // ffmpeg -progress 출력(out_time_ms/out_time/progress=end) 파싱 → 0~100
+  }
+}
+
+class YtdlpProgressParser {
   parseLine(line: string): number | null {
-    // "Segment 42 complete" 파싱
-    // 세그먼트 개수 기반 진행률 계산
+    // "[download] 45.2% of ..." 파싱 (단조 증가 보장)
   }
 }
 ```
+
+> Streamlink 진행률은 파일 크기 폴링으로 처리(`streamlinkDownloader.ts`)하므로 전용 파서 클래스 없음.
 
 ---
 
@@ -326,21 +334,24 @@ export function getFfmpegPath(): string {
 
 ### getYtdlpPath()
 
+우선순위: **venv(pip) > system > 번들 onefile**. onefile은 매 호출 self-extract로 startup 느림
+(macOS ~9초), venv/system은 Python 모듈이라 ~0.1초 → venv·system 우선, onefile은 최후 fallback.
+
 ```typescript
 export function getYtdlpPath(): string {
-  // 1. 번들 yt-dlp (.bin/)
-  const binName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
-  const bundled = join(process.cwd(), '.bin', binName);
-  if (existsSync(bundled)) {
-    return bundled;
-  }
-  // 2. 시스템 yt-dlp (없으면 'yt-dlp' 리터럴 반환 → ENOENT로 사용자 에러 유도)
-  try {
-    execFileSync('which', ['yt-dlp'], { stdio: 'ignore' });
-    return 'yt-dlp';
-  } catch {
-    return 'yt-dlp';
-  }
+  // 1. venv-installed yt-dlp (.bin/yt-dlp-venv) — startup 빠름
+  const venvBin = /* .bin/yt-dlp-venv/{bin|Scripts}/yt-dlp */;
+  if (existsSync(venvBin)) return venvBin;
+
+  // 2. 시스템 yt-dlp (예: Docker pip install) — 역시 모듈이라 빠름
+  try { execFileSync('which', ['yt-dlp'], { stdio: 'ignore' }); return 'yt-dlp'; } catch {}
+
+  // 3. 번들 onefile (.bin/yt-dlp) — startup 느림, 최후 fallback
+  const bundled = join(process.cwd(), '.bin', process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp');
+  if (existsSync(bundled)) return bundled;
+
+  // 4. 미설치 — 'yt-dlp' 리터럴 반환 → ENOENT로 사용자 에러 유도
+  return 'yt-dlp';
 }
 ```
 
@@ -410,9 +421,11 @@ postinstall 훅 실행
   ↓
 ┌─────────────────────────────────────┐
 │ 2. setupYtDlp()                     │
-│    - .bin/yt-dlp 확인                │
-│    - 없으면 GitHub 릴리스(고정 버전) │
-│      에서 직접 다운로드              │
+│    - 시스템 yt-dlp 확인              │
+│    - 번들 Python venv에 pip 설치     │
+│      (.bin/python = 고정 CPython,    │
+│       시스템 Python 미사용)          │
+│    - 실패 시 onefile 바이너리 fallback│
 └─────────────────────────────────────┘
   ↓
 ┌─────────────────────────────────────┐
@@ -421,7 +434,7 @@ postinstall 훅 실행
 │    - .bin/streamlink-* 확인          │
 │    - 없으면 플랫폼별 다운로드        │
 │      Win/Linux: 공식 바이너리        │
-│      macOS: Python venv (pip install)│
+│      macOS: 번들 Python venv(pip)    │
 └─────────────────────────────────────┘
   ↓
 ┌─────────────────────────────────────┐
@@ -492,16 +505,17 @@ else if (platform === 'linux') {
 
 ```javascript
 else if (platform === 'darwin') {
-  // macOS: Python 3 가상환경에 streamlink 설치 (macOS 12.3+ 기본 내장)
+  // macOS: 프로젝트 번들 Python으로 venv 생성 (yt-dlp와 동일한 고정 CPython → 버전 통일)
+  const python = await setupBundledPython();   // .bin/python (없으면 다운로드)
   const venvDir = join(binDir, 'streamlink-venv');
-  execFileSync('python3', ['-m', 'venv', venvDir], { stdio: 'inherit' });
+  execFileSync(python, ['-m', 'venv', venvDir], { stdio: 'inherit' });
   execFileSync(join(venvDir, 'bin', 'pip'), ['install', 'streamlink', '--quiet'], { stdio: 'inherit' });
 }
 ```
 
 **저장 위치:** `.bin/streamlink-venv/bin/streamlink`
 
-**이유:** macOS에 공식 portable binary 미제공. Python 3(macOS 12.3+ 기본 내장)으로 venv 생성 후 pip 설치. python3 미설치 시 catch 블록에서 graceful fallback (경고 출력, install 실패해도 npm install은 계속됨).
+**이유:** macOS에 공식 portable binary 미제공. 프로젝트 번들 Python(.bin/python)으로 venv 생성 후 pip 설치 → 시스템 Python 불요·버전 통일. 번들 Python 확보 실패 시 catch에서 graceful fallback (경고 출력, npm install은 계속).
 
 ### 에러 처리
 
