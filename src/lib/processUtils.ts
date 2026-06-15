@@ -1,6 +1,23 @@
 import { ChildProcess } from 'child_process';
 
 /**
+ * 프로세스 + 그 자식까지(프로세스 그룹) 죽인다.
+ *
+ * yt-dlp가 aria2c를 외부 다운로더로 spawn하면 aria2c는 yt-dlp의 자식이라,
+ * yt-dlp만 kill하면 aria2c가 고아로 남아 계속 돌며 서버를 잡아먹는다.
+ * `spawn(..., { detached: true })`로 띄운 프로세스는 자기 PID가 곧 프로세스 그룹 ID라
+ * `process.kill(-pid, signal)`로 그룹 전체(자식 aria2c 포함)를 한 번에 정리한다.
+ */
+export function killProcessTree(proc: ChildProcess, signal: NodeJS.Signals = 'SIGKILL'): void {
+  if (!proc.pid) return;
+  try {
+    process.kill(-proc.pid, signal); // 음수 pid = 프로세스 그룹 전체
+  } catch {
+    try { proc.kill(signal); } catch { /* 이미 종료됨 */ }
+  }
+}
+
+/**
  * 타임아웃이 있는 프로세스 실행 옵션
  */
 export interface ProcessTimeoutOptions {
@@ -18,7 +35,9 @@ export interface ProcessTimeoutOptions {
  * stderr 수집, 타임아웃 처리, 성공/실패 판정을 자동화
  *
  * @param proc - Child process
- * @param timeoutMsOrOptions - Timeout in ms (simple mode) or configuration options (advanced mode)
+ * @param timeoutMsOrOptions - Timeout in ms (simple mode) or configuration options (advanced mode).
+ *   `timeoutMs <= 0`이면 절대 타임아웃 없음(close/error로만 종료) — 호출부가 stall watchdog 등
+ *   다른 종료 조건을 직접 관리할 때 사용.
  * @returns Promise<boolean> - true if successful
  *
  * @example
@@ -61,12 +80,14 @@ export function runWithTimeout(
     const settle = (result: boolean, reason: string) => {
       if (settled) return;
       settled = true;
-      clearTimeout(timeout);
+      if (timeout) clearTimeout(timeout);
         resolve(result);
     };
 
+    // stderr를 무제한 누적하면 장시간 다운로드(yt-dlp/ffmpeg progress 폭주)에서
+    // 문자열이 GB까지 자라 Node 힙 OOM이 난다. 진단엔 마지막 50KB면 충분하므로 tail만 보존.
     proc.stderr?.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString();
+      stderr = (stderr + chunk.toString()).slice(-50_000);
     });
 
     proc.on('error', (err) => {
@@ -86,11 +107,14 @@ export function runWithTimeout(
       }
     });
 
-    // Timeout
-    const timeout = setTimeout(() => {
-      console.log(`${logPrefix} timed out after ${timeoutMs}ms`);
-      proc.kill('SIGKILL');
-      settle(false, 'timeout');
-    }, timeoutMs);
+    // Timeout (timeoutMs <= 0 이면 절대 타임아웃 없음 — 호출부가 stall 등으로 종료 관리)
+    const timeout =
+      timeoutMs > 0
+        ? setTimeout(() => {
+            console.log(`${logPrefix} timed out after ${timeoutMs}ms`);
+            proc.kill('SIGKILL');
+            settle(false, 'timeout');
+          }, timeoutMs)
+        : null;
   });
 }
