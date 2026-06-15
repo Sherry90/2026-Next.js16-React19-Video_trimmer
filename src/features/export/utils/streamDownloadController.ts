@@ -124,6 +124,8 @@ export async function startStreamDownload(): Promise<void> {
       endTime: outPoint,
       filename: videoFile.name || 'video.mp4',
       tbr: videoFile.tbr ?? null,
+      // 플레이어에서 고른 화질로 다운로드도 일치 (미선택 시 기본 1080p)
+      maxHeight: state.selectedQuality ?? 1080,
     } satisfies DownloadRequest),
   });
 
