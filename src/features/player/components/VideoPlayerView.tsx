@@ -2,10 +2,12 @@
 
 import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import videojs from 'video.js';
+import 'videojs-contrib-quality-levels';
 import type Player from 'video.js/dist/types/player';
 import { useStore } from '@/stores/useStore';
 import { useVideoUrl, useVideoFile, usePlayerActions } from '@/stores/selectors';
 import { VideoPlayerProvider } from '../context/VideoPlayerContext';
+import { setupQualityMenu } from '../lib/qualityMenuButton';
 
 interface VideoPlayerViewProps {
   children?: React.ReactNode;
@@ -45,11 +47,21 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
         type: mimeTypeRef.current,
       }],
       fluid: true,
+      html5: {
+        vhs: {
+          // 기본 true면 작은 플레이어 박스(max-w-1200)에 맞춰 저화질로 고정된다.
+          // 고화질/수동 화질 선택을 위해 해제.
+          limitRenditionByPlayerDimensions: false,
+        },
+      },
     }, () => {
       videojs.log('player is ready');
 
       // context.player가 실제 인스턴스를 받도록 state 갱신 (consumer 재렌더 유발)
       setPlayer(playerInstance);
+
+      // 컨트롤바 화질 메뉴(톱니). 선택 화질을 store에 반영 → 다운로드 화질 일치.
+      setupQualityMenu(playerInstance, (h) => useStore.getState().setSelectedQuality(h));
 
       playerInstance.on('loadedmetadata', () => {
         const duration = playerInstance.duration();
@@ -135,7 +147,7 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
           <div className="w-full max-w-[1200px] mx-auto">
              <div className="relative w-full bg-black rounded overflow-hidden">
              {videoUrl ? (
-                 <div ref={videoRef} data-vjs-player /> 
+                 <div ref={videoRef} data-vjs-player />
               ) : (
                 <div className="text-white p-5 text-center h-full flex items-center justify-center">
                   Loading video...

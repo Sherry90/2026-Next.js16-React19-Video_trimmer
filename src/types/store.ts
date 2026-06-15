@@ -18,10 +18,11 @@ export interface VideoFile {
   duration: number;        // 초 단위
   // URL 소스 전용 필드
   streamUrl?: string;      // yt-dlp가 추출한 실제 스트림 URL
-  streamType?: 'hls' | 'mp4'; // 스트림 형식
+  streamType?: 'hls' | 'mp4' | 'dash'; // 스트림 형식
   thumbnail?: string;      // 영상 썸네일 URL
   originalUrl?: string;    // 사용자가 입력한 원본 URL
   tbr?: number | null;     // Total bitrate (kbps) — 다운로드 품질 힌트
+  qualities?: { height: number }[]; // DASH 화질 목록 (높→낮)
 }
 
 export interface TimelineState {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { spawn } from 'child_process';
 import { tmpdir } from 'os';
 import { getYtdlpPath, getFfmpegPath } from '@/lib/binPaths';
-import { DOWNLOAD } from '@/constants/appConfig';
+import { DOWNLOAD, WAVEFORM } from '@/constants/appConfig';
 
 /**
  * Audio-only waveform peaks endpoint.
@@ -20,7 +20,6 @@ import { DOWNLOAD } from '@/constants/appConfig';
  */
 
 const SAMPLE_RATE = 8000; // mono, low rate — enough for a volume envelope
-const TARGET_PEAKS = 1000; // waveform resolution (buckets)
 const TIMEOUT_MS = 120000;
 const MAX_PCM_BYTES = 200 * 1024 * 1024; // safety cap (~3.4h at 8kHz s16le mono)
 
@@ -165,9 +164,12 @@ function extractPcm(ytdlp: string, ffmpeg: string, url: string, signal?: AbortSi
 }
 
 /**
- * Downsample s16le mono PCM into TARGET_PEAKS normalized peak values (0..1),
- * each the max absolute amplitude within its bucket. Returns wavesurfer-shaped
- * peaks (array of one channel) plus the exact audio duration.
+ * Downsample s16le mono PCM into normalized peak values (0..1), each the max
+ * absolute amplitude within its bucket. Bucket count scales with duration
+ * (WAVEFORM.PEAKS_PER_SEC) so zoomed-in timelines stay sharp, capped at
+ * WAVEFORM.MAX_PEAKS to bound the JSON payload. Values are quantized to 3
+ * decimals (invisible on a 180px canvas) to roughly third the response size.
+ * Returns wavesurfer-shaped peaks (array of one channel) plus exact duration.
  */
 function computePeaks(pcm: Buffer): { peaks: number[][]; duration: number } {
   const sampleCount = Math.floor(pcm.length / 2);
@@ -177,7 +179,11 @@ function computePeaks(pcm: Buffer): { peaks: number[][]; duration: number } {
     return { peaks: [[]], duration: 0 };
   }
 
-  const bucketCount = Math.min(TARGET_PEAKS, sampleCount);
+  const bucketCount = Math.min(
+    Math.max(1, Math.round(duration * WAVEFORM.PEAKS_PER_SEC)),
+    WAVEFORM.MAX_PEAKS,
+    sampleCount
+  );
   const samplesPerBucket = sampleCount / bucketCount;
   const peaks = new Array<number>(bucketCount);
 
@@ -189,7 +195,7 @@ function computePeaks(pcm: Buffer): { peaks: number[][]; duration: number } {
       const v = Math.abs(pcm.readInt16LE(s * 2));
       if (v > max) max = v;
     }
-    peaks[i] = max / 32768;
+    peaks[i] = Math.round((max / 32768) * 1000) / 1000;
   }
 
   return { peaks: [peaks], duration };

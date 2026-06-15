@@ -15,7 +15,6 @@ export function WaveformBackground() {
   const [skipped, setSkipped] = useState<boolean>(false);
 
   const videoFile = useStore((state) => state.videoFile);
-  const zoom = useStore((state) => state.timeline.zoom);
   const waveformProgress = useStore((state) => state.processing.waveformProgress);
   const setProgress = useStore((state) => state.setProgress);
 
@@ -160,21 +159,9 @@ export function WaveformBackground() {
     };
   }, [videoFile, setProgress]);
 
-  // Handle zoom changes with 100ms debounce for smoother experience
-  useEffect(() => {
-    if (!wavesurferRef.current || isLoading) return;
-
-    // Debounce zoom updates to reduce CPU usage during rapid Ctrl+wheel scrolling
-    const debounceTimer = setTimeout(() => {
-      if (wavesurferRef.current) {
-        wavesurferRef.current.zoom(zoom * 10);
-      }
-    }, UI.WAVEFORM_ZOOM_DEBOUNCE_MS);
-
-    return () => {
-      clearTimeout(debounceTimer);
-    };
-  }, [zoom, isLoading]);
+  // 파형은 wavesurfer 기본 fillParent로 컨테이너 폭에 전체 길이를 맞춰 그린다.
+  // (이전엔 zoom(zoom*10)로 10px/초 고정 렌더 → %기반 타임라인 오버레이와 ~10배 어긋나
+  //  앞 구간 파형이 안 보였다. zoom 적용을 제거해 1:1 정렬.)
 
   return (
     <div className="w-full h-full overflow-hidden pointer-events-none relative">
