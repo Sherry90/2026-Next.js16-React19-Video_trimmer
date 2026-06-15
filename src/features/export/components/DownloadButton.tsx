@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useStore } from '@/stores/useStore';
 
 export function DownloadButton() {
@@ -25,15 +25,30 @@ export function DownloadButton() {
     }
   }, [outputFilename]);
 
-  const handleDownload = useCallback(() => {
-    if (!outputUrl || !outputFilename) return;
+  const triggerDownload = useCallback(
+    (name: string) => {
+      if (!outputUrl || !outputFilename) return;
+      const link = document.createElement('a');
+      link.href = outputUrl;
+      link.download = name + ext;
+      link.click();
+    },
+    [outputUrl, outputFilename, ext]
+  );
 
-    const finalName = editableName.trim() || baseName;
-    const link = document.createElement('a');
-    link.href = outputUrl;
-    link.download = finalName + ext;
-    link.click();
-  }, [outputUrl, outputFilename, editableName, baseName, ext]);
+  const handleDownload = useCallback(() => {
+    triggerDownload(editableName.trim() || baseName);
+  }, [triggerDownload, editableName, baseName]);
+
+  // 완료 즉시 자동 다운로드 (별도 버튼 클릭 불필요). outputUrl당 1회만.
+  // 처리가 끝나는 대로 사용자 PC로 바로 받아져 이중 대기/수동 클릭이 사라진다.
+  const autoFiredUrlRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (phase !== 'completed' || !outputUrl || !outputFilename) return;
+    if (autoFiredUrlRef.current === outputUrl) return;
+    autoFiredUrlRef.current = outputUrl;
+    triggerDownload(baseName); // 자동 다운은 기본 파일명 사용
+  }, [phase, outputUrl, outputFilename, baseName, triggerDownload]);
 
   const handleBackToEdit = useCallback(() => {
     setPhase('editing');
@@ -66,6 +81,9 @@ export function DownloadButton() {
       <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
         Video Ready!
       </h3>
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        다운로드가 자동으로 시작되었습니다. 이름을 바꿔 다시 받을 수도 있습니다.
+      </p>
 
       <div className="text-left space-y-1">
         <label htmlFor="save-as-input" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -93,7 +111,7 @@ export function DownloadButton() {
           data-testid="download-button"
           className="px-6 py-3 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
         >
-          Download Video
+          Download Again
         </button>
 
         <button
