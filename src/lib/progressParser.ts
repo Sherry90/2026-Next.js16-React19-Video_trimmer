@@ -127,6 +127,17 @@ class YtdlpProgressParser {
       }
     }
 
+    // aria2c(외부 다운로더) 진행률: "[#22e70e 15MiB/39MiB(40%) CN:16 DL:8.8MiB ETA:2s]"
+    // external-downloader 사용 시 yt-dlp는 [download] %를 100%에서만 찍으므로 이 라인을 파싱한다.
+    const aria2Match = line.match(/\((\d+)%\)/);
+    if (aria2Match) {
+      const progress = parseInt(aria2Match[1], 10);
+      if (!isNaN(progress) && progress >= 0 && progress <= 100) {
+        this.lastProgress = Math.max(this.lastProgress, progress);
+        return this.lastProgress;
+      }
+    }
+
     return null;
   }
 

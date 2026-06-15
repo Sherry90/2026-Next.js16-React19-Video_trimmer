@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: validation.error }, { status: validation.status });
     }
 
-    const { url, startTime, endTime, filename, tbr } = validation.data;
+    const { url, startTime, endTime, filename, tbr, maxHeight } = validation.data;
 
     // JobID 생성
     const jobId = randomUUID();
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     console.log(`[SSE] Job: ${jobId}, URL: ${url}, Range: ${startTime}s-${endTime}s`);
 
     // 백그라운드에서 다운로드 작업 시작
-    startDownloadJob(jobId, { url, startTime, endTime, filename, tbr }).catch((error) => {
+    startDownloadJob(jobId, { url, startTime, endTime, filename, tbr, maxHeight }).catch((error) => {
       console.error(`[SSE] Job ${jobId} failed:`, error);
     });
 
