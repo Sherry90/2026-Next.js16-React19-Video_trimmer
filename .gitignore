@@ -70,3 +70,6 @@ src/__tests__/e2e/fixtures/*.mp4
 
 # storybook
 /storybook-static
+
+# Serena MCP 아티팩트
+.serena/
