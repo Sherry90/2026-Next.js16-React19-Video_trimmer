@@ -33,6 +33,100 @@ export interface FormatSelection {
   tbr: number | null; // Total bitrate (kbps)
 }
 
+/** DASH MPD 생성을 위한 video-only 표현 선택 결과. */
+export interface DashVideoPick {
+  url: string;
+  codecs: string;
+  width: number;
+  height: number;
+  fps: number;
+  bandwidth: number; // bps
+}
+
+/** DASH MPD 생성을 위한 audio-only 표현 선택 결과. */
+export interface DashAudioPick {
+  url: string;
+  codecs: string;
+  audioSamplingRate: number;
+  channels: number;
+  bandwidth: number; // bps
+}
+
+export interface DashSelection {
+  video: DashVideoPick[];
+  audio: DashAudioPick;
+}
+
+function num(v: unknown, fallback = 0): number {
+  return typeof v === 'number' && !isNaN(v) ? v : fallback;
+}
+
+/**
+ * yt-dlp formats에서 DASH MPD용 표현들을 선택한다.
+ *
+ * - video: **avc1(H.264) video-only, https, 단일파일** 표현을 height별로(최고 bitrate) 모은다.
+ *   브라우저 호환성을 위해 avc1만 사용 — YouTube에서 avc1은 ~1080p가 상한이고 1440p+는
+ *   VP9/AV1뿐이라(같은 AdaptationSet 불가) 자연히 1080p 이하로 모인다.
+ * - audio: **mp4a(AAC) audio-only, https** 중 최고 abr 하나.
+ *
+ * 화질 선택 UI를 위해 video는 여러 height를 모두 반환(메뉴 항목). 기본 선택(1080p/최고)은
+ * 클라이언트가 결정한다.
+ *
+ * @returns avc1 video와 mp4a audio를 모두 찾으면 DashSelection, 아니면 null(→ 호출부가 muxed fallback).
+ */
+export function selectDashFormats(ytdlpInfo: YtdlpInfo, maxHeight = 1080): DashSelection | null {
+  const formats = ytdlpInfo.formats;
+  if (!formats || formats.length === 0) return null;
+
+  const isHttps = (f: YtdlpFormat) => f.protocol === 'https' && !!f.url;
+
+  // height별 최고 bitrate avc1 video-only 표현
+  const byHeight = new Map<number, DashVideoPick>();
+  for (const f of formats) {
+    const vcodec = typeof f.vcodec === 'string' ? f.vcodec : '';
+    const height = num(f.height);
+    if (!isHttps(f) || !vcodec.startsWith('avc1') || f.acodec !== 'none' || height <= 0) continue;
+    if (height > maxHeight) continue;
+
+    const bandwidth = Math.round(num(f.vbr, num(f.tbr)) * 1000);
+    const existing = byHeight.get(height);
+    if (!existing || bandwidth > existing.bandwidth) {
+      byHeight.set(height, {
+        url: f.url as string,
+        codecs: vcodec,
+        width: num(f.width),
+        height,
+        fps: num(f.fps, 30),
+        bandwidth,
+      });
+    }
+  }
+
+  const video = [...byHeight.values()].sort((a, b) => a.height - b.height);
+  if (video.length === 0) return null;
+
+  // 최고 abr mp4a audio-only
+  let audio: DashAudioPick | null = null;
+  for (const f of formats) {
+    const acodec = typeof f.acodec === 'string' ? f.acodec : '';
+    if (!isHttps(f) || !acodec.startsWith('mp4a') || f.vcodec !== 'none') continue;
+
+    const bandwidth = Math.round(num(f.abr, num(f.tbr)) * 1000);
+    if (!audio || bandwidth > audio.bandwidth) {
+      audio = {
+        url: f.url as string,
+        codecs: acodec,
+        audioSamplingRate: num(f.asr, 44100),
+        channels: num(f.audio_channels, 2),
+        bandwidth,
+      };
+    }
+  }
+  if (!audio) return null;
+
+  return { video, audio };
+}
+
 /**
  * yt-dlp 화질 설정
  */

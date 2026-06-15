@@ -75,8 +75,20 @@ export function useUrlInput() {
         return;
       }
 
-      const streamType: 'hls' | 'mp4' = data.streamType || 'mp4';
+      const streamType: 'hls' | 'mp4' | 'dash' = data.streamType || 'mp4';
       const duration: number = data.duration || 0;
+
+      // DASH: 서버가 생성한 MPD(다중 화질 video+audio)를 same-origin manifest 경로로 받는다.
+      // (blob: URL은 VHS mpd-parser의 BaseURL 해석을 깨뜨림.) BaseURL은 이미 proxy 절대 URL.
+      const isDash = streamType === 'dash' && typeof data.manifestUrl === 'string';
+      const playbackUrl = isDash
+        ? data.manifestUrl
+        : `/api/video/proxy?url=${encodeURIComponent(data.url)}`;
+      const mimeType = isDash
+        ? 'application/dash+xml'
+        : streamType === 'hls'
+          ? 'application/x-mpegURL'
+          : 'video/mp4';
 
       // 스트리밍 소스를 바로 editing에 올린다 (전체 영상 위 구간 선택).
       // 재생은 프록시 경유(CORS/HLS 세그먼트 재작성), 다운로드는 originalUrl에서 별도 재해석.
@@ -85,14 +97,15 @@ export function useUrlInput() {
         source: 'url',
         name: `${data.title || 'video'}.mp4`,
         size: 0,
-        type: streamType === 'hls' ? 'application/x-mpegURL' : 'video/mp4',
-        url: `/api/video/proxy?url=${encodeURIComponent(data.url)}`,
+        type: mimeType,
+        url: playbackUrl,
         duration,
-        streamUrl: data.url,
+        streamUrl: isDash ? undefined : data.url,
         streamType,
         thumbnail: data.thumbnail || '',
         originalUrl: trimmedUrl,
         tbr: data.tbr || null, // Total bitrate (kbps)
+        qualities: isDash ? data.qualities : undefined,
       });
 
       // 타임라인 기본 구간: 0 ~ 전체 길이 (구간 길이 상한 없음 — 사용자가 좁힌다)

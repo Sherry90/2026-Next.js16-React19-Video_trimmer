@@ -150,6 +150,8 @@ export interface DownloadRequestParams {
   endTime: number;
   filename: string;
   tbr?: number;
+  /** 최대 화질 height(px). 플레이어에서 고른 화질과 일치시킨다. 미지정 시 다운로더 기본값. */
+  maxHeight?: number;
 }
 
 /**
@@ -161,7 +163,7 @@ export function validateDownloadRequest(
   if (typeof body !== 'object' || body === null) {
     return { valid: false, error: '유효하지 않은 요청입니다', status: 400 };
   }
-  const { url, startTime, endTime, filename, tbr } = body as Record<string, unknown>;
+  const { url, startTime, endTime, filename, tbr, maxHeight } = body as Record<string, unknown>;
 
   if (!url || typeof url !== 'string' || !url.trim()) {
     return { valid: false, error: '유효하지 않은 URL입니다', status: 400 };
@@ -180,6 +182,7 @@ export function validateDownloadRequest(
       endTime: endTime as number,
       filename,
       tbr: typeof tbr === 'number' ? tbr : undefined,
+      maxHeight: typeof maxHeight === 'number' && maxHeight > 0 ? maxHeight : undefined,
     },
   };
 }

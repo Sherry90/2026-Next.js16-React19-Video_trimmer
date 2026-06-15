@@ -25,6 +25,9 @@ export interface StoreState {
   // 비디오 파일
   videoFile: VideoFile | null;
 
+  // 선택된 재생 화질 (height, px). null = Auto/미선택. 다운로드 화질과 일치시키는 데 사용.
+  selectedQuality: number | null;
+
   // 타임라인
   timeline: TimelineState;
 
@@ -50,6 +53,7 @@ interface StoreActions {
   // 파일 관련
   setVideoFile: (file: VideoFile | null) => void;
   setVideoDuration: (duration: number) => void;
+  setSelectedQuality: (height: number | null) => void;
 
   // 타임라인 관련
   setInPoint: (time: number) => void;
@@ -93,6 +97,7 @@ interface StoreActions {
 const initialState: StoreState = {
   phase: 'idle',
   videoFile: null,
+  selectedQuality: null,
   timeline: {
     inPoint: 0,
     outPoint: 0,
@@ -137,6 +142,7 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
 
   // 파일 관련
   setVideoFile: (videoFile) => set({ videoFile }),
+  setSelectedQuality: (height) => set({ selectedQuality: height }),
   setVideoDuration: (duration) => {
     const { videoFile } = get();
     if (videoFile) {

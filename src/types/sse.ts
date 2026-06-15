@@ -47,6 +47,8 @@ export interface DownloadRequest {
   endTime: number;
   filename: string;
   tbr?: number | null;
+  /** 최대 화질 height(px) — 플레이어에서 선택한 화질과 일치 */
+  maxHeight?: number | null;
 }
 
 /**

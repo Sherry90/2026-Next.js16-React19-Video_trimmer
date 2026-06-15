@@ -37,6 +37,7 @@ export const useVideoUrl = createSimpleSelector((state) => state.videoFile?.url)
 export const useVideoDuration = createSimpleSelector((state) => state.videoFile?.duration ?? 0);
 export const useVideoSource = createSimpleSelector((state) => state.videoFile?.source);
 export const useStreamUrl = createSimpleSelector((state) => state.videoFile?.streamUrl);
+export const useSelectedQuality = createSimpleSelector((state) => state.selectedQuality);
 
 // Player Selectors
 export const usePlayerState = createStateSelector((state) => ({
