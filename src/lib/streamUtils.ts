@@ -45,8 +45,14 @@ export function streamFile(options: StreamFileOptions): NextResponse {
 
   const stream = new ReadableStream({
     start(controller) {
+      // 백프레셔 필수: 'data'에서 무조건 enqueue하면 디스크 read가 네트워크 전송보다
+      // 빨라 controller 큐에 파일 전체가 쌓여 힙 OOM(대용량 구간 다운로드 시 GB+)이 난다.
+      // desiredSize<=0 이면 disk read를 pause하고, 소비자가 당기면 pull()에서 resume.
       fileStream.on('data', (chunk: Buffer) => {
         controller.enqueue(new Uint8Array(chunk));
+        if (controller.desiredSize !== null && controller.desiredSize <= 0) {
+          fileStream.pause();
+        }
       });
 
       fileStream.on('end', async () => {
@@ -62,6 +68,10 @@ export function streamFile(options: StreamFileOptions): NextResponse {
         controller.error(err);
         onStreamError?.(err);
       });
+    },
+
+    pull() {
+      fileStream.resume();
     },
 
     cancel() {

@@ -1,9 +1,233 @@
 import { createServer as createHttpServer } from 'http';
 import { createServer as createHttpsServer } from 'https';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, createReadStream, statSync } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 import { parse } from 'url';
+import { Readable } from 'stream';
 import next from 'next';
+
+// 다운로드 완료 파일은 Next 핸들러(=dev에서 Turbopack/next-swc 마샬링)를 거치지 않고
+// 이 raw HTTP 서버에서 디스크→소켓 직행으로 흘린다. createReadStream.pipe는 OS 레벨
+// 백프레셔라 서버 힙에 영상이 전혀 쌓이지 않는다. 경로는 다운로더 규약과 동일:
+//   join(tmpdir(), `download_${jobId}.mp4`)  (ytdlp/streamlink 공통)
+const JOBID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/**
+ * GET /api/download/<jobId> 를 가로채 파일을 직접 스트리밍한다.
+ * @returns 처리했으면 true(=Next로 넘기지 않음), 아니면 false.
+ */
+function tryServeDownload(req: any, res: any, pathname: string): boolean {
+  if (req.method !== 'GET') return false;
+  const m = pathname.match(/^\/api\/download\/([^/]+)$/);
+  if (!m) return false; // /start, /stream/<id> 등은 매칭 안 됨
+  const jobId = m[1];
+  if (!JOBID_RE.test(jobId)) return false; // path traversal·비정상 id 차단 → Next로 폴백
+
+  const filePath = join(tmpdir(), `download_${jobId}.mp4`);
+  if (!existsSync(filePath)) return false; // 아직 미완료 → Next 라우트가 적절한 4xx 반환
+
+  const stat = statSync(filePath);
+  const total = stat.size;
+
+  // Range 지원 (브라우저 다운로드 재개/부분 요청 대비)
+  const range = req.headers['range'];
+  let start = 0;
+  let end = total - 1;
+  let status = 200;
+  if (range) {
+    const rm = /^bytes=(\d*)-(\d*)$/.exec(range);
+    if (rm) {
+      if (rm[1]) start = parseInt(rm[1], 10);
+      if (rm[2]) end = parseInt(rm[2], 10);
+      if (Number.isNaN(start) || Number.isNaN(end) || start > end || end >= total) {
+        res.statusCode = 416;
+        res.setHeader('Content-Range', `bytes */${total}`);
+        res.end();
+        return true;
+      }
+      status = 206;
+    }
+  }
+
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'video/mp4');
+  res.setHeader('Content-Disposition', 'attachment');
+  res.setHeader('Accept-Ranges', 'bytes');
+  res.setHeader('Content-Length', String(end - start + 1));
+  if (status === 206) res.setHeader('Content-Range', `bytes ${start}-${end}/${total}`);
+
+  console.log(`[download-raw] file via raw server (Next 우회): ${jobId} ${(total/1048576).toFixed(1)}MB`);
+  const fileStream = createReadStream(filePath, { start, end });
+  fileStream.on('error', (err: Error) => {
+    console.error('[download-raw] stream error:', err.message);
+    if (!res.headersSent) res.statusCode = 500;
+    res.end();
+  });
+  // 클라이언트 끊김 시 디스크 read 즉시 중단
+  res.on('close', () => fileStream.destroy());
+  fileStream.pipe(res);
+  return true;
+}
+
+// 진행률 SSE도 Next 우회. 원인: Next/Turbopack이 7분간 열려있는 streaming Response를
+// next-swc 브리지로 마샬링하며 WeakRef/Object를 수백만 개 양산 → 힙 OOM(dev에서 관측,
+// prod 의존은 위험). raw http res에 직접 SSE를 써 그 벡터를 dev/prod 양쪽에서 제거한다.
+// job 레지스트리는 downloadJob.ts가 globalThis.__vtDownloadJobs에 올려둔 걸 공유한다.
+const SSE_ORPHAN_GRACE_MS = 30_000; // appConfig.DOWNLOAD.JOB_ORPHAN_GRACE_PERIOD_MS와 동일 유지
+
+function tryServeProgressSse(req: any, res: any, pathname: string): boolean {
+  if (req.method !== 'GET') return false;
+  const m = pathname.match(/^\/api\/download\/stream\/([^/]+)$/);
+  if (!m) return false;
+  const jobId = m[1];
+  if (!JOBID_RE.test(jobId)) return false;
+
+  const registry = (globalThis as any).__vtDownloadJobs as Map<string, any> | undefined;
+  const job = registry?.get(jobId);
+  // 레지스트리/잡 없음(미시작·만료) → 짧은 요청이라 누수 없음. Next 라우트가 적절히 처리하게 폴백.
+  if (!job) return false;
+
+  console.log(`[download-raw] SSE via raw server (Next 우회): ${jobId} status=${job.status}`);
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+  const send = (event: object) => res.write(`data: ${JSON.stringify(event)}\n\n`);
+
+  // 재연결 시 종료 상태 즉시 반영
+  if (job.status === 'completed') { send({ type: 'complete' }); res.end(); return true; }
+  if (job.status === 'failed') { send({ type: 'error', message: job.errorMessage ?? '다운로드에 실패했습니다' }); res.end(); return true; }
+
+  res.write(': connected\n\n'); // 초기 플러시(버퍼링 방지)
+
+  let closed = false;
+  const cleanup = () => {
+    if (closed) return;
+    closed = true;
+    const cur = registry?.get(jobId);
+    if (cur) {
+      cur.listeners = cur.listeners.filter((l: any) => l !== listener);
+      // 마지막 리스너 이탈 + 실행 중 → grace 후 orphan abort (downloadJob.getJobStream과 동일 정책)
+      if (cur.listeners.length === 0 && cur.status === 'running' && !cur.orphanCleanupScheduled) {
+        cur.orphanCleanupScheduled = true;
+        setTimeout(() => {
+          const j = registry?.get(jobId);
+          if (j && j.status === 'running' && j.listeners.length === 0) {
+            console.log(`[download-raw] cancelling orphaned job: ${jobId}`);
+            j.abort?.();
+          }
+        }, SSE_ORPHAN_GRACE_MS);
+      }
+    }
+  };
+  const listener = (event: any) => {
+    if (closed) return;
+    try {
+      send(event);
+      if (event.type === 'complete' || event.type === 'error') {
+        cleanup();
+        res.end();
+      }
+    } catch {
+      cleanup();
+    }
+  };
+
+  job.listeners.push(listener);
+  res.on('close', cleanup);
+  return true;
+}
+
+// 미디어 프록시도 Next 우회 raw 처리. 원인: VHS가 연 full-stream proxy 응답(예: 41MB itag135)이
+// 재생 중/일시정지 동안 held-open 되면, Next dev가 그 스트림을 next-swc 브리지로 계속 마샬링하며
+// JS 힙을 폭증시켜 dev 서버를 OOM시킨다(SSE 누수와 동일 메커니즘 — 실측 확인). Node 스트림으로
+// 직접 pipe하면 OS 백프레셔 + next-swc 미경유 → 누수 제거.
+const PROXY_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
+const PROXY_CHZZK_REFERER = 'https://chzzk.naver.com/';
+const HLS_CT = ['application/vnd.apple.mpegurl', 'application/x-mpegurl', 'audio/mpegurl', 'audio/x-mpegurl'];
+
+function proxyIsHls(streamUrl: string, ct: string | null): boolean {
+  if (ct && HLS_CT.some((t) => ct.toLowerCase().includes(t))) return true;
+  return streamUrl.split('?')[0].toLowerCase().endsWith('.m3u8');
+}
+function proxyRewriteM3U8(content: string, baseUrl: string): string {
+  const toProxy = (uri: string) => `/api/video/proxy?url=${encodeURIComponent(new URL(uri, baseUrl).toString())}`;
+  const attr = /URI="([^"]+)"/g;
+  return content.split('\n').map((line) => {
+    const t = line.trim();
+    if (t === '') return line;
+    if (t.startsWith('#')) {
+      attr.lastIndex = 0;
+      if (!attr.test(t)) return line;
+      attr.lastIndex = 0;
+      return line.replace(attr, (_m, uri) => `URI="${toProxy(uri)}"`);
+    }
+    return toProxy(t);
+  }).join('\n');
+}
+
+async function tryServeProxy(req: any, res: any, pathname: string, query: any): Promise<boolean> {
+  if (pathname !== '/api/video/proxy') return false;
+  const streamUrl = typeof query.url === 'string' ? query.url : null;
+  if (!streamUrl) return false; // Next 라우트가 400 처리
+
+  const headers: Record<string, string> = {};
+  const range = req.headers['range'];
+  if (range) headers['Range'] = range;
+  try {
+    const u = new URL(streamUrl);
+    if (u.pathname.includes('/chzzk/') || u.hostname.toLowerCase().includes('naver')) {
+      headers['User-Agent'] = PROXY_UA;
+      headers['Referer'] = PROXY_CHZZK_REFERER;
+    }
+  } catch {
+    return false;
+  }
+
+  let upstream: Response;
+  try {
+    upstream = await fetch(streamUrl, { headers });
+  } catch {
+    res.statusCode = 502;
+    res.end('proxy fetch failed');
+    return true;
+  }
+  if (!upstream.ok && upstream.status !== 206) {
+    res.statusCode = upstream.status;
+    res.end();
+    return true;
+  }
+
+  const ct = upstream.headers.get('content-type');
+  if (proxyIsHls(streamUrl, ct)) {
+    const text = await upstream.text();
+    res.writeHead(200, {
+      'content-type': 'application/vnd.apple.mpegurl',
+      'access-control-allow-origin': '*',
+      'cache-control': 'no-store',
+    });
+    res.end(proxyRewriteM3U8(text, streamUrl));
+    return true;
+  }
+
+  // 바이트 패스스루: Node 스트림 직접 pipe (next-swc 미경유, OS 백프레셔)
+  const outHeaders: Record<string, string> = { 'access-control-allow-origin': '*' };
+  for (const k of ['content-type', 'content-length', 'content-range', 'accept-ranges']) {
+    const v = upstream.headers.get(k);
+    if (v) outHeaders[k] = v;
+  }
+  if (!outHeaders['accept-ranges']) outHeaders['accept-ranges'] = 'bytes';
+  res.writeHead(upstream.status, outHeaders);
+  if (!upstream.body) { res.end(); return true; }
+  const nodeStream = Readable.fromWeb(upstream.body as any);
+  res.on('close', () => nodeStream.destroy());
+  nodeStream.on('error', () => { if (!res.headersSent) res.statusCode = 502; res.end(); });
+  nodeStream.pipe(res);
+  return true;
+}
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = dev ? 'localhost' : '0.0.0.0';
@@ -38,13 +262,28 @@ const enableHsts = useHttps && process.env.ENABLE_HSTS === 'true';
 app.prepare().then(() => {
   const handler = async (req: any, res: any) => {
     try {
+      const parsedUrl = parse(req.url, true);
+
+      // 다운로드 진행률 SSE + 완료 파일 모두 Next 우회 raw 처리
+      // (서버 힙 0, 장수명 스트림의 next-swc 마샬링 누수 회피 — dev/prod 공통)
+      if (parsedUrl.pathname && tryServeProgressSse(req, res, parsedUrl.pathname)) {
+        return;
+      }
+      if (parsedUrl.pathname && tryServeDownload(req, res, parsedUrl.pathname)) {
+        return;
+      }
+      // 미디어 프록시(DASH/HLS 세그먼트) raw 우회 — held-open 스트림 next-swc 누수 회피
+      if (parsedUrl.pathname && await tryServeProxy(req, res, parsedUrl.pathname, parsedUrl.query)) {
+        return;
+      }
+
       if (enableHsts && !String(req.url || '').startsWith('/api/')) {
         res.setHeader(
           'Strict-Transport-Security',
           'max-age=31536000; includeSubDomains; preload'
         );
       }
-      await handle(req, res, parse(req.url, true));
+      await handle(req, res, parsedUrl);
     } catch (err: any) {
       console.error('[Server] Error handling', req.url, err);
       res.statusCode = 500;

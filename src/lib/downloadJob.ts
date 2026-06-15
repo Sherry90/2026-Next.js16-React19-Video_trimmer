@@ -13,7 +13,10 @@ import { type Job, type JobListener, type EventEmitter, type JobEvent, safeUnlin
 import { DOWNLOAD } from '@/constants/appConfig';
 
 // Global job storage (향후 Redis/DB로 교체 가능)
-const jobs = new Map<string, Job>();
+// globalThis에 저장 → 커스텀 서버(server.ts, Next 우회 raw SSE)가 같은 레지스트리를 본다.
+// (Next 라우트와 server.ts는 모듈 레지스트리가 분리돼 있어도 globalThis는 동일 V8 전역이라 공유됨)
+const jobs: Map<string, Job> =
+  ((globalThis as unknown as { __vtDownloadJobs?: Map<string, Job> }).__vtDownloadJobs ??= new Map<string, Job>());
 
 /**
  * Job 스트림 구독
@@ -110,11 +113,12 @@ export async function startDownloadJob(
     filename?: string;
     tbr?: number;
     streamType?: 'hls' | 'mp4'; // 플랫폼 힌트 (선택적)
+    maxHeight?: number; // 최대 화질 height(px) — 플레이어 선택 화질과 일치
   }
 ) {
   cleanupStaleJobs();
 
-  const { url, startTime, endTime, filename, tbr, streamType } = params;
+  const { url, startTime, endTime, filename, tbr, streamType, maxHeight } = params;
 
   const abortController = new AbortController();
 
@@ -139,25 +143,36 @@ export async function startDownloadJob(
   const platform = detectPlatform(url);
   const strategy = selectDownloadStrategy(platform, streamType || 'mp4');
 
+  // wall 안전 타임아웃: 잡이 MAX_JOB_MS를 넘기면 강제 abort → 다운로더의 abort 리스너가
+  // 자식 프로세스 트리(yt-dlp+aria2c 등)까지 정리. 런어웨이로 서버가 죽는 걸 방지하는 백스톱.
+  const wallTimer = setTimeout(() => {
+    const job = jobs.get(jobId);
+    if (job && job.status === 'running') {
+      console.error(`[SSE] Job ${jobId} exceeded MAX_JOB_MS(${DOWNLOAD.MAX_JOB_MS}ms) → aborting`);
+      abortController.abort();
+    }
+  }, DOWNLOAD.MAX_JOB_MS);
+
   // 전략별 다운로더에 위임
-  if (strategy === 'streamlink') {
-    return downloadWithStreamlink(
-      jobId,
-      { url, startTime, endTime, filename, tbr },
-      emitEvent,
-      updateJobStatus,
-      abortController.signal
-    );
-  } else {
-    // yt-dlp 다운로더 (유튜브 및 범용 플랫폼)
-    return downloadWithYtdlp(
-      jobId,
-      { url, startTime, endTime, filename, tbr },
-      emitEvent,
-      updateJobStatus,
-      abortController.signal
-    );
-  }
+  const runner =
+    strategy === 'streamlink'
+      ? downloadWithStreamlink(
+          jobId,
+          { url, startTime, endTime, filename, tbr, maxHeight },
+          emitEvent,
+          updateJobStatus,
+          abortController.signal
+        )
+      : downloadWithYtdlp(
+          jobId,
+          { url, startTime, endTime, filename, tbr, maxHeight },
+          emitEvent,
+          updateJobStatus,
+          abortController.signal
+        );
+
+  // 완료/실패/abort 어느 경로로 끝나든 wall 타이머 해제 (타이머 누수 방지)
+  return runner.finally(() => clearTimeout(wallTimer));
 }
 
 /**
