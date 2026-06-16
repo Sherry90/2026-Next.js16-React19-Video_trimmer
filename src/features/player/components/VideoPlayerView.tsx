@@ -47,6 +47,10 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
         type: mimeTypeRef.current,
       }],
       fluid: true,
+      // 후방 버퍼 30초만 유지 → 긴/고화질 영상을 길게 재생해도 MSE SourceBuffer(브라우저 탭
+      // media 메모리)가 재생분 전체만큼 무한히 커지지 않게 상한. (측정상 미설정 시 range start가
+      // 0에 고정돼 재생분 전체를 보유.)
+      backBufferLength: 30,
       html5: {
         vhs: {
           // 기본 true면 작은 플레이어 박스(max-w-1200)에 맞춰 저화질로 고정된다.
