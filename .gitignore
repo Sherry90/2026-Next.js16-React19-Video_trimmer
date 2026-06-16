@@ -73,3 +73,6 @@ src/__tests__/e2e/fixtures/*.mp4
 
 # Serena MCP 아티팩트
 .serena/
+
+# 번들된 커스텀 서버(build 산출물)
+server.cjs
