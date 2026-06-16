@@ -28,12 +28,9 @@ RUN --mount=type=cache,target=/root/.npm npm ci --ignore-scripts
 # ── builder: Next 빌드 + server.ts 컴파일 ──
 FROM deps AS builder
 COPY . .
-# prebuild(copy-wasm.mjs)가 public/ffmpeg로 wasm 복사 후 next build
+# next build + server.ts→server.cjs 번들(build:server)을 npm run build가 함께 수행
+# (prebuild=copy-wasm로 public/ffmpeg 복사, build:server=esbuild로 tsx 없이 실행 가능한 cjs).
 RUN npm run build
-# server.ts를 tsx 없이 실행하려고 단일 cjs로 번들 (next/node_modules는 런타임 external)
-RUN npx --no-install esbuild server.ts \
-      --bundle --platform=node --target=node22 --packages=external \
-      --outfile=server.cjs
 
 # ── prod-deps: 런타임 prod 의존성만 (slim) ──
 FROM base AS prod-deps
