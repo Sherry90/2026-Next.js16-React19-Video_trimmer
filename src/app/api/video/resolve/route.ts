@@ -37,13 +37,15 @@ async function fetchDashRanges(url: string, signal: AbortSignal) {
  */
 async function tryBuildDash(
   info: Record<string, unknown>,
-  origin: string,
   signal: AbortSignal
 ): Promise<{ mpd: string; qualities: { height: number }[] } | null> {
   const sel = selectDashFormats(info as never);
   if (!sel) return null;
 
-  const proxied = (u: string) => `${origin}/api/video/proxy?url=${encodeURIComponent(u)}`;
+  // root-relative BaseURL — mpd-parser가 MPD의 실제 URL(브라우저가 쓴 host) 기준으로 해석한다.
+  // origin을 하드코딩하면(예: prod hostname 0.0.0.0) cert/CORS 불일치로 깨진다(self-signed는
+  // ERR_CERT_COMMON_NAME_INVALID). 상대 경로면 localhost·실도메인·0.0.0.0 어디서든 자동 일치.
+  const proxied = (u: string) => `/api/video/proxy?url=${encodeURIComponent(u)}`;
 
   const videoReps = (
     await Promise.all(
@@ -135,7 +137,7 @@ export async function POST(request: NextRequest) {
     // 실패하면 아래 muxed 경로로 폴백. Chzzk는 HLS라 스킵.
     const platform = detectPlatform(url);
     if (platform !== 'chzzk') {
-      const dash = await tryBuildDash(info, request.nextUrl.origin, request.signal);
+      const dash = await tryBuildDash(info, request.signal);
       if (dash) {
         // MPD는 same-origin 경로로 서빙(blob: 불가 — mpd-parser BaseURL 해석 깨짐).
         setManifest(url, dash.mpd);
