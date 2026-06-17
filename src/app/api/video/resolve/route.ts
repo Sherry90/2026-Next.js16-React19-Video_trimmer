@@ -2,15 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { getYtdlpPath, getFfmpegPath } from '@/lib/binPaths';
-import { parseYtdlpError } from '@/lib/apiUtils';
+import { parseYtdlpError, validateUrlParseable } from '@/lib/apiUtils';
 import { selectBestFormat, selectDashFormats } from '@/lib/formatSelector';
 import { detectPlatform } from '@/lib/platformDetector';
-import { parseInitIndexRange, buildMpd } from '@/lib/dashManifest';
-import { setManifest } from '@/lib/manifestStore';
+import { parseInitIndexRange, buildMpd, DASH_HEAD_BYTES } from '@/lib/dashManifest';
+import { setManifest, MANIFEST_TTL_MS } from '@/lib/manifestStore';
 import { toProcessError } from '@/types/process';
-
-// DASH 표현 머리(ftyp+moov+sidx)를 담기 충분한 크기 (관측상 video<2.3KB, audio<1.6KB)
-const DASH_HEAD_BYTES = 131072; // 128KB
 
 /**
  * DASH 단일파일 표현의 머리를 Range로 받아 init/index 바이트 범위를 파싱한다.
@@ -82,8 +79,8 @@ async function tryBuildDash(
 const execFileAsync = promisify(execFile);
 
 // 인메모리 resolve 캐시: 같은 URL 재요청을 즉시 응답(yt-dlp 스킵).
-// TTL은 스트림 URL 만료(googlevideo ~6h)보다 충분히 짧게 잡아 stale URL 방지.
-const RESOLVE_CACHE_TTL_MS = 5 * 60 * 1000;
+// TTL은 스트림 URL 만료(googlevideo ~6h)보다 충분히 짧게 잡아 stale URL 방지(manifest와 동일).
+const RESOLVE_CACHE_TTL_MS = MANIFEST_TTL_MS;
 const resolveCache = new Map<string, { body: Record<string, unknown>; mpd?: string; expires: number }>();
 
 export async function POST(request: NextRequest) {
@@ -97,14 +94,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    try {
-      new URL(url);
-    } catch {
-      return NextResponse.json(
-        { error: '유효하지 않은 URL입니다' },
-        { status: 400 }
-      );
-    }
+    const urlError = validateUrlParseable(url);
+    if (urlError) return urlError;
 
     // 캐시 히트 시 즉시 반환
     const cached = resolveCache.get(url);

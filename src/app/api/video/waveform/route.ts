@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { spawn } from 'child_process';
 import { tmpdir } from 'os';
 import { getYtdlpPath, getFfmpegPath } from '@/lib/binPaths';
+import { validateUrlParseable } from '@/lib/apiUtils';
 import { DOWNLOAD, WAVEFORM } from '@/constants/appConfig';
 
 /**
@@ -35,11 +36,8 @@ export async function GET(request: NextRequest) {
   if (!url) {
     return NextResponse.json({ error: 'url 파라미터가 필요합니다' }, { status: 400 });
   }
-  try {
-    new URL(url);
-  } catch {
-    return NextResponse.json({ error: '유효하지 않은 URL입니다' }, { status: 400 });
-  }
+  const urlError = validateUrlParseable(url);
+  if (urlError) return urlError;
 
   const ytdlp = getYtdlpPath();
   const ffmpeg = getFfmpegPath();

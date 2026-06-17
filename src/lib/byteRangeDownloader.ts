@@ -19,10 +19,9 @@ import { getFfmpegPath, getYtdlpPath } from './binPaths';
 import { runWithTimeout } from './processUtils';
 import { PROCESS, DOWNLOAD } from '@/constants/appConfig';
 import { selectDashFormats } from './formatSelector';
-import { parseInitIndexRange, parseSidx, computeClipByteRange } from './dashManifest';
+import { parseInitIndexRange, parseSidx, computeClipByteRange, DASH_HEAD_BYTES } from './dashManifest';
 
 const execFileAsync = promisify(execFile);
-const DASH_HEAD_BYTES = 131072; // 128KB — ftyp+moov+sidx 담기 충분 (resolve와 동일)
 
 async function fetchRange(url: string, start: number, end: number, signal?: AbortSignal): Promise<Buffer> {
   // 잡 abort + 자체 타임아웃 결합 — 응답 없는 소켓에 무한히 매달리지 않게(서버 보호).

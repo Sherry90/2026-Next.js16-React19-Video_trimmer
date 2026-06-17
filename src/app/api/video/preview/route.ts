@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { detectPlatform } from '@/lib/platformDetector';
 import { getChzzkVideoNo } from '@/shared/lib/platformUrl';
+import { validateUrlParseable } from '@/lib/apiUtils';
 
 /**
  * 즉시 프리뷰 (플랫폼별 메타데이터 소스).
@@ -26,11 +27,8 @@ export async function GET(request: NextRequest) {
   if (!url) {
     return NextResponse.json({ error: 'url 파라미터가 필요합니다' }, { status: 400 });
   }
-  try {
-    new URL(url);
-  } catch {
-    return NextResponse.json({ error: '유효하지 않은 URL입니다' }, { status: 400 });
-  }
+  const urlError = validateUrlParseable(url);
+  if (urlError) return urlError;
 
   try {
     const platform = detectPlatform(url);

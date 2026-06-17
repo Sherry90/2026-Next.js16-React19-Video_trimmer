@@ -17,7 +17,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { YtdlpProgressParser } from './progressParser';
 import { getFfmpegPath, getYtdlpPath } from './binPaths';
-import { runWithTimeout, killProcessTree } from './processUtils';
+import { runWithTimeout, killProcessTree, watchStall } from './processUtils';
 import { DOWNLOAD, PROCESS } from '@/constants/appConfig';
 import { buildYtdlpFormatSpec, QUALITY_PRESETS } from './formatSelector';
 import { downloadClipByteRange } from './byteRangeDownloader';
@@ -314,28 +314,28 @@ async function downloadFullThenCut(
   });
   ytdlpProc.on('error', (error) => console.error('[yt-dlp] process error:', error));
 
-  // stall watchdog: STALL_TIMEOUT_MS 동안 진행 출력이 전혀 없으면 hang으로 보고 죽인다.
-  let stalled = false;
-  const stallTimer = setInterval(() => {
-    if (Date.now() - lastActivity > DOWNLOAD.STALL_TIMEOUT_MS) {
-      stalled = true;
+  const stall = watchStall({
+    getLastActivity: () => lastActivity,
+    timeoutMs: DOWNLOAD.STALL_TIMEOUT_MS,
+    checkIntervalMs: DOWNLOAD.STALL_CHECK_INTERVAL_MS,
+    onStall: () => {
       console.error(`[yt-dlp] stalled ${DOWNLOAD.STALL_TIMEOUT_MS}ms, killing`);
       killProcessTree(ytdlpProc); // aria2c 자식까지 정리
-    }
-  }, DOWNLOAD.STALL_CHECK_INTERVAL_MS);
+    },
+  });
 
   let ok = false;
   try {
     ok = await runWithTimeout(ytdlpProc, 0); // 0 = 절대 타임아웃 없음(stall watchdog가 관리)
   } finally {
-    clearInterval(stallTimer);
+    stall.stop();
   }
 
   if (!ok || !existsSync(fullPath)) {
     console.error('[yt-dlp] FAILED stderr:', stderrOutput);
     safeUnlink(fullPath);
     const realError = extractYtdlpError(stderrOutput);
-    const reason = stalled
+    const reason = stall.stalled()
       ? `다운로드가 ${Math.round(DOWNLOAD.STALL_TIMEOUT_MS / 1000)}초간 멈춰 중단했습니다 (네트워크 끊김 등).`
       : realError || '알 수 없는 오류';
     throw new Error(`yt-dlp 다운로드에 실패했습니다: ${reason}`);

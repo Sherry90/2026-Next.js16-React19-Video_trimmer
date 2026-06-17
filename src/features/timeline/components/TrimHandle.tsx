@@ -10,8 +10,7 @@ interface TrimHandleProps {
 }
 
 /**
- * Unified trim handle component for both in-point and out-point
- * Eliminates 85% duplication between InPointHandle and OutPointHandle
+ * Unified trim handle component for both in-point and out-point.
  */
 export function TrimHandle({ type }: TrimHandleProps) {
   const containerRef = useRef<HTMLDivElement>(null);

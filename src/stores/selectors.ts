@@ -35,19 +35,8 @@ export const useTrimPoints = createStateSelector((state) => ({
 export const useVideoFile = createSimpleSelector((state) => state.videoFile);
 export const useVideoUrl = createSimpleSelector((state) => state.videoFile?.url);
 export const useVideoDuration = createSimpleSelector((state) => state.videoFile?.duration ?? 0);
-export const useVideoSource = createSimpleSelector((state) => state.videoFile?.source);
-export const useStreamUrl = createSimpleSelector((state) => state.videoFile?.streamUrl);
-export const useSelectedQuality = createSimpleSelector((state) => state.selectedQuality);
 
 // Player Selectors
-export const usePlayerState = createStateSelector((state) => ({
-  isPlaying: state.player.isPlaying,
-  currentTime: state.player.currentTime,
-  volume: state.player.volume,
-  isMuted: state.player.isMuted,
-  isScrubbing: state.player.isScrubbing,
-}));
-
 export const usePlayerActions = createStateSelector((state) => ({
   setIsPlaying: state.setIsPlaying,
   setCurrentTime: state.setCurrentTime,
@@ -56,40 +45,8 @@ export const usePlayerActions = createStateSelector((state) => ({
   setIsScrubbing: state.setIsScrubbing,
 }));
 
-export const useCurrentTime = createSimpleSelector((state) => state.player.currentTime);
-
 // Phase & Processing Selectors
 export const usePhase = createSimpleSelector((state) => state.phase);
-
-export const useProcessing = createStateSelector((state) => ({
-  uploadProgress: state.processing.uploadProgress,
-  trimProgress: state.processing.trimProgress,
-  waveformProgress: state.processing.waveformProgress,
-}));
-
-export const useUploadProgress = createSimpleSelector((state) => state.processing.uploadProgress);
-export const useTrimProgress = createSimpleSelector((state) => state.processing.trimProgress);
-export const useWaveformProgress = createSimpleSelector((state) => state.processing.waveformProgress);
-
-// Download Selectors
-export const useDownloadPhase = createSimpleSelector((state) => state.processing.downloadPhase);
-export const useDownloadMessage = createSimpleSelector((state) => state.processing.downloadMessage);
-export const useActiveDownloadJobId = createSimpleSelector((state) => state.processing.activeDownloadJobId);
-
-// Fine-grained Timeline Selectors
-export const useZoom = createSimpleSelector((state) => state.timeline.zoom);
-export const usePlayhead = createSimpleSelector((state) => state.timeline.playhead);
-
-// Error & Export Selectors
-export const useError = createStateSelector((state) => ({
-  errorMessage: state.error.errorMessage,
-  errorCode: state.error.errorCode,
-}));
-
-export const useExportState = createStateSelector((state) => ({
-  outputUrl: state.export.outputUrl,
-  outputFilename: state.export.outputFilename,
-}));
 
 // Common Actions
 export const useCommonActions = createStateSelector((state) => ({
