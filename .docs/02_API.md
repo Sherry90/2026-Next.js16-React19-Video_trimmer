@@ -5,7 +5,9 @@ Video Trimmer의 모든 Next.js API 엔드포인트 스펙.
 ## 목차
 
 - [Video API](#video-api)
+  - [GET /api/video/preview](#get-apivideopreview)
   - [POST /api/video/resolve](#post-apivideoresolve)
+  - [GET /api/video/manifest](#get-apivideomanifest)
   - [GET /api/video/proxy](#get-apivideoproxy)
   - [GET /api/video/waveform](#get-apivideowaveform)
   - [POST /api/video/trim](#post-apivideotrim)
@@ -23,18 +25,48 @@ Video Trimmer의 모든 Next.js API 엔드포인트 스펙.
 
 ## Video API
 
-URL 소스의 메타데이터 해석, 스트림 프록시, 파형 추출을 담당한다.
+URL 소스의 즉시 프리뷰, 메타데이터 해석, DASH manifest 서빙, 스트림 프록시, 파형 추출을 담당한다.
+
+### GET /api/video/preview
+
+URL 입력 직후 제목·썸네일을 빠르게 표시하기 위한 경량 프리뷰. `resolve`(yt-dlp)와 **병렬로** 호출한다. 두 소스 모두 CORS 헤더가 없어 서버에서 프록시한다.
+
+**요청:** `GET /api/video/preview?url=<encoded_url>`
+
+**응답 `200`:**
+```json
+{ "title": "Video Title", "thumbnail": "https://..." }
+```
+- YouTube → oembed, Chzzk(VOD) → chzzk API. 그 외/live/실패 → `{ "title": null, "thumbnail": null }`(graceful, 클라이언트는 무시).
+
+**에러:** `400`(url 누락/잘못된 URL). 그 외 실패는 빈 결과로 폴백한다.
+
+**구현:** `src/app/api/video/preview/route.ts`
+
+---
 
 ### POST /api/video/resolve
 
-URL에서 메타데이터와 스트림 URL을 추출한다.
+URL에서 메타데이터와 재생 소스를 추출한다. YouTube/generic은 다중 화질 **DASH MPD**를 만들고, 실패 시 muxed/HLS로 폴백한다.
 
 **요청:**
 ```json
 { "url": "https://www.youtube.com/watch?v=..." }
 ```
 
-**응답 `200`:**
+**응답 `200` — DASH (YouTube/generic 기본):**
+```json
+{
+  "title": "Video Title",
+  "duration": 300,
+  "thumbnail": "https://...",
+  "streamType": "dash",
+  "manifestUrl": "/api/video/manifest?u=<encoded_url>",
+  "qualities": [{ "height": 1080 }, { "height": 720 }]
+}
+```
+
+**응답 `200` — muxed/HLS 폴백 (DASH 실패 또는 Chzzk):**
 ```json
 {
   "title": "Video Title",
@@ -49,9 +81,11 @@ URL에서 메타데이터와 스트림 URL을 추출한다.
 
 | 필드 | 설명 |
 |------|------|
-| `url` | 추출된 스트림 URL (HLS m3u8 또는 직접 HTTP) |
-| `streamType` | `hls`(세그먼트 재생) \| `mp4`(프록시 재생) |
-| `tbr` | 총 비트레이트(kbps), 없으면 `null` |
+| `streamType` | `dash`(다중화질 MPD) \| `hls`(세그먼트 재생) \| `mp4`(프록시 재생) |
+| `manifestUrl` | DASH일 때만. same-origin manifest 경로(`/api/video/manifest`) |
+| `qualities` | DASH일 때만. 선택 가능한 화질 목록(높→낮), `{ height }[]` |
+| `url` | muxed/HLS일 때만. 추출된 스트림 URL |
+| `tbr` | muxed/HLS일 때만. 총 비트레이트(kbps), 없으면 `null` |
 
 **에러:** `400`(잘못된 URL) · `422`(스트림 URL 추출 실패) · `500`(yt-dlp 실패) · `504`(타임아웃)
 
@@ -59,8 +93,23 @@ URL에서 메타데이터와 스트림 URL을 추출한다.
 
 **내부 로직:**
 1. `yt-dlp -J --no-playlist --ffmpeg-location <ffmpeg> <url>` 로 메타데이터 JSON 추출
-2. `formatSelector.ts`로 최적 스트림 선택 — **HLS muxed 우선**, 없으면 HTTPS muxed, 그래도 없으면 `--get-url -f b` 폴백
-3. 동일 URL 재요청을 위해 결과를 인메모리 캐시(TTL 5분)에 보관
+2. Chzzk가 아니면 `tryBuildDash`로 avc1 video-only + mp4a audio를 묶은 정적 MPD 생성 → `manifestStore`에 보관하고 `streamType: 'dash'` 반환
+3. DASH 실패 시 `formatSelector.ts`로 최적 muxed/HLS 선택(**HLS muxed 우선** → HTTPS muxed → `--get-url -f b` 폴백)
+4. 동일 URL 재요청을 위해 결과를 인메모리 캐시(TTL `MANIFEST_TTL_MS`, 5분)에 보관
+
+---
+
+### GET /api/video/manifest
+
+`resolve`가 생성·보관한 DASH MPD를 same-origin 경로로 서빙한다(blob: URL은 VHS mpd-parser의 BaseURL 해석을 깨뜨려 실제 URL이 필요).
+
+**요청:** `GET /api/video/manifest?u=<encoded_url>` (`u`는 resolve에 넘긴 원본 URL)
+
+**응답 `200`:** `Content-Type: application/dash+xml` 본문은 MPD XML.
+
+**에러:** `400`(u 누락) · `404`(manifest 만료/없음)
+
+**구현:** `src/app/api/video/manifest/route.ts`
 
 ---
 
@@ -165,14 +214,16 @@ SSE로 실시간 진행률을 받는다.
 **SSE 이벤트:**
 ```
 data: {"type":"progress","progress":45,"processedSeconds":22.5,"totalSeconds":50,"phase":"downloading"}
-data: {"type":"complete","filename":"video.mp4"}
+data: {"type":"complete"}
 data: {"type":"error","message":"에러 메시지"}
 ```
 
+> `complete` 이벤트에는 페이로드가 없다(`{ type: 'complete' }`). 파일명은 다운로드 응답의 `Content-Disposition`이 정한다.
+
 | Phase | Chzzk | YouTube/Generic |
 |-------|-------|-----------------|
-| `downloading` | ✅ (Streamlink) | ✅ (yt-dlp) |
-| `processing` | ✅ (FFmpeg 타임스탬프 리셋) | ❌ (yt-dlp 내부 통합) |
+| `downloading` | ✅ (Streamlink) | ✅ (yt-dlp / aria2c) |
+| `processing` | ✅ (FFmpeg 타임스탬프 리셋) | ✅ 전체 다운로드 폴백 시 로컬 FFmpeg 컷 (byte-range 경로는 생략) |
 
 **클라이언트:**
 ```typescript
@@ -209,18 +260,21 @@ ffmpeg -i temp.mp4 -c copy -avoid_negative_ts make_zero -fflags +genpts -movflag
 
 > **`--hls-duration`**: 표준 `--stream-segmented-duration`은 Chzzk에서 무시되므로 `--hls-duration`을 사용한다(플랫폼 특화 동작).
 
-**YouTube/Generic** (`ytdlpDownloader.ts`) — 1-phase:
+**YouTube/Generic** (`ytdlpDownloader.ts`) — `--download-sections`를 쓰지 않는다. yt-dlp가 구간을 ffmpeg로 직렬 추출하면 연결당 스로틀에 묶여 매우 느리기 때문이다. 대신 두 경로를 순서대로 시도한다:
+
+1. **byte-range 우선** (`byteRangeDownloader.ts`): DASH 단일파일 표현의 `sidx`를 파싱해 **구간에 해당하는 바이트만** Range로 받아 로컬 ffmpeg로 컷. 짧은 클립이 수 초에 끝난다. SSE: `downloading`만.
+2. **폴백 — 전체 다운로드 + 로컬 컷**: 선택 포맷 **전체**를 aria2c 다중연결로 받아(연결당 스로틀 우회) 로컬 ffmpeg로 컷·타임스탬프 리셋·faststart. SSE: `downloading` → `processing`.
 ```bash
-yt-dlp --download-sections "*START-END" \
-  -f "bestvideo[height<=?9999]+bestaudio/best" \
-  --postprocessor-args "ffmpeg:-avoid_negative_ts make_zero -fflags +genpts -movflags +faststart" \
+# 폴백 경로 (전체 다운로드)
+yt-dlp -f "bestvideo[height<=?<maxHeight>]+bestaudio/best" \
   --ffmpeg-location <ffmpeg> -N 8 \
   --external-downloader aria2c --external-downloader-args "aria2c:-x 16 -s 16" \
-  -o final.mp4 <url>
+  -o full.mp4 <url>
+ffmpeg -ss START -i full.mp4 -t DUR -c copy -avoid_negative_ts make_zero \
+  -fflags +genpts -movflags +faststart final.mp4
 ```
-- 성능: ~30–32초(1분 영상). SSE: `downloading`만(FFmpeg 후처리를 yt-dlp가 내부 통합).
 
-> **`-N` 한계**: 병렬 연결 수를 늘려도 구간 다운로드 속도는 개선되지 않는다(서버 측 throttle 추정). 병목은 클라이언트가 아니다.
+> aria2c 연결 수(`-x`/`-s`)·`-N`은 `appConfig.DOWNLOAD`에서 설정한다(기본 16/16/8). 전체 다운로드는 스로틀을 우회하므로 구간 ffmpeg 추출보다 훨씬 빠르다.
 
 **클라이언트 진행률 가중치** (`sseProgressUtils.ts`): `downloading` 0–90%, `processing` 90–100%로 매핑해 phase 전환 시 진행률 역행을 방지한다.
 
@@ -269,7 +323,7 @@ export interface SSEProgressEvent {
   totalSeconds: number;
   phase: 'downloading' | 'processing' | 'completed';
 }
-export interface SSECompleteEvent { type: 'complete'; filename: string; }
+export interface SSECompleteEvent { type: 'complete'; }
 export interface SSEErrorEvent { type: 'error'; message: string; }
 ```
 
