@@ -19,11 +19,8 @@ export function DownloadButton() {
   const [editableName, setEditableName] = useState('');
 
   useEffect(() => {
-    if (outputFilename) {
-      const dot = outputFilename.lastIndexOf('.');
-      setEditableName(dot !== -1 ? outputFilename.slice(0, dot) : outputFilename);
-    }
-  }, [outputFilename]);
+    if (outputFilename) setEditableName(baseName);
+  }, [outputFilename, baseName]);
 
   const triggerDownload = useCallback(
     (name: string) => {

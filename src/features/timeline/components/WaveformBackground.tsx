@@ -159,10 +159,6 @@ export function WaveformBackground() {
     };
   }, [videoFile, setProgress]);
 
-  // 파형은 wavesurfer 기본 fillParent로 컨테이너 폭에 전체 길이를 맞춰 그린다.
-  // (이전엔 zoom(zoom*10)로 10px/초 고정 렌더 → %기반 타임라인 오버레이와 ~10배 어긋나
-  //  앞 구간 파형이 안 보였다. zoom 적용을 제거해 1:1 정렬.)
-
   return (
     <div className="w-full h-full overflow-hidden pointer-events-none relative">
       {/* Waveform container - always rendered so ref can attach */}

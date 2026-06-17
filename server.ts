@@ -7,10 +7,12 @@ import { parse } from 'url';
 import { Readable } from 'stream';
 import next from 'next';
 
-// 다운로드 완료 파일은 Next 핸들러(=dev에서 Turbopack/next-swc 마샬링)를 거치지 않고
-// 이 raw HTTP 서버에서 디스크→소켓 직행으로 흘린다. createReadStream.pipe는 OS 레벨
-// 백프레셔라 서버 힙에 영상이 전혀 쌓이지 않는다. 경로는 다운로더 규약과 동일:
-//   join(tmpdir(), `download_${jobId}.mp4`)  (ytdlp/streamlink 공통)
+// ── Next 우회 raw 핸들러들 (다운로드 파일/진행률 SSE/미디어 프록시) ──
+// 공통 이유: 장수명/대용량 스트림을 Next 핸들러에 태우면 Next/Turbopack이 그 Response를
+// next-swc 브리지로 계속 마샬링하며 JS 힙을 폭증시켜 OOM(dev에서 실측, prod 의존 위험).
+// raw http res에 Node 스트림으로 직접 pipe하면 OS 백프레셔 + next-swc 미경유 → 누수 제거.
+//
+// 다운로드 완료 파일 경로는 다운로더 규약과 동일: join(tmpdir(), `download_${jobId}.mp4`) (ytdlp/streamlink 공통)
 const JOBID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /**
@@ -70,9 +72,7 @@ function tryServeDownload(req: any, res: any, pathname: string): boolean {
   return true;
 }
 
-// 진행률 SSE도 Next 우회. 원인: Next/Turbopack이 7분간 열려있는 streaming Response를
-// next-swc 브리지로 마샬링하며 WeakRef/Object를 수백만 개 양산 → 힙 OOM(dev에서 관측,
-// prod 의존은 위험). raw http res에 직접 SSE를 써 그 벡터를 dev/prod 양쪽에서 제거한다.
+// 진행률 SSE도 raw 우회(상단 공통 이유 참고 — 7분 열린 SSE 스트림이 특히 심한 누수 벡터).
 // job 레지스트리는 downloadJob.ts가 globalThis.__vtDownloadJobs에 올려둔 걸 공유한다.
 const SSE_ORPHAN_GRACE_MS = 30_000; // appConfig.DOWNLOAD.JOB_ORPHAN_GRACE_PERIOD_MS와 동일 유지
 
@@ -141,10 +141,8 @@ function tryServeProgressSse(req: any, res: any, pathname: string): boolean {
   return true;
 }
 
-// 미디어 프록시도 Next 우회 raw 처리. 원인: VHS가 연 full-stream proxy 응답(예: 41MB itag135)이
-// 재생 중/일시정지 동안 held-open 되면, Next dev가 그 스트림을 next-swc 브리지로 계속 마샬링하며
-// JS 힙을 폭증시켜 dev 서버를 OOM시킨다(SSE 누수와 동일 메커니즘 — 실측 확인). Node 스트림으로
-// 직접 pipe하면 OS 백프레셔 + next-swc 미경유 → 누수 제거.
+// 미디어 프록시도 raw 우회(상단 공통 이유 참고 — VHS가 연 full-stream 응답(예: 41MB itag135)이
+// 재생 중 held-open 되면 SSE와 동일 메커니즘으로 OOM).
 const PROXY_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
 const PROXY_CHZZK_REFERER = 'https://chzzk.naver.com/';
 const HLS_CT = ['application/vnd.apple.mpegurl', 'application/x-mpegurl', 'audio/mpegurl', 'audio/x-mpegurl'];
@@ -213,7 +211,7 @@ async function tryServeProxy(req: any, res: any, pathname: string, query: any): 
     return true;
   }
 
-  // 바이트 패스스루: Node 스트림 직접 pipe (next-swc 미경유, OS 백프레셔)
+  // 바이트 패스스루: Node 스트림 직접 pipe
   const outHeaders: Record<string, string> = { 'access-control-allow-origin': '*' };
   for (const k of ['content-type', 'content-length', 'content-range', 'accept-ranges']) {
     const v = upstream.headers.get(k);
@@ -264,15 +262,13 @@ app.prepare().then(() => {
     try {
       const parsedUrl = parse(req.url, true);
 
-      // 다운로드 진행률 SSE + 완료 파일 모두 Next 우회 raw 처리
-      // (서버 힙 0, 장수명 스트림의 next-swc 마샬링 누수 회피 — dev/prod 공통)
+      // raw 우회 핸들러 우선 시도(상단 공통 이유 참고). 처리하면 Next로 넘기지 않는다.
       if (parsedUrl.pathname && tryServeProgressSse(req, res, parsedUrl.pathname)) {
         return;
       }
       if (parsedUrl.pathname && tryServeDownload(req, res, parsedUrl.pathname)) {
         return;
       }
-      // 미디어 프록시(DASH/HLS 세그먼트) raw 우회 — held-open 스트림 next-swc 누수 회피
       if (parsedUrl.pathname && await tryServeProxy(req, res, parsedUrl.pathname, parsedUrl.query)) {
         return;
       }

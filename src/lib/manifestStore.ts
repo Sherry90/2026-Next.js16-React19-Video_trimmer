@@ -8,11 +8,12 @@
  * 키는 원본 URL. TTL은 resolve 캐시와 동일(스트림 URL 만료보다 짧게).
  */
 
-const TTL_MS = 5 * 60 * 1000;
+/** TTL은 resolve 캐시와 동일(스트림 URL 만료보다 짧게). resolve가 import해 재사용한다. */
+export const MANIFEST_TTL_MS = 5 * 60 * 1000;
 const store = new Map<string, { mpd: string; expires: number }>();
 
 export function setManifest(key: string, mpd: string): void {
-  store.set(key, { mpd, expires: Date.now() + TTL_MS });
+  store.set(key, { mpd, expires: Date.now() + MANIFEST_TTL_MS });
 }
 
 export function getManifest(key: string): string | null {

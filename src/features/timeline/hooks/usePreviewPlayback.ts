@@ -5,12 +5,11 @@ import { PLAYBACK } from '@/constants/appConfig';
 const HAVE_FUTURE_DATA = 3; // HTMLMediaElement.readyState — 재생 시작 가능 수준
 
 /**
- * Hook for managing preview playback functionality
- * Provides preview edges (first 5s + last 5s) capability
+ * Preview playback (full segment + edges preview).
  *
  * 스트리밍 소스(URL editing) 대응: 모든 재생 진입을 buffer-aware `seekAndPlay`로
- * 통과시킨다. 이전 사전다운로드 blob 시절엔 seek이 즉시·항상-준비였지만, 스트리밍에선
- * seek 후 타겟 세그먼트/바이트 버퍼링이 끝나야 재생 가능하므로 준비를 기다린 뒤 play 한다.
+ * 통과시킨다. 스트리밍에선 seek 후 타겟 세그먼트/바이트 버퍼링이 끝나야 재생 가능하므로
+ * 준비를 기다린 뒤 play 한다.
  */
 export function usePreviewPlayback(inPoint: number, outPoint: number) {
   const previewCheckTimeRef = useRef<(() => void) | null>(null);

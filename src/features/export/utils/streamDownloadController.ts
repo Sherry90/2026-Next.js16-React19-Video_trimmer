@@ -4,10 +4,8 @@ import { calculateOverallProgress, getPhaseMessage } from './sseProgressUtils';
 import { generateTrimFilename } from './generateFilename';
 
 /**
- * URL 구간 다운로드 컨트롤러 (모듈 싱글톤, React 생명주기와 독립).
- *
- * editing → processing → completed 전환 중 컴포넌트가 mount/unmount 되어도
- * EventSource가 끊기지 않도록 컴포넌트 외부(모듈 스코프)에서 SSE를 관리한다.
+ * URL 구간 다운로드 컨트롤러. 모듈 싱글톤으로 SSE를 관리해, editing → processing →
+ * completed 전환 중 컴포넌트가 mount/unmount 되어도 EventSource가 끊기지 않는다.
  *
  * 흐름:
  *   1. POST /api/download/start → jobId

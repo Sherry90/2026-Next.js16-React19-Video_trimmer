@@ -11,12 +11,11 @@ import { TIMELINE } from '@/constants/appConfig';
 export const Playhead = memo(function Playhead() {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Store position as PERCENTAGE (0-100), not time!
+  // Position is tracked as PERCENTAGE (0-100), not time, during drag.
   const [draggingPosition, setDraggingPosition] = useState<number | null>(null);
-  const draggingPositionRef = useRef<number | null>(null); // For stable closure
+  const draggingPositionRef = useRef<number | null>(null); // stable closure for handlers
   const isDraggingRef = useRef<boolean>(false);
 
-  // Throttle for real-time seeking during drag
   const lastSeekTimeRef = useRef<number>(0);
   const seekThrottleDelay = TIMELINE.PLAYHEAD_SEEK_THROTTLE_MS;
 
@@ -28,8 +27,7 @@ export const Playhead = memo(function Playhead() {
   const { seek, setIsScrubbing, player } = useVideoPlayerContext();
   const { performSeek } = usePlayheadSeek(player);
 
-  // UI works in COORDINATES, not time
-  // Memoize position calculation to avoid recalculation on every render
+  // Memoized position in percentage coordinates (not time).
   const position = useMemo(() => {
     if (draggingPosition !== null) {
       return draggingPosition;
@@ -40,7 +38,6 @@ export const Playhead = memo(function Playhead() {
   const startPositionRef = useRef(position);
 
   const handleDragStart = useCallback(() => {
-    // Capture position at drag start
     const startPosition = duration > 0 ? (currentTime / duration) * 100 : 0;
     startPositionRef.current = startPosition;
     isDraggingRef.current = true;
@@ -49,7 +46,6 @@ export const Playhead = memo(function Playhead() {
     setDraggingPosition(startPosition);
     setIsScrubbing(true);
 
-    // Reset throttle timer for real-time seeking
     lastSeekTimeRef.current = 0;
 
     // Force cursor style during drag to prevent flicker
@@ -64,31 +60,24 @@ export const Playhead = memo(function Playhead() {
       const containerWidth = containerRef.current.parentElement?.clientWidth ?? 0;
       if (containerWidth === 0) return;
 
-      // Work in COORDINATES (percentage), not time!
+      // Work in percentage coordinates, not time.
       const deltaPercent = (deltaX / containerWidth) * 100;
       let newPosition = startPositionRef.current + deltaPercent;
 
-      // Constrain to in/out points (convert to percentage)
+      // Constrain to in/out points (as percentages)
       const inPointPercent = duration > 0 ? (inPoint / duration) * 100 : 0;
       const outPointPercent = duration > 0 ? (outPoint / duration) * 100 : 100;
       newPosition = Math.max(inPointPercent, Math.min(newPosition, outPointPercent));
 
-      // Update both ref and state
       draggingPositionRef.current = newPosition;
       setDraggingPosition(newPosition);
 
-      // Real-time video seeking during drag (throttled to 100ms)
+      // Throttled real-time seek during drag
       const now = Date.now();
       if (now - lastSeekTimeRef.current >= seekThrottleDelay) {
         lastSeekTimeRef.current = now;
-
-        // Convert position to time and seek
         const seekTime = (newPosition / 100) * duration;
-
-        // Update store immediately for UI responsiveness
-        setCurrentTime(seekTime);
-
-        // Seek video player
+        setCurrentTime(seekTime); // store first for UI responsiveness
         seek(seekTime);
       }
     },
@@ -98,25 +87,21 @@ export const Playhead = memo(function Playhead() {
   const handleDragEnd = useCallback(() => {
     isDraggingRef.current = false;
 
-    // Restore cursor immediately
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
 
-    // Use ref to get latest dragging position (stable closure)
+    // Latest position via ref (stable closure)
     const finalPosition = draggingPositionRef.current;
 
     if (finalPosition !== null) {
-      // Convert position → time ONCE at drag end
+      // Convert percentage → time once, at drag end
       const finalTime = (finalPosition / 100) * duration;
 
-      // 1. Update store SYNCHRONOUSLY before seek
-      // This ensures store has correct value before any timeupdate
+      // Update store synchronously before seek so it's correct ahead of any timeupdate
       setCurrentTime(finalTime);
-
-      // 2. Seek video to final time
       seek(finalTime);
 
-      // 3. Wait for seek to complete with verification
+      // Wait for seek to complete before clearing drag state
       performSeek(finalTime, () => {
         draggingPositionRef.current = null;
         setDraggingPosition(null);

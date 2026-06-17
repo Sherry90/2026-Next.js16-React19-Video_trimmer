@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { spawn } from 'child_process';
-import { unlinkSync, existsSync } from 'fs';
+import { existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
@@ -10,6 +10,7 @@ import { runWithTimeout } from '@/lib/processUtils';
 import { formatTime } from '@/shared/lib/timeFormatter';
 import { validateTrimRequest, handleApiError } from '@/lib/apiUtils';
 import { streamFile } from '@/lib/streamUtils';
+import { safeUnlink } from '@/lib/downloadTypes';
 
 /**
  * Streamlink → ffmpeg two-stage trimming
@@ -67,7 +68,7 @@ async function trimWithStreamlink(
     });
 
     if (!streamlinkSuccess) {
-      try { unlinkSync(tempFile); } catch { /* ignore */ }
+      safeUnlink(tempFile);
       return false;
     }
 
@@ -92,13 +93,12 @@ async function trimWithStreamlink(
       onSuccess: (code) => code === 0 && existsSync(outputPath),
     });
 
-    // Cleanup temp file
-    try { unlinkSync(tempFile); } catch { /* ignore */ }
+    safeUnlink(tempFile);
 
     return ffmpegSuccess;
 
   } catch (error) {
-    try { unlinkSync(tempFile); } catch { /* ignore */ }
+    safeUnlink(tempFile);
     console.log('[trim] Unexpected error:', error);
     return false;
   }
@@ -133,24 +133,14 @@ export async function POST(request: NextRequest) {
     return streamFile({
       filePath: tmpFile,
       contentType: 'video/mp4',
-      onStreamEnd: () => {
-        try {
-          unlinkSync(tmpFile);
-        } catch {
-          /* ignore */
-        }
-      },
+      onStreamEnd: () => safeUnlink(tmpFile),
       onStreamError: (err) => {
         console.error('[trim] Stream error:', err);
-        try {
-          unlinkSync(tmpFile);
-        } catch {
-          /* ignore */
-        }
+        safeUnlink(tmpFile);
       },
     });
   } catch (error: unknown) {
-    try { unlinkSync(tmpFile); } catch { /* ignore */ }
+    safeUnlink(tmpFile);
     return handleApiError(error, 'trim', '트리밍 처리 중 오류가 발생했습니다');
   }
 }

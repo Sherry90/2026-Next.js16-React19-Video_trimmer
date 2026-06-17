@@ -10,6 +10,9 @@
  * init/index 바이트 범위를 노출하지 않으므로 파일 머리를 조금 받아 mp4 박스를 직접 워킹해 계산한다.
  */
 
+/** DASH 표현 머리(ftyp+moov+sidx)를 담기 충분한 크기 (관측상 video<2.3KB, audio<1.6KB). */
+export const DASH_HEAD_BYTES = 131072; // 128KB
+
 /** mp4 박스 워킹으로 얻은 init segment(ftyp+moov)와 index(sidx)의 바이트 범위. */
 export interface InitIndexRange {
   /** Initialization range: [start, end] (inclusive) — ftyp+moov */

@@ -18,6 +18,30 @@ export function killProcessTree(proc: ChildProcess, signal: NodeJS.Signals = 'SI
 }
 
 /**
+ * stall watchdog. 마지막 활동(getLastActivity) 이후 timeoutMs 동안 진행이 전혀 없으면
+ * hang으로 보고 onStall을 호출한다. checkIntervalMs마다 폴링. stop()으로 타이머 정리,
+ * stalled()로 발동 여부 조회. (다운로드는 디스크 직행 스트리밍이라 절대 시간 제한 대신 이걸 쓴다.)
+ */
+export function watchStall(opts: {
+  getLastActivity: () => number;
+  timeoutMs: number;
+  checkIntervalMs: number;
+  onStall: () => void;
+}): { stop: () => void; stalled: () => boolean } {
+  let stalled = false;
+  const timer = setInterval(() => {
+    if (Date.now() - opts.getLastActivity() > opts.timeoutMs) {
+      stalled = true;
+      opts.onStall();
+    }
+  }, opts.checkIntervalMs);
+  return {
+    stop: () => clearInterval(timer),
+    stalled: () => stalled,
+  };
+}
+
+/**
  * 타임아웃이 있는 프로세스 실행 옵션
  */
 export interface ProcessTimeoutOptions {

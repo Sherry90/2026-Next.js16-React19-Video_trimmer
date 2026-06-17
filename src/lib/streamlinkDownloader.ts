@@ -13,7 +13,7 @@ import { join } from 'path';
 import { FFmpegProgressTracker } from './progressParser';
 import { getFfmpegPath, getStreamlinkPath } from './binPaths';
 import { safeUnlink, ensureFileComplete, DownloadProgressTracker, type Job, type EventEmitter } from './downloadTypes';
-import { runWithTimeout } from './processUtils';
+import { runWithTimeout, watchStall } from './processUtils';
 import { PROCESS, EXPORT, POLLING, DOWNLOAD } from '@/constants/appConfig';
 import { formatTime } from '@/shared/lib/timeFormatter';
 
@@ -116,18 +116,17 @@ export async function downloadWithStreamlink(
 
     // 절대 시간 제한 없음. 대신 stall watchdog: STALL_TIMEOUT_MS 동안 파일 증가/출력이 전혀
     // 없으면 hang으로 보고 죽인다. (긴/느린 다운로드는 정상 — 디스크 직행 스트리밍이라 제한 무의미.)
-    let stalled = false;
-    const stallTimer = setInterval(() => {
-      if (Date.now() - lastActivity > DOWNLOAD.STALL_TIMEOUT_MS) {
-        stalled = true;
-        streamlinkProc.kill('SIGKILL');
-      }
-    }, DOWNLOAD.STALL_CHECK_INTERVAL_MS);
+    const stall = watchStall({
+      getLastActivity: () => lastActivity,
+      timeoutMs: DOWNLOAD.STALL_TIMEOUT_MS,
+      checkIntervalMs: DOWNLOAD.STALL_CHECK_INTERVAL_MS,
+      onStall: () => streamlinkProc.kill('SIGKILL'),
+    });
 
     const result = await (async () => {
       const ok = await runWithTimeout(streamlinkProc, 0); // 0 = 절대 타임아웃 없음
       clearInterval(progressInterval);
-      clearInterval(stallTimer);
+      stall.stop();
       streamlinkProc.stderr?.removeAllListeners('data');
       currentProc = null;
       return ok && existsSync(tempFile);
@@ -136,7 +135,7 @@ export async function downloadWithStreamlink(
     if (!result) {
       safeUnlink(tempFile);
       throw new Error(
-        stalled
+        stall.stalled()
           ? `Streamlink 다운로드가 ${Math.round(DOWNLOAD.STALL_TIMEOUT_MS / 1000)}초간 멈춰 중단했습니다 (네트워크 끊김 등).`
           : 'Streamlink 다운로드에 실패했습니다'
       );

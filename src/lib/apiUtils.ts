@@ -87,6 +87,19 @@ export function createValidationError(message: string): NextResponse {
 }
 
 /**
+ * URL 파싱 가능 여부 검증. 파싱 실패 시 400 응답, 통과 시 null.
+ * (호출부의 null/빈값 체크는 메시지가 라우트별로 달라 각자 유지한다.)
+ */
+export function validateUrlParseable(url: string): NextResponse | null {
+  try {
+    new URL(url);
+    return null;
+  } catch {
+    return createValidationError('유효하지 않은 URL입니다');
+  }
+}
+
+/**
  * startTime/endTime 시간 범위 검증 (trim·download 공통)
  * @returns 에러 응답 형태 또는 null(통과)
  */
