@@ -153,7 +153,7 @@ player.currentTime(time);
 ## Important Constraints
 
 ### Supported Formats
-MP4, WebM, OGG, MOV, M4V, AVI, WMV, MKV, FLV, TS, 3GP, 3G2, MPEG, MPG (17 formats)
+MP4, WebM, OGG, MOV, M4V, AVI, WMV, MKV, FLV, TS, 3GP, 3G2, MPEG, MPG (14 formats)
 
 ### File Size Limits
 - **Recommended**: 500MB (safe)
@@ -209,8 +209,11 @@ Ctrl+휠로 타임라인 줌 조절 가능
 ## Documentation
 
 **For detailed information, always refer to:**
-- **`.docs/PROJECT.md`** - Complete project documentation (architecture, technical details, performance)
-- **`.docs/HISTORY.md`** - Development history and architectural decisions
+- **`.docs/00_INDEX.md`** - Documentation index
+- **`.docs/01_OVERVIEW.md`** - Architecture, tech stack, performance
+- **`.docs/02_API.md`** - API endpoint specs
+- **`.docs/03_DEPENDENCIES.md`** - Dependency bundling (ffmpeg/yt-dlp/streamlink)
+- **`.docs/04_DEVELOPER_GUIDE.md`** - Patterns, testing, implementation details
 - **`scripts/README.md`** - Scripts documentation
 
-This file (CLAUDE.md) is a quick reference guide for Claude Code. For comprehensive technical details, patterns, and implementation specifics, see PROJECT.md.
+This file (CLAUDE.md) is a quick reference guide for Claude Code. For comprehensive technical details, patterns, and implementation specifics, see `.docs/`.

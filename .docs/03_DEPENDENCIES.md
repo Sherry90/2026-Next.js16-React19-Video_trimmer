@@ -170,9 +170,10 @@ YouTube, Twitch 등 다양한 플랫폼에서 비디오 정보와 스트리밍 U
 1. **메타데이터 추출** (`/api/video/resolve`)
    - 제목, 길이, 썸네일, 스트림 URL
 2. **YouTube/Generic 구간 다운로드** (`/api/download/start`)
-   - `--download-sections`로 지정 구간만 다운로드
+   - `--download-sections`는 쓰지 않는다(yt-dlp의 ffmpeg 직렬 구간 추출이 스로틀에 묶임).
+     byte-range(`sidx` 파싱으로 구간 바이트만) 우선, 폴백으로 aria2c 다중연결 전체 다운로드 + 로컬 ffmpeg 컷.
 3. **포맷 선택**
-   - 최고 화질 muxed 포맷 선택
+   - DASH 다중화질(avc1+mp4a) 또는 최고 화질 muxed 포맷 선택
 
 ### 번들 방식
 

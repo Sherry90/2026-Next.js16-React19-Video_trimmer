@@ -144,7 +144,8 @@ const useStore = create<StoreState>((set, get) => ({
 4. **URL 영상 다운로드 (SSE 기반)**
    - `src/lib/downloadJob.ts` - 오케스트레이터 (플랫폼 감지 → 전략 선택)
    - `src/lib/streamlinkDownloader.ts` - Chzzk 2-phase 프로세스
-   - `src/lib/ytdlpDownloader.ts` - YouTube 1-phase + `--postprocessor-args`
+   - `src/lib/ytdlpDownloader.ts` - YouTube: byte-range 우선, 폴백 전체 다운로드 + 로컬 컷
+   - `src/lib/byteRangeDownloader.ts` - DASH `sidx` 파싱 → 구간 바이트만 받아 로컬 컷
    - SSE로 실시간 진행률 전송 흐름
 
 **실습 과제**:
@@ -172,7 +173,7 @@ const ffmpegArgs = [
 - [ ] MP4Box와 FFmpeg의 장단점 5가지씩 설명
 - [ ] 키프레임이 무엇이고 왜 1-2초마다 있는지 설명
 - [ ] `trimVideoDispatcher`의 조건문 설명
-- [ ] Chzzk 2-phase와 YouTube 1-phase의 차이 설명
+- [ ] Chzzk(Streamlink 2-phase)와 YouTube(byte-range / 전체 다운로드 + 로컬 컷)의 차이 설명
 
 ---
 
@@ -182,8 +183,12 @@ const ffmpegArgs = [
 
 **학습 순서**:
 1. **API Routes 구조**
-   - `src/app/api/video/resolve/route.ts` - yt-dlp 비디오 정보
+   - `src/app/api/video/preview/route.ts` - 즉시 프리뷰(oembed/Chzzk API)
+   - `src/app/api/video/resolve/route.ts` - yt-dlp 메타데이터 + DASH MPD 생성
+   - `src/app/api/video/manifest/route.ts` - 생성된 DASH MPD 서빙
    - `src/app/api/video/proxy/route.ts` - CORS 우회 프록시
+   - `src/app/api/video/waveform/route.ts` - 파형 PCM 추출
+   - `src/app/api/video/trim/route.ts` - Streamlink 2-stage 트리밍
 
 2. **SSE (Server-Sent Events)**
    - `src/app/api/download/start/route.ts` - Job 시작
@@ -305,7 +310,7 @@ const cleanup = () => {
 **3. 기술적 우수성**
 - 계층 아키텍처 (features / widgets / shared)
 - 자동 의존성 관리 (postinstall)
-- 169개 유닛 테스트 통과 (안정성)
+- 194개 유닛 테스트 통과 (안정성)
 
 ### 기술 스택
 
@@ -750,15 +755,17 @@ Phase 2: FFmpeg 타임스탬프 리셋
 - 플레이어는 타임스탬프 00:00:00부터 시작 기대
 - 타임스탬프 리셋 없으면 플레이어 오작동 가능
 
-**YouTube는 왜 1-phase?**
+**YouTube는 왜 다른가?**
+
+`--download-sections`는 yt-dlp가 구간을 ffmpeg로 직렬 추출해 연결당 스로틀에 묶이므로 쓰지 않는다. 대신:
 
 ```
-Phase 1 only: yt-dlp --download-sections --postprocessor-args "ffmpeg:..."
-→ final.mp4 (타임스탬프가 00:00:00부터 시작)
+byte-range 우선:  sidx 파싱 → 구간 바이트만 Range 수신 → 로컬 ffmpeg 컷  (byteRangeDownloader.ts)
+폴백:             aria2c 다중연결로 전체 다운로드 → 로컬 ffmpeg 컷·타임스탬프 리셋·faststart
 ```
 
-- yt-dlp가 muxing 과정에서 FFmpeg를 내부적으로 호출
-- `--postprocessor-args`로 FFmpeg 옵션 전달 → Phase 2 불필요
+- byte-range가 성공하면 클립이 수 초에 끝난다(전체를 받지 않음)
+- 폴백 경로는 전체 다운로드(`downloading`) 후 로컬 컷(`processing`) 2단계
 
 ---
 
@@ -1240,7 +1247,15 @@ describe('Store - Timeline', () => {
     const { result } = renderHook(() => useStore());
 
     act(() => {
-      result.current.setVideoUrl('test.mp4', 100);
+      result.current.setVideoFile({
+        file: new File(['test'], 'test.mp4'),
+        source: 'file',
+        name: 'test.mp4',
+        size: 1024,
+        type: 'video/mp4',
+        url: 'blob:test',
+        duration: 100,
+      });
       result.current.setInPoint(30);
     });
 
