@@ -13,7 +13,9 @@ import { UrlInputZone } from '@/features/url-input/components/UrlInputZone';
 
 // Export feature (eager load button and error, lazy load progress/download)
 import { ExportButton } from '@/features/export/components/ExportButton';
+import { ResetButton } from '@/features/export/components/ResetButton';
 import { ErrorDisplay } from '@/features/export/components/ErrorDisplay';
+import { Modal } from '@/shared/ui/Modal';
 
 // Editing section은 video.js(~546KB)+wavesurfer를 끌어오므로 editing 진입 전까지
 // 초기 번들에서 분리(랜딩/업로드 화면이 무거운 미디어 라이브러리를 안 받음).
@@ -25,6 +27,10 @@ const DownloadButton = lazy(() => import('@/features/export/components/DownloadB
 
 export default function HomePage() {
   const phase = useStore((state) => state.phase);
+  const setPhase = useStore((state) => state.setPhase);
+
+  const isEditorMounted = phase === 'editing' || phase === 'processing' || phase === 'completed';
+  const isExportModalOpen = phase === 'processing' || phase === 'completed';
 
   return (
     <div className="min-h-screen bg-[#101114] flex flex-col">
@@ -36,6 +42,7 @@ export default function HomePage() {
           </h1>
         </div>
         <div className="flex gap-2">
+          <ResetButton />
           <ExportButton />
         </div>
       </header>
@@ -53,17 +60,23 @@ export default function HomePage() {
             </UploadZone>
           )}
           <UploadProgress />
-          {phase === 'editing' && (
+          {isEditorMounted && (
             <Suspense fallback={<div className="text-[#74808c] text-sm">Loading editor…</div>}>
               <EditingSection />
             </Suspense>
           )}
-          <Suspense fallback={null}>
-            <ExportProgress />
-          </Suspense>
-          <Suspense fallback={null}>
-            <DownloadButton />
-          </Suspense>
+          <Modal
+            isOpen={isExportModalOpen}
+            dismissable={phase === 'completed'}
+            onClose={() => setPhase('editing')}
+          >
+            <Suspense fallback={null}>
+              <ExportProgress />
+            </Suspense>
+            <Suspense fallback={null}>
+              <DownloadButton />
+            </Suspense>
+          </Modal>
         </div>
       </div>
     </div>
