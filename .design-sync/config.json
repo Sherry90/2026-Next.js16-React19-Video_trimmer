@@ -79,6 +79,10 @@
     },
     "VideoScreenPlaceholder": {
       "cardMode": "column"
+    },
+    "PlayerControlBar": {
+      "cardMode": "column",
+      "primaryStory": "Default"
     }
   },
   "readmeHeader": ".design-sync/conventions.md"
