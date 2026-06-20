@@ -19,6 +19,9 @@ const comps = [
   ['WaveformBackground', 'src/features/timeline/components/WaveformBackground.stories', ['WithVideoFile', 'NoVideoFile']],
   ['UploadZone', 'src/features/upload/components/UploadZone.stories', ['Default']],
   ['UploadProgress', 'src/features/upload/components/UploadProgress.stories', ['InProgress', 'AlmostDone']],
+  // Wired control-bar container (store-driven). VideoPlayerProvider mock + render
+  // live in the story; storeDecorator injects per-story state.
+  ['PlayerControlBar', 'src/features/player/components/PlayerControlBar.stories', ['Default', 'Playing', 'Muted']],
 ];
 
 const tpl = (storyPath, exportLines) => `import * as React from 'react';

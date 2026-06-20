@@ -14,6 +14,7 @@ export { QualitySelector } from '@/features/player/components/QualitySelector';
 export { FullscreenButton } from '@/features/player/components/FullscreenButton';
 export { VolumeControl } from '@/features/player/components/VolumeControl';
 export { PlayerControls } from '@/features/player/components/PlayerControls';
+export { PlayerControlBar } from '@/features/player/components/PlayerControlBar';
 export { VideoScreenPlaceholder } from '@/features/player/components/VideoScreenPlaceholder';
 export { Playhead } from '@/features/timeline/components/Playhead';
 export { TimeInput } from '@/features/timeline/components/TimeInput';
