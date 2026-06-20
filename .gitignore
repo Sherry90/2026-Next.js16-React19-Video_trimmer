@@ -76,3 +76,13 @@ src/__tests__/e2e/fixtures/*.mp4
 
 # 번들된 커스텀 서버(build 산출물)
 server.cjs
+
+# design-sync
+.design-sync/sb-reference/
+.design-sync/learnings/
+.design-sync/.cache/
+.design-sync/node_modules
+.ds-sync/
+ds-bundle/
+.design-sync/*.log
+!.design-sync/config.json
