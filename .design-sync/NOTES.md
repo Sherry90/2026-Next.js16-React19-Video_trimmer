@@ -4,6 +4,22 @@ This repo is a **Next.js app**, not a packaged design system. There is no
 component `dist/`. design-sync runs in **storybook shape** against a synthetic
 barrel that exposes the app's storied UI components as the DS bundle.
 
+## Player modularization (2026-06-21)
+- video.js native control bar (`controls: true`) was replaced with custom React
+  controls (`controls: false` in `VideoPlayerView.tsx`). New modular components
+  under `src/features/player/components/`, all pure-prop presentational (sync
+  clean, no owned preview): `PlayButton`, `TimeDisplay`, `Scrubber`,
+  `QualitySelector`, `FullscreenButton`, `VolumeControl`, `PlayerControls`
+  (layout), `VideoScreenPlaceholder` (design stand-in for the mocked video).
+- Containers (NOT synced): `PlayerControlBar` (wires controls to store+context+
+  hooks), `VideoScreen` (video.js mount frame; lifecycle still owned by
+  `VideoPlayerView`). New hooks: `useQualityLevels` (ported from the deleted
+  `qualityMenuButton.ts`), `useFullscreen` (wrapper-div fullscreen).
+- Icons are inline SVG (video.js icon font is excluded from storybook/Claude
+  Design CSS, so `vjs-icon-*` glyphs would be blank there).
+- `config.json` overrides: `PlayerControls`/`Scrubber`/`VideoScreenPlaceholder`
+  = `cardMode: "column"` (wide).
+
 ## Off-envelope setup (why these files exist)
 - `.design-sync/entry.ts` — synthetic barrel: re-exports the 15 storied
   components + `VideoPlayerProvider`/`useVideoPlayerContext`/`useStore` so the

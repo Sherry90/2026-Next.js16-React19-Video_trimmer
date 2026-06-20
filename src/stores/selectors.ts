@@ -45,6 +45,16 @@ export const usePlayerActions = createStateSelector((state) => ({
   setIsScrubbing: state.setIsScrubbing,
 }));
 
+// Narrow player selectors — timeupdate fires ~4x/s, so subscribe each control
+// to only the field it needs (Scrubber/TimeDisplay re-render per tick, the rest don't).
+export const usePlayerCurrentTime = createSimpleSelector((state) => state.player.currentTime);
+export const usePlayerIsPlaying = createSimpleSelector((state) => state.player.isPlaying);
+export const useSelectedQuality = createSimpleSelector((state) => state.selectedQuality);
+export const usePlayerVolume = createStateSelector((state) => ({
+  volume: state.player.volume,
+  isMuted: state.player.isMuted,
+}));
+
 // Phase & Processing Selectors
 export const usePhase = createSimpleSelector((state) => state.phase);
 
