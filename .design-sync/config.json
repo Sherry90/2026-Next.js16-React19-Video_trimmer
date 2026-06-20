@@ -70,6 +70,15 @@
     },
     "TimelineControls": {
       "cardMode": "column"
+    },
+    "PlayerControls": {
+      "cardMode": "column"
+    },
+    "Scrubber": {
+      "cardMode": "column"
+    },
+    "VideoScreenPlaceholder": {
+      "cardMode": "column"
     }
   },
   "readmeHeader": ".design-sync/conventions.md"
