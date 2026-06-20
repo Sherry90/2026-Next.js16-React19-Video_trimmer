@@ -1,0 +1,11 @@
+{
+  "//": "Bundle-only tsconfig for design-sync. baseUrl is the repo root (..). Mirrors .storybook/main.ts vite aliases so the esbuild bundle resolves video.js / wavesurfer.js to the same mocks Storybook uses. Never add these mock paths to the app tsconfig.",
+  "compilerOptions": {
+    "baseUrl": "..",
+    "paths": {
+      "@/*": ["src/*"],
+      "video.js": ["src/__mocks__/videojs.ts"],
+      "wavesurfer.js": ["src/__mocks__/wavesurfer.ts"]
+    }
+  }
+}
