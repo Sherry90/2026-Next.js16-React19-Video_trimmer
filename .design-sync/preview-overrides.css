@@ -1,0 +1,17 @@
+/* design-sync preview/card overrides — appended onto the Vite-compiled
+   Tailwind CSS to form .design-sync/sb-reference/compiled.css (cfg.cssEntry).
+   The card template (emit.mjs, un-forkable) hardcodes a NON-important
+   `body{background:#fff}`. These !important rules win (the linked stylesheet
+   beats a non-important inline rule), rendering every card + compare capture
+   on the app's real dark surface (#101114) — without which dark-designed
+   components (UploadZone drop area, PreviewButtons `text-white`/`bg-white/10`,
+   UrlInputZone) are invisible white-on-white. Matches Storybook's dark canvas. */
+body {
+  background: #101114 !important;
+  color: #d9dce3;
+}
+/* card cell chrome: dark surface, subtle border for the white default */
+.ds-cell {
+  background: #101114 !important;
+  border-color: #2a2c31 !important;
+}
