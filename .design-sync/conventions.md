@@ -50,7 +50,9 @@ useStore.setState({
 Store-driven: `Playhead`, `TimelineBar`, `TimelineEditor`, `TrimHandle`,
 `WaveformBackground`, `UploadProgress`, `DownloadButton`, `ExportProgress`,
 `ErrorDisplay`, `UrlInputZone`, `UploadZone`. Pure-prop (pass args directly):
-`TimelineControls`, `TimeInput`, `ProgressBar`.
+`TimelineControls`, `TimeInput`, `ProgressBar`, and the modular player controls
+`PlayButton`, `TimeDisplay`, `Scrubber`, `QualitySelector`, `FullscreenButton`,
+`VolumeControl`, `PlayerControls` (the composed control bar), `VideoScreenPlaceholder`.
 
 Timeline components that interact with the player expect the player context —
 wrap them in `window.VideoTrimmerUI.VideoPlayerProvider` with a value of
