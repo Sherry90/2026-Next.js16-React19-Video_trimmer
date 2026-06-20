@@ -6,6 +6,15 @@ export { DownloadButton } from '@/features/export/components/DownloadButton';
 export { ErrorDisplay } from '@/features/export/components/ErrorDisplay';
 export { ExportProgress } from '@/features/export/components/ExportProgress';
 export { VideoPlayerView } from '@/features/player/components/VideoPlayerView';
+// Modular player controls (pure-prop presentational — editable in Claude Design)
+export { PlayButton } from '@/features/player/components/PlayButton';
+export { TimeDisplay } from '@/features/player/components/TimeDisplay';
+export { Scrubber } from '@/features/player/components/Scrubber';
+export { QualitySelector } from '@/features/player/components/QualitySelector';
+export { FullscreenButton } from '@/features/player/components/FullscreenButton';
+export { VolumeControl } from '@/features/player/components/VolumeControl';
+export { PlayerControls } from '@/features/player/components/PlayerControls';
+export { VideoScreenPlaceholder } from '@/features/player/components/VideoScreenPlaceholder';
 export { Playhead } from '@/features/timeline/components/Playhead';
 export { TimeInput } from '@/features/timeline/components/TimeInput';
 export { TimelineBar } from '@/features/timeline/components/TimelineBar';

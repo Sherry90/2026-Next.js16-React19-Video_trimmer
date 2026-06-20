@@ -7,7 +7,8 @@ import type Player from 'video.js/dist/types/player';
 import { useStore } from '@/stores/useStore';
 import { useVideoUrl, useVideoFile, usePlayerActions } from '@/stores/selectors';
 import { VideoPlayerProvider } from '../context/VideoPlayerContext';
-import { setupQualityMenu } from '../lib/qualityMenuButton';
+import { VideoScreen } from './VideoScreen';
+import { PlayerControlBar } from './PlayerControlBar';
 
 interface VideoPlayerViewProps {
   children?: React.ReactNode;
@@ -15,6 +16,8 @@ interface VideoPlayerViewProps {
 
 export function VideoPlayerView({ children }: VideoPlayerViewProps) {
   const videoRef = useRef<HTMLDivElement>(null);
+  // 영상 + 커스텀 컨트롤바를 함께 감싸는 전체화면 타깃
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<Player | null>(null);
   // 생성된 player를 state로도 노출 → context.player가 실제 인스턴스를 받는다.
   // (ref 변경은 재렌더를 안 일으켜 context 스냅샷이 null로 고정되던 문제 해결.)
@@ -38,7 +41,8 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
     videoRef.current.appendChild(videoElement);
 
     const playerInstance = (playerRef.current = videojs(videoElement, {
-      controls: true,
+      // 네이티브 컨트롤바 제거 — 커스텀 React 컨트롤(PlayerControlBar)로 대체
+      controls: false,
       autoplay: false,
       preload: 'auto',
       volume: 0.4,
@@ -62,10 +66,8 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
       videojs.log('player is ready');
 
       // context.player가 실제 인스턴스를 받도록 state 갱신 (consumer 재렌더 유발)
+      // 화질 선택은 PlayerControlBar의 useQualityLevels 훅이 담당(setSelectedQuality 동기화 유지).
       setPlayer(playerInstance);
-
-      // 컨트롤바 화질 메뉴(톱니). 선택 화질을 store에 반영 → 다운로드 화질 일치.
-      setupQualityMenu(playerInstance, (h) => useStore.getState().setSelectedQuality(h));
 
       playerInstance.on('loadedmetadata', () => {
         const duration = playerInstance.duration();
@@ -146,17 +148,12 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
   return (
     <VideoPlayerProvider value={contextValue}>
       <div className="w-full h-full flex flex-col">
-        {/* Video Player Area */}
+        {/* Video Player Area — wrapper가 전체화면 타깃(영상 + 컨트롤) */}
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="w-full max-w-[1200px] mx-auto">
-             <div className="relative w-full bg-black rounded overflow-hidden">
-             {videoUrl ? (
-                 <div ref={videoRef} data-vjs-player />
-              ) : (
-                <div className="text-white p-5 text-center h-full flex items-center justify-center">
-                  Loading video...
-                </div>
-              )}
+            <div ref={wrapperRef} className="relative w-full bg-black rounded overflow-hidden">
+              <VideoScreen videoRef={videoRef} hasVideo={!!videoUrl} />
+              {videoUrl && <PlayerControlBar wrapperRef={wrapperRef} />}
             </div>
           </div>
         </div>
