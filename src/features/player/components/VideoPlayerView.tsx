@@ -136,6 +136,18 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
     }
   }, []);
 
+  // 화면 클릭 플래시: 토글 직후의 새 상태(재생/일시정지) 아이콘을 잠깐 띄운다.
+  // id를 매번 갱신해 같은 아이콘 연속 클릭에도 애니메이션이 재시작되게 한다.
+  const [flash, setFlash] = useState<{ playing: boolean; id: number } | null>(null);
+  const flashIdRef = useRef(0);
+  const handleScreenClick = useCallback(() => {
+    const p = playerRef.current;
+    if (!p) return;
+    const willPlay = p.paused(); // 토글 전 paused → 토글 후 재생 상태
+    togglePlay();
+    setFlash({ playing: willPlay, id: (flashIdRef.current += 1) });
+  }, [togglePlay]);
+
   const setIsScrubbing = useStore((state) => state.setIsScrubbing);
 
   // 안정적인 context value: player(state)나 콜백이 바뀔 때만 새 객체 → consumer 불필요 재렌더 방지.
@@ -152,7 +164,27 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="w-full max-w-[1200px] mx-auto">
             <div ref={wrapperRef} className="relative w-full bg-black rounded overflow-hidden">
-              <VideoScreen videoRef={videoRef} hasVideo={!!videoUrl} />
+              <VideoScreen videoRef={videoRef} hasVideo={!!videoUrl} onScreenClick={handleScreenClick} />
+              {flash && (
+                <div
+                  key={flash.id}
+                  className="animate-screen-flash pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
+                  onAnimationEnd={() => setFlash(null)}
+                >
+                  <span className="flex items-center justify-center w-20 h-20 rounded-full bg-black/50 text-white">
+                    {flash.playing ? (
+                      <svg className="w-10 h-10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M8 5.14v13.72a1 1 0 0 0 1.54.84l10.29-6.86a1 1 0 0 0 0-1.68L9.54 4.3A1 1 0 0 0 8 5.14Z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-10 h-10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <rect x="6" y="5" width="4" height="14" rx="1" />
+                        <rect x="14" y="5" width="4" height="14" rx="1" />
+                      </svg>
+                    )}
+                  </span>
+                </div>
+              )}
               {videoUrl && <PlayerControlBar wrapperRef={wrapperRef} />}
             </div>
           </div>
