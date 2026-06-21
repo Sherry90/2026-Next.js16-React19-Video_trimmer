@@ -178,8 +178,72 @@ export const APP_CONFIG = {
      */
     MAX_PEAKS: 32000,
   },
+
+  /**
+   * 타임라인 시각 설정 (파형 + 스펙트럴 오버레이).
+   * 파형과 스펙트럴을 항상 겹쳐 표시하므로 색/투명도/블렌드를 한곳에서 조절한다.
+   */
+  WAVEFORM_VIEW: {
+    /** 파형 막대 색 — 스펙트럴 위에 겹치므로 대비 높은 색(흰색 권장). */
+    WAVE_COLOR: '#ffffff',
+    /** 파형 오버레이 투명도 (0~1). 스펙트럴이 비치도록 반투명. */
+    WAVE_OPACITY: 0.25,
+    /** 파형 블렌드 모드. 'screen'은 어두운 스펙트럴 위에 막대만 떠보이게 한다. */
+    WAVE_BLEND_MODE: 'screen' as const,
+    /** 줌 > 4 일 때 막대 폭(px). */
+    BAR_WIDTH_ZOOMED: 1,
+    /** 기본 막대 폭(px). */
+    BAR_WIDTH_DEFAULT: 1,
+    /** 막대 간격(px). */
+    BAR_GAP: 1,
+
+    /** 스펙트럴 로컬 분석(파일 소스) 리샘플 레이트(Hz). */
+    SPECTRAL_SAMPLE_RATE: 8000,
+    /** FFT 크기(샘플). 주파수 해상도 ↔ 시간 해상도 트레이드오프. */
+    SPECTRAL_FFT_SIZE: 256,
+    /** 프레임 간 hop 크기(샘플). 작을수록 시간축 촘촘(프레임 수 ∝ 1/hop). */
+    SPECTRAL_HOP_SIZE: 256,
+    /**
+     * 주파수 막대(bin) 수. 스펙트럴 세로 해상도.
+     * FFT_SIZE/2(=mag bin 수) 이하여야 의미 있음(현재 256/2=128).
+     */
+    SPECTRAL_FREQ_BINS: 128,
+    /** 프레임 상한. 초과 시 stride 로 솎아 페이로드/연산 보호. */
+    SPECTRAL_MAX_FRAMES: 2400,
+    /** 스펙트럴 캔버스 배경 채움색(데이터 없는 영역). */
+    SPECTRAL_BG: '#101114',
+    /**
+     * 스펙트럴 intensity 로그 스케일 계수. log10(1 + mag * SCALE) 로 압축.
+     * 키우면 약한 신호가 더 밝게(대비↓), 줄이면 강한 피크만 부각(대비↑).
+     */
+    SPECTRAL_LOG_SCALE: 80,
+    /** 스펙트럴 색 매핑(HSL). intensity 0~1에 따라 hue/sat/light 보간. */
+    HUE_BASE: 226,
+    HUE_RANGE: 178,
+    SAT_BASE: 50,
+    SAT_RANGE: 45,
+    LIGHT_BASE: 10,
+    LIGHT_RANGE: 54,
+
+    /** 스펙트럴 그리드 가로선 색. */
+    GRID_STROKE: 'rgba(255, 255, 255, 0.12)',
+    /** 스펙트럴 그리드 분할 수(가로선은 분할-1개). */
+    GRID_DIVISIONS: 4,
+  },
 } as const;
 
 // 타입 안전성을 위한 개별 export
-export const { TIMELINE, URL_INPUT, PROCESS, EXPORT, PROGRESS, TIME, UI, PLAYBACK, POLLING, DOWNLOAD, WAVEFORM } =
-  APP_CONFIG;
+export const {
+  TIMELINE,
+  URL_INPUT,
+  PROCESS,
+  EXPORT,
+  PROGRESS,
+  TIME,
+  UI,
+  PLAYBACK,
+  POLLING,
+  DOWNLOAD,
+  WAVEFORM,
+  WAVEFORM_VIEW,
+} = APP_CONFIG;

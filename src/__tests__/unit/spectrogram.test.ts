@@ -7,6 +7,7 @@ import {
   spectrogramFrameWidth,
 } from '@/shared/lib/spectrogram';
 import { computeSpectrogram } from '@/lib/spectrogramCompute';
+import { WAVEFORM_VIEW } from '@/constants/appConfig';
 
 describe('spectrogram utilities', () => {
   it('creates a hann window with tapered edges', () => {
@@ -88,7 +89,7 @@ describe('computeSpectrogram', () => {
 
     const data = computeSpectrogram(pcm);
     expect(data.frames.length).toBeGreaterThan(0);
-    expect(data.frames[0]).toHaveLength(64);
+    expect(data.frames[0]).toHaveLength(WAVEFORM_VIEW.SPECTRAL_FREQ_BINS);
     expect(Math.max(...data.frames[0])).toBeGreaterThan(0);
     expect(Math.max(...data.frames[0])).toBeLessThanOrEqual(1);
   });
