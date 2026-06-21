@@ -15,8 +15,9 @@ export function TimelineBar({ children }: TimelineBarProps) {
   const inPoint = useStore((state) => state.timeline.inPoint);
   const outPoint = useStore((state) => state.timeline.outPoint);
   const zoom = useStore((state) => state.timeline.zoom);
-  const waveformDisplayMode = useStore((state) => state.timeline.waveformDisplayMode ?? 'waveform');
-  const setWaveformDisplayMode = useStore((state) => state.setWaveformDisplayMode);
+  // 파형/스펙트럴을 항상 겹쳐 표시하므로 토글 비활성(아래 버튼 주석). 롤백 시 함께 복구.
+  // const waveformDisplayMode = useStore((state) => state.timeline.waveformDisplayMode ?? 'waveform');
+  // const setWaveformDisplayMode = useStore((state) => state.setWaveformDisplayMode);
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const [viewportWidth, setViewportWidth] = useState<number>(0);
@@ -47,6 +48,7 @@ export function TimelineBar({ children }: TimelineBarProps) {
     <div className="w-full h-[168px]">
       {/* Timeline Wrapper with padding */}
       <div className="h-full pt-4 px-4">
+        {/* 파형/스펙트럴 토글 — 항상 겹쳐 표시로 전환하여 숨김. 롤백 시 복구.
         <div className="mb-2 flex h-[24px] items-center justify-end">
           <div className="flex h-full overflow-hidden rounded border border-white/10 bg-[#111317] text-[11px]">
             {(['waveform', 'spectrogram'] as const).map((mode) => (
@@ -66,6 +68,7 @@ export function TimelineBar({ children }: TimelineBarProps) {
             ))}
           </div>
         </div>
+        */}
 
         {/* Scroll viewport — 줌 시 content track 이 넓어지며 가로 스크롤 */}
         <div

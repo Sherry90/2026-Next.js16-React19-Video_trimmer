@@ -1,4 +1,4 @@
-import { WAVEFORM } from '@/constants/appConfig';
+import { WAVEFORM, WAVEFORM_VIEW } from '@/constants/appConfig';
 import {
   bucketMagnitudes,
   computeMagnitudeSpectrum,
@@ -6,11 +6,14 @@ import {
   type SpectrogramData,
 } from '@/shared/lib/spectrogram';
 
-const SAMPLE_RATE = 8000;
-const FFT_SIZE = 256;
-const HOP_SIZE = 512;
-const FREQ_BINS = 64;
-const MAX_FRAMES = 1800;
+// 분석 해상도는 클라이언트(로컬 파일)와 동일 상수에서 — URL/파일 스펙트럴 일관성.
+// SAMPLE_RATE 는 route.ts 의 ffmpeg -ar 추출 레이트와 짝이라 여기서 별도 고정(분리 시 시간축 깨짐).
+const SAMPLE_RATE = WAVEFORM_VIEW.SPECTRAL_SAMPLE_RATE;
+const FFT_SIZE = WAVEFORM_VIEW.SPECTRAL_FFT_SIZE;
+const HOP_SIZE = WAVEFORM_VIEW.SPECTRAL_HOP_SIZE;
+const FREQ_BINS = WAVEFORM_VIEW.SPECTRAL_FREQ_BINS;
+const MAX_FRAMES = WAVEFORM_VIEW.SPECTRAL_MAX_FRAMES;
+const LOG_SCALE = WAVEFORM_VIEW.SPECTRAL_LOG_SCALE;
 
 export class SpectrogramTooLongError extends Error {}
 
@@ -43,7 +46,7 @@ export function computeSpectrogram(pcm: Buffer): SpectrogramData {
 
     frames.push(
       bucketMagnitudes(computeMagnitudeSpectrum(windowed), FREQ_BINS)
-        .map((value) => Math.round(Math.min(1, Math.log10(1 + value * 80)) * 1000) / 1000)
+        .map((value) => Math.round(Math.min(1, Math.log10(1 + value * LOG_SCALE)) * 1000) / 1000)
     );
   }
 

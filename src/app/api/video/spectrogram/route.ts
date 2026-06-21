@@ -3,10 +3,11 @@ import { spawn } from 'child_process';
 import { tmpdir } from 'os';
 import { getYtdlpPath, getFfmpegPath } from '@/lib/binPaths';
 import { validateUrlParseable } from '@/lib/apiUtils';
-import { DOWNLOAD } from '@/constants/appConfig';
+import { DOWNLOAD, WAVEFORM_VIEW } from '@/constants/appConfig';
 import { computeSpectrogram, SpectrogramTooLongError } from '@/lib/spectrogramCompute';
 
-const SAMPLE_RATE = 8000;
+// ffmpeg -ar 추출 레이트. spectrogramCompute 의 SAMPLE_RATE 와 반드시 동일(시간축 정합) → 동일 상수 사용.
+const SAMPLE_RATE = WAVEFORM_VIEW.SPECTRAL_SAMPLE_RATE;
 const TIMEOUT_MS = 120000;
 const MAX_PCM_BYTES = 200 * 1024 * 1024;
 

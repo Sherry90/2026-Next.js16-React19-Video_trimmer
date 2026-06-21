@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import { useStore } from '@/stores/useStore';
-import { UI } from '@/constants/appConfig';
+import { UI, WAVEFORM_VIEW } from '@/constants/appConfig';
 import { getWaveform, clearWaveform, shouldSkipWaveform, scalePeaksToDuration } from '@/shared/lib/waveformCache';
 import { getSpectrogram, clearSpectrogram } from '@/shared/lib/spectrogramCache';
+import { withRetry } from '@/shared/lib/retry';
 import {
   bucketMagnitudes,
   computeMagnitudeSpectrum,
@@ -15,11 +16,11 @@ import {
   type SpectrogramData,
 } from '@/shared/lib/spectrogram';
 
-const LOCAL_SPECTROGRAM_SAMPLE_RATE = 8000;
-const LOCAL_FFT_SIZE = 256;
-const LOCAL_HOP_SIZE = 512;
-const LOCAL_FREQ_BINS = 64;
-const LOCAL_MAX_FRAMES = 1200;
+const LOCAL_SPECTROGRAM_SAMPLE_RATE = WAVEFORM_VIEW.SPECTRAL_SAMPLE_RATE;
+const LOCAL_FFT_SIZE = WAVEFORM_VIEW.SPECTRAL_FFT_SIZE;
+const LOCAL_HOP_SIZE = WAVEFORM_VIEW.SPECTRAL_HOP_SIZE;
+const LOCAL_FREQ_BINS = WAVEFORM_VIEW.SPECTRAL_FREQ_BINS;
+const LOCAL_MAX_FRAMES = WAVEFORM_VIEW.SPECTRAL_MAX_FRAMES;
 
 type SpectrogramStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error' | 'skipped';
 
@@ -32,7 +33,6 @@ export function WaveformBackground() {
   const [skipped, setSkipped] = useState<boolean>(false);
 
   const videoFile = useStore((state) => state.videoFile);
-  const displayMode = useStore((state) => state.timeline.waveformDisplayMode ?? 'waveform');
   const zoom = useStore((state) => state.timeline.zoom);
   const waveformProgress = useStore((state) => state.processing.waveformProgress);
   const setProgress = useStore((state) => state.setProgress);
@@ -44,7 +44,7 @@ export function WaveformBackground() {
 
   const renderSpectrogram = useCallback(() => {
     const canvas = spectrogramCanvasRef.current;
-    if (!canvas || displayMode !== 'spectrogram') return;
+    if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
     const width = Math.max(1, Math.floor(rect.width));
@@ -61,7 +61,7 @@ export function WaveformBackground() {
 
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = '#101114';
+    ctx.fillStyle = WAVEFORM_VIEW.SPECTRAL_BG;
     ctx.fillRect(0, 0, width, height);
 
     if (!spectrogram || spectrogram.frames.length === 0) return;
@@ -92,9 +92,9 @@ export function WaveformBackground() {
       const frame = frames[x];
       for (let y = 0; y < frame.length; y++) {
         const intensity = Math.max(0, Math.min(1, frame[y]));
-        const hue = 226 - intensity * 178;
-        const saturation = 50 + intensity * 45;
-        const lightness = 10 + intensity * 54;
+        const hue = WAVEFORM_VIEW.HUE_BASE - intensity * WAVEFORM_VIEW.HUE_RANGE;
+        const saturation = WAVEFORM_VIEW.SAT_BASE + intensity * WAVEFORM_VIEW.SAT_RANGE;
+        const lightness = WAVEFORM_VIEW.LIGHT_BASE + intensity * WAVEFORM_VIEW.LIGHT_RANGE;
         const [r, g, b] = hslToRgb(hue, saturation, lightness);
         // 저주파(y=0)를 하단에 배치 → row 뒤집기
         const row = binCount - 1 - y;
@@ -111,16 +111,16 @@ export function WaveformBackground() {
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(offscreen, 0, 0, frameCount, binCount, 0, 0, frameCount * frameWidth, height);
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.strokeStyle = WAVEFORM_VIEW.GRID_STROKE;
     ctx.lineWidth = 1;
-    for (let i = 1; i < 4; i++) {
-      const y = (height / 4) * i;
+    for (let i = 1; i < WAVEFORM_VIEW.GRID_DIVISIONS; i++) {
+      const y = (height / WAVEFORM_VIEW.GRID_DIVISIONS) * i;
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(width, y);
       ctx.stroke();
     }
-  }, [displayMode, spectrogram, videoFile]);
+  }, [spectrogram, videoFile]);
 
   useEffect(() => {
     if (!videoFile) return;
@@ -138,11 +138,11 @@ export function WaveformBackground() {
 
       const wavesurfer = WaveSurfer.create({
         container: waveformRef.current,
-        waveColor: '#4fa3ff',
+        waveColor: WAVEFORM_VIEW.WAVE_COLOR,
         progressColor: 'transparent',
         cursorColor: 'transparent',
-        barWidth: zoom > 4 ? 1 : 2,
-        barGap: 1,
+        barWidth: zoom > 4 ? WAVEFORM_VIEW.BAR_WIDTH_ZOOMED : WAVEFORM_VIEW.BAR_WIDTH_DEFAULT,
+        barGap: WAVEFORM_VIEW.BAR_GAP,
         height: 80,
         normalize: true,
         interact: false,
@@ -277,7 +277,9 @@ export function WaveformBackground() {
 
   // barWidth만 zoom 에 반응 — 인스턴스 재생성 없이 옵션만 갱신(줌마다 리로드/로딩 깜빡임 방지).
   useEffect(() => {
-    wavesurferRef.current?.setOptions({ barWidth: zoom > 4 ? 1 : 2 });
+    wavesurferRef.current?.setOptions({
+      barWidth: zoom > 4 ? WAVEFORM_VIEW.BAR_WIDTH_ZOOMED : WAVEFORM_VIEW.BAR_WIDTH_DEFAULT,
+    });
   }, [zoom]);
 
   // 스펙트럼은 displayMode와 무관하게 영상 로드 시 백그라운드에서 미리 연산해 둔다.
@@ -299,9 +301,10 @@ export function WaveformBackground() {
           return;
         }
 
+        // URL: 서버 fetch(내부 재시도). 파일: 로컬 연산 — 일시 실패 시 최대 3회 재시도.
         const data = videoFile.source === 'url' && videoFile.originalUrl
           ? await getSpectrogram(videoFile.originalUrl)
-          : await computeLocalSpectrogram(videoFile.url, videoFile.duration);
+          : await withRetry(() => computeLocalSpectrogram(videoFile.url, videoFile.duration));
 
         if (cancelled) return;
         if (!isValidSpectrogramData(data)) {
@@ -344,18 +347,17 @@ export function WaveformBackground() {
   }, []);
 
   useLayoutEffect(() => {
-    if (displayMode !== 'spectrogram') return;
-
     const frame = requestAnimationFrame(renderSpectrogram);
     return () => cancelAnimationFrame(frame);
-  }, [renderSpectrogram, containerWidth, displayMode, spectrogramStatus]);
+  }, [renderSpectrogram, containerWidth, spectrogramStatus]);
 
-  // 오버레이는 현재 표시 모드의 준비 상태를 따른다(두 모드 모두 백그라운드 준비됨).
-  const isSpectral = displayMode === 'spectrogram';
-  const showLoading = isSpectral ? spectrogramStatus === 'loading' : isLoading;
-  const showEmpty = isSpectral
-    ? spectrogramStatus === 'error' || spectrogramStatus === 'empty' || spectrogramStatus === 'skipped'
-    : !isLoading && !hasAudio;
+  // 파형과 스펙트럴을 항상 겹쳐 표시 — 오버레이는 두 레이어의 합친 상태를 따른다.
+  const spectralUnavailable =
+    spectrogramStatus === 'error' || spectrogramStatus === 'empty' || spectrogramStatus === 'skipped';
+  // 둘 중 하나라도 준비 중이면 로딩 표시.
+  const showLoading = isLoading || spectrogramStatus === 'loading';
+  // 파형도 없고 스펙트럴도 사용 불가일 때만 빈 상태.
+  const showEmpty = !showLoading && !hasAudio && spectralUnavailable;
 
   return (
     <div className="w-full h-full overflow-hidden pointer-events-none relative">
@@ -364,36 +366,37 @@ export function WaveformBackground() {
         <div className="absolute left-0 right-0 top-1/2 h-px bg-[#ffee65]/45" />
       </div>
 
-      {/* Waveform container - always rendered so ref can attach */}
-      <div
-        ref={waveformRef}
-        className={`w-full h-full absolute inset-0 ${displayMode === 'waveform' ? 'opacity-100' : 'opacity-0'}`}
-      />
-
+      {/* 스펙트럴(아래 레이어) — 항상 표시 */}
       <canvas
         ref={spectrogramCanvasRef}
         data-testid="spectrogram-canvas"
-        className={`absolute inset-0 h-full w-full ${displayMode === 'spectrogram' ? 'opacity-100' : 'opacity-0'}`}
+        className="absolute inset-0 h-full w-full"
       />
 
-      {/* Loading overlay — 현재 표시 모드 기준 */}
+      {/* 파형(위 레이어) — 반투명 + 블렌드로 스펙트럴 위에 겹침. ref 부착 위해 항상 렌더. */}
+      <div
+        ref={waveformRef}
+        className="w-full h-full absolute inset-0"
+        style={{
+          opacity: WAVEFORM_VIEW.WAVE_OPACITY,
+          mixBlendMode: WAVEFORM_VIEW.WAVE_BLEND_MODE,
+        }}
+      />
+
+      {/* Loading overlay — 파형/스펙트럴 중 하나라도 준비 중 */}
       {showLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-[#1c1d20] z-10">
           <div className="text-xs text-[#74808c]">
-            {displayMode === 'spectrogram'
-              ? '스펙트럼 분석 중...'
-              : `Loading waveform... ${Math.round(waveformProgress)}%`}
+            {isLoading ? `Loading waveform... ${Math.round(waveformProgress)}%` : '스펙트럼 분석 중...'}
           </div>
         </div>
       )}
 
-      {/* No audio / skipped overlay — 현재 표시 모드 기준 */}
+      {/* 빈 상태 — 파형도 없고 스펙트럴도 사용 불가 */}
       {!showLoading && showEmpty && (
         <div className="absolute inset-0 flex items-center justify-center bg-[#1c1d20] z-10">
           <div className="text-xs text-[#74808c]" data-testid="waveform-empty-message">
-            {displayMode === 'spectrogram'
-              ? spectrogramMessage || '스펙트럼을 표시할 수 없습니다'
-              : skipped ? '영상이 길어 파형을 생략했습니다' : 'No audio track'}
+            {skipped ? '영상이 길어 파형을 생략했습니다' : spectrogramMessage || 'No audio track'}
           </div>
         </div>
       )}
@@ -476,7 +479,7 @@ async function computeLocalSpectrogram(url: string, duration: number): Promise<S
       }
       frames.push(
         bucketMagnitudes(computeMagnitudeSpectrum(windowed), LOCAL_FREQ_BINS)
-          .map((value) => Math.round(Math.min(1, Math.log10(1 + value * 80)) * 1000) / 1000)
+          .map((value) => Math.round(Math.min(1, Math.log10(1 + value * WAVEFORM_VIEW.SPECTRAL_LOG_SCALE)) * 1000) / 1000)
       );
     }
 
