@@ -43,7 +43,7 @@ export function PlayerControlBar({ wrapperRef }: PlayerControlBarProps) {
   // 드래그 중에는 store currentTime이 동결되므로 thumb는 로컬 표시시간으로 추종
   const [scrubTime, setScrubTime] = useState<number | null>(null);
 
-  // 플레이어 실제 볼륨/뮤트를 스토어에 1회 반영해 UI 초기값을 일치시킨다(config volume:0.4 등).
+  // 플레이어 실제 볼륨/뮤트를 스토어에 1회 반영해 UI 초기값 일치(ready에서 player.volume(DEFAULT_VOLUME) 설정됨).
   const syncedRef = useRef<unknown>(null);
   useEffect(() => {
     if (!player || syncedRef.current === player) return;
