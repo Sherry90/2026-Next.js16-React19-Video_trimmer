@@ -3,8 +3,11 @@ import {
   mockResolveApi,
   mockResolveApiError,
   mockProxyApi,
+  mockSpectrogramApi,
+  mockSpectrogramApiError,
   mockTrimApi,
   mockTrimApiError,
+  mockWaveformApi,
   loadUrlVideo,
   DEFAULT_RESOLVE_RESPONSE,
 } from './helpers';
@@ -24,6 +27,7 @@ test.describe('URL Input & Video Load', () => {
   test('should load video after entering URL and clicking Load', async ({ page }) => {
     await mockResolveApi(page);
     await mockProxyApi(page);
+    await mockWaveformApi(page);
 
     await page.goto('/');
 
@@ -41,6 +45,7 @@ test.describe('URL Input & Video Load', () => {
   test('should submit URL with Enter key', async ({ page }) => {
     await mockResolveApi(page);
     await mockProxyApi(page);
+    await mockWaveformApi(page);
 
     await page.goto('/');
 
@@ -62,6 +67,7 @@ test.describe('URL Input & Video Load', () => {
       });
     });
     await mockProxyApi(page);
+    await mockWaveformApi(page);
 
     await page.goto('/');
 
@@ -105,6 +111,40 @@ test.describe('URL Source Editing', () => {
     await expect(page.getByTestId('export-button')).toBeVisible();
     await expect(page.getByTestId('export-button')).toHaveText('Export');
   });
+
+  test('should render spectral canvas after switching to Spectral mode', async ({ page }) => {
+    await mockSpectrogramApi(page);
+    await loadUrlVideo(page);
+
+    await page.getByRole('button', { name: 'Spectral' }).click();
+    await expect(page.getByRole('button', { name: 'Spectral' })).toHaveAttribute('aria-pressed', 'true');
+    const canvas = page.getByTestId('spectrogram-canvas');
+    await expect(canvas).toBeVisible();
+
+    await expect.poll(async () => {
+      return canvas.evaluate((node) => {
+        const canvasElement = node as HTMLCanvasElement;
+        if (canvasElement.width === 0 || canvasElement.height === 0) return 0;
+        const ctx = canvasElement.getContext('2d');
+        if (!ctx) return 0;
+        const image = ctx.getImageData(0, 0, canvasElement.width, canvasElement.height);
+        const colors = new Set<string>();
+        for (let i = 0; i < image.data.length; i += 400) {
+          colors.add(`${image.data[i]},${image.data[i + 1]},${image.data[i + 2]},${image.data[i + 3]}`);
+          if (colors.size > 3) return colors.size;
+        }
+        return colors.size;
+      });
+    }, { timeout: 5000 }).toBeGreaterThan(3);
+  });
+
+  test('should show spectral error instead of hanging on API failure', async ({ page }) => {
+    await mockSpectrogramApiError(page);
+    await loadUrlVideo(page);
+
+    await page.getByRole('button', { name: 'Spectral' }).click();
+    await expect(page.getByTestId('waveform-empty-message')).toContainText('스펙트럼을 표시할 수 없습니다');
+  });
 });
 
 test.describe('URL Source Trimming & Download', () => {
@@ -112,6 +152,8 @@ test.describe('URL Source Trimming & Download', () => {
     // Use a delayed trim response to observe processing state
     await mockResolveApi(page);
     await mockProxyApi(page);
+    await mockWaveformApi(page);
+    await mockWaveformApi(page);
 
     const fs = await import('fs');
     const path = await import('path');
@@ -153,6 +195,7 @@ test.describe('URL Source Trimming & Download', () => {
   test('should show error and allow retry on trim failure', async ({ page }) => {
     await mockResolveApi(page);
     await mockProxyApi(page);
+    await mockWaveformApi(page);
     // Mock trim to fail
     await mockTrimApiError(page, 500, '트리밍에 실패했습니다');
 
@@ -196,6 +239,7 @@ test.describe('Full URL Workflow', () => {
     // Set up all mocks
     await mockResolveApi(page);
     await mockProxyApi(page);
+    await mockWaveformApi(page);
     await mockTrimApi(page);
 
     await page.goto('/');
