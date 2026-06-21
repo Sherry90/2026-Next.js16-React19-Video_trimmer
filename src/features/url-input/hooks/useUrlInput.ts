@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useStore } from '@/stores/useStore';
 import { prefetchWaveform, clearWaveform } from '@/shared/lib/waveformCache';
+import { prefetchSpectrogram } from '@/shared/lib/spectrogramCache';
 import { getYoutubeThumbnail } from '@/shared/lib/platformUrl';
 
 export interface UrlPreview {
@@ -55,9 +56,10 @@ export function useUrlInput() {
       })
       .catch(() => {});
 
-    // 파형 추출을 resolve와 병렬로 시작 (둘 다 originalUrl만 필요 → 서버 yt-dlp 2개 병렬).
-    // editing 진입 시 WaveformBackground가 이 캐시를 소비 → 파형이 더 빨리 표시됨.
+    // 파형/스펙트럼 추출을 resolve와 병렬로 시작 (originalUrl만 필요).
+    // editing 진입 시 WaveformBackground가 이 캐시를 소비 → 둘 다 미리 준비됨(토글 즉시 표시).
     prefetchWaveform(trimmedUrl);
+    prefetchSpectrogram(trimmedUrl);
 
     try {
       const response = await fetch('/api/video/resolve', {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useStore } from '@/stores/useStore';
+import { CheckCircleIcon } from '@/shared/ui/icons';
 
 export function DownloadButton() {
   const phase = useStore((state) => state.phase);
@@ -51,19 +52,7 @@ export function DownloadButton() {
 
   return (
     <div className="w-full max-w-2xl mx-auto p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg text-center space-y-4">
-      <svg
-        className="w-16 h-16 mx-auto text-green-500"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-        />
-      </svg>
+      <CheckCircleIcon className="w-16 h-16 mx-auto text-green-500" />
 
       <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
         Video Ready!

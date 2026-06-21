@@ -181,15 +181,26 @@ describe('useStore', () => {
       });
     });
 
+    describe('Waveform display mode', () => {
+      it('should switch waveform display mode', () => {
+        const { setWaveformDisplayMode } = useStore.getState();
+        setWaveformDisplayMode('spectrogram');
+        expect(useStore.getState().timeline.waveformDisplayMode).toBe('spectrogram');
+        setWaveformDisplayMode('waveform');
+        expect(useStore.getState().timeline.waveformDisplayMode).toBe('waveform');
+      });
+    });
+
     describe('Reset timeline', () => {
       it('should reset timeline to initial state', () => {
-        const { setInPoint, setOutPoint, setPlayhead, setZoom, resetTimeline } =
+        const { setInPoint, setOutPoint, setPlayhead, setZoom, setWaveformDisplayMode, resetTimeline } =
           useStore.getState();
 
         setInPoint(20);
         setOutPoint(80);
         setPlayhead(50);
         setZoom(2);
+        setWaveformDisplayMode('spectrogram');
 
         resetTimeline();
 
@@ -198,6 +209,7 @@ describe('useStore', () => {
         expect(timeline.outPoint).toBe(100);
         expect(timeline.playhead).toBe(0);
         expect(timeline.zoom).toBe(1);
+        expect(timeline.waveformDisplayMode).toBe('waveform');
         expect(timeline.isInPointLocked).toBe(false);
         expect(timeline.isOutPointLocked).toBe(false);
       });

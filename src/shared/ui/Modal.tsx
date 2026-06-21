@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, type ReactNode } from 'react';
+import { CloseIcon } from './icons';
 
 interface ModalProps {
   isOpen: boolean;
@@ -42,9 +43,7 @@ export function Modal({ isOpen, onClose, dismissable = false, children }: ModalP
             aria-label="닫기"
             className="absolute -top-3 -right-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-gray-700 text-gray-200 shadow-lg hover:bg-gray-600"
           >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <CloseIcon className="h-4 w-4" />
           </button>
         )}
         {children}

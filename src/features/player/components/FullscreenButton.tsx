@@ -1,5 +1,7 @@
 'use client';
 
+import { FullscreenEnterIcon, FullscreenExitIcon } from '@/shared/ui/icons';
+
 interface FullscreenButtonProps {
   isFullscreen: boolean;
   onToggle: () => void;
@@ -19,13 +21,9 @@ export function FullscreenButton({ isFullscreen, onToggle, className = '' }: Ful
       className={`flex items-center justify-center w-9 h-9 rounded text-white hover:bg-white/10 transition-colors ${className}`}
     >
       {isFullscreen ? (
-        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6" />
-        </svg>
+        <FullscreenExitIcon className="w-5 h-5" />
       ) : (
-        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6" />
-        </svg>
+        <FullscreenEnterIcon className="w-5 h-5" />
       )}
     </button>
   );

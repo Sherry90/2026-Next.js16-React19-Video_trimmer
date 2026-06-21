@@ -14,6 +14,7 @@ export const useTimelineState = createStateSelector((state) => ({
   isInPointLocked: state.timeline.isInPointLocked,
   isOutPointLocked: state.timeline.isOutPointLocked,
   zoom: state.timeline.zoom,
+  waveformDisplayMode: state.timeline.waveformDisplayMode ?? 'waveform',
 }));
 
 export const useTimelineActions = createStateSelector((state) => ({
@@ -23,6 +24,7 @@ export const useTimelineActions = createStateSelector((state) => ({
   setInPointLocked: state.setInPointLocked,
   setOutPointLocked: state.setOutPointLocked,
   setZoom: state.setZoom,
+  setWaveformDisplayMode: state.setWaveformDisplayMode,
   resetTimeline: state.resetTimeline,
 }));
 

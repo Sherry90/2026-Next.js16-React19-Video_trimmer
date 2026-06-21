@@ -1,5 +1,20 @@
 # design-sync notes — Video Trimmer UI
 
+## IDE resolution for owned previews (2026-06-21)
+- `.design-sync/tsconfig.json` added (IDE-only). The owned previews import the
+  converter-internal `@ds-stories/*` alias, which only the converter resolves at
+  bundle time; the editor's TS service flagged `cannot find module
+  '@ds-stories/...'` (red line, e.g. on `previews/DownloadButton.tsx`). The new
+  tsconfig maps `@ds-stories/*`→repo root (+ `@/*`) so the IDE resolves it.
+- Does NOT alias `video.js`/`wavesurfer.js` to mocks (the bundle tsconfig does
+  that for runtime) — the IDE wants the REAL types, matching root tsconfig.
+- Includes `../next-env.d.ts` so node types (NodeJS namespace) load, else
+  transitively-imported `usePlayheadSeek.ts` fails. `tsc -p .design-sync/
+  tsconfig.json --noEmit` = 0 errors; app `npm run type-check` unaffected
+  (root's `**` glob skips dot-dirs, so `.design-sync` is never in the app build).
+- Pure tooling fix — touches no synced component, so no Claude Design re-push.
+
+
 This repo is a **Next.js app**, not a packaged design system. There is no
 component `dist/`. design-sync runs in **storybook shape** against a synthetic
 barrel that exposes the app's storied UI components as the DS bundle.

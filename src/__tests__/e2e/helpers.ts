@@ -44,6 +44,46 @@ export async function mockProxyApi(page: Page) {
   );
 }
 
+export async function mockWaveformApi(page: Page) {
+  await page.route('**/api/video/waveform**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        duration: 120,
+        peaks: [Array.from({ length: 120 }, (_, index) => (index % 10) / 10)],
+      }),
+    })
+  );
+}
+
+export async function mockSpectrogramApi(page: Page) {
+  await page.route('**/api/video/spectrogram**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        duration: 120,
+        sampleRate: 8000,
+        fftSize: 256,
+        frames: Array.from({ length: 96 }, (_, x) =>
+          Array.from({ length: 64 }, (_, y) => ((x + y) % 16) / 15)
+        ),
+      }),
+    })
+  );
+}
+
+export async function mockSpectrogramApiError(page: Page) {
+  await page.route('**/api/video/spectrogram**', (route) =>
+    route.fulfill({
+      status: 502,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: '스펙트럼 추출 실패' }),
+    })
+  );
+}
+
 export async function mockTrimApi(page: Page) {
   await page.route('**/api/video/trim', (route) =>
     route.fulfill({
@@ -71,6 +111,7 @@ export async function mockTrimApiError(page: Page, status: number, message: stri
 export async function loadUrlVideo(page: Page) {
   await mockResolveApi(page);
   await mockProxyApi(page);
+  await mockWaveformApi(page);
 
   await page.goto('/');
 
