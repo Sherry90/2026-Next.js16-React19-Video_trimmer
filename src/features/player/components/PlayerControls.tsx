@@ -56,7 +56,7 @@ export function PlayerControls({
   className = '',
 }: PlayerControlsProps) {
   return (
-    <div className={`flex flex-col gap-1 px-3 py-2 bg-[var(--timeline-bg,#1c1d20)] ${className}`}>
+    <div className={`flex flex-col gap-1 px-3 py-2 pt-6 bg-gradient-to-t from-black/85 via-black/55 to-transparent ${className}`}>
       {/* 진행바 — 전체 폭 */}
       <Scrubber
         currentTime={currentTime}

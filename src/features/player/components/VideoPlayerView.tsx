@@ -53,7 +53,9 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
         src: videoUrl,
         type: mimeTypeRef.current,
       }],
-      fluid: true,
+      // fill = player가 컨테이너(아래 aspect-video 박스)를 100%×100% 채움 → 영상 높이가
+      // 가용 높이로 결정된다. fluid(너비→높이)는 가용 높이를 무시해 세로 넘침을 유발했음.
+      fill: true,
       // 후방 버퍼 30초만 유지 → 긴/고화질 영상을 길게 재생해도 MSE SourceBuffer(브라우저 탭
       // media 메모리)가 재생분 전체만큼 무한히 커지지 않게 상한. (측정상 미설정 시 range start가
       // 0에 고정돼 재생분 전체를 보유.)
@@ -166,11 +168,14 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
 
   return (
     <VideoPlayerProvider value={contextValue}>
-      <div className="w-full h-full flex flex-col">
+      <div className="w-full h-full min-h-0 flex flex-col">
         {/* Video Player Area — wrapper가 전체화면 타깃(영상 + 컨트롤) */}
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div className="w-full max-w-[1200px] mx-auto">
-            <div ref={wrapperRef} className="relative w-full bg-black rounded overflow-hidden">
+        <div className="player-area flex-1 min-h-0 flex items-center justify-center px-6 py-2">
+          {/* 영상 영역은 타임라인(250px 고정) 때문에 항상 16:9보다 가로로 넓다 → 높이를 definite
+              (h-full)로 잡고 aspect-video가 너비를 유도 → 가용 높이에 맞춰 정확한 16:9로 축소.
+              (w-full을 definite로 쓰면 높이만 찌부되므로 금지.) max-w-[1200px]로 대형 화면 상한. */}
+          <div className="h-full max-w-[1200px] aspect-video mx-auto">
+            <div ref={wrapperRef} className="relative w-full h-full bg-black rounded overflow-hidden">
               <VideoScreen videoRef={videoRef} hasVideo={!!videoUrl} onScreenClick={handleScreenClick} />
               {flash && (
                 <div
@@ -187,7 +192,11 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
                   </span>
                 </div>
               )}
-              {videoUrl && <PlayerControlBar wrapperRef={wrapperRef} />}
+              {videoUrl && (
+                <div className="absolute inset-x-0 bottom-0 z-20">
+                  <PlayerControlBar wrapperRef={wrapperRef} />
+                </div>
+              )}
             </div>
           </div>
         </div>

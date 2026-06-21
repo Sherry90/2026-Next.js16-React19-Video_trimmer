@@ -33,7 +33,7 @@ export default function HomePage() {
   const isExportModalOpen = phase === 'processing' || phase === 'completed';
 
   return (
-    <div className="min-h-screen bg-[#101114] flex flex-col">
+    <div className="h-dvh bg-[#101114] flex flex-col">
       {/* Header */}
       <header className="h-[52px] min-h-[52px] bg-[#101114] border-b border-black flex items-center justify-between px-6">
         <div className="flex items-center gap-4">
@@ -48,9 +48,9 @@ export default function HomePage() {
       </header>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* Work Area (Video Player) */}
-        <div className="flex-1 bg-[#212123] flex items-center justify-center overflow-auto">
+        <div className="flex-1 min-h-0 bg-[#212123] flex items-center justify-center overflow-hidden">
           <ErrorDisplay />
           <FileValidationError />
 
