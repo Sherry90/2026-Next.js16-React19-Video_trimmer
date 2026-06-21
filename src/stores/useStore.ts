@@ -3,6 +3,7 @@ import type {
   AppPhase,
   VideoFile,
   TimelineState,
+  WaveformDisplayMode,
   ProcessingState,
   PlayerState,
   ErrorState,
@@ -62,6 +63,7 @@ interface StoreActions {
   setInPointLocked: (locked: boolean) => void;
   setOutPointLocked: (locked: boolean) => void;
   setZoom: (zoom: number) => void;
+  setWaveformDisplayMode: (mode: WaveformDisplayMode) => void;
   resetTimeline: () => void;
 
   // 진행률 관련 (type별 단일 setter)
@@ -105,6 +107,7 @@ const initialState: StoreState = {
     isInPointLocked: false,
     isOutPointLocked: false,
     zoom: 1,
+    waveformDisplayMode: 'waveform',
   },
   processing: {
     uploadProgress: 0,
@@ -207,6 +210,11 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
       timeline: { ...state.timeline, zoom: constrainZoom(zoom) },
     })),
 
+  setWaveformDisplayMode: (mode) =>
+    set((state) => ({
+      timeline: { ...state.timeline, waveformDisplayMode: mode },
+    })),
+
   resetTimeline: () => {
     const duration = get().videoFile?.duration ?? 0;
     set({
@@ -217,6 +225,7 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
         isInPointLocked: false,
         isOutPointLocked: false,
         zoom: 1,
+        waveformDisplayMode: 'waveform',
       },
     });
   },

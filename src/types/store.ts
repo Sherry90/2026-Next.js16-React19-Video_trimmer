@@ -32,7 +32,10 @@ export interface TimelineState {
   isInPointLocked: boolean;   // Phase 4
   isOutPointLocked: boolean;  // Phase 4
   zoom: number;          // Phase 4 (1 = 100%)
+  waveformDisplayMode: WaveformDisplayMode;
 }
+
+export type WaveformDisplayMode = 'waveform' | 'spectrogram';
 
 export interface ProcessingState {
   uploadProgress: number;     // 0-100
