@@ -10,6 +10,7 @@ import type {
   ExportState,
 } from '@/types/store';
 import { runAllCleanups } from '@/lib/cleanup';
+import { PLAYBACK } from '@/constants/appConfig';
 import {
   constrainInPoint,
   constrainOutPoint,
@@ -120,7 +121,7 @@ const initialState: StoreState = {
   player: {
     isPlaying: false,
     currentTime: 0,
-    volume: 1,
+    volume: PLAYBACK.DEFAULT_VOLUME,
     isMuted: false,
     isScrubbing: false,
   },

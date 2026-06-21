@@ -90,6 +90,8 @@ export const APP_CONFIG = {
    * 미리보기 재생 관련 설정
    */
   PLAYBACK: {
+    /** 플레이어 기본 볼륨 (0~1). 스토어 초기값 + player.volume() 적용 + UI readback 단일 출처. */
+    DEFAULT_VOLUME: 0.5,
     /** 긴 세그먼트 기준 (초) - 이 값 이상이면 Preview Edges 적용 */
     PREVIEW_LONG_SEGMENT_THRESHOLD_SEC: 10,
     /** Preview Edges 재생 길이 (초) */

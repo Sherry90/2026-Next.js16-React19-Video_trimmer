@@ -6,6 +6,7 @@ import 'videojs-contrib-quality-levels';
 import type Player from 'video.js/dist/types/player';
 import { useStore } from '@/stores/useStore';
 import { useVideoUrl, useVideoFile, usePlayerActions } from '@/stores/selectors';
+import { PLAYBACK } from '@/constants/appConfig';
 import { VideoPlayerProvider } from '../context/VideoPlayerContext';
 import { VideoScreen } from './VideoScreen';
 import { PlayerControlBar } from './PlayerControlBar';
@@ -46,7 +47,8 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
       controls: false,
       autoplay: false,
       preload: 'auto',
-      volume: 0.4,
+      // 주의: `volume`은 video.js 생성자 옵션이 아니라 무시된다(→ player 기본 1.0).
+      // 실제 적용은 ready 콜백에서 player.volume()으로 한다.
       sources: [{
         src: videoUrl,
         type: mimeTypeRef.current,
@@ -65,6 +67,10 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
       },
     }, () => {
       videojs.log('player is ready');
+
+      // 기본 볼륨 적용 — 유효 경로는 옵션이 아닌 player.volume(). PlayerControlBar의
+      // readback(player.volume() → store)이 이 값을 그대로 읽도록 setPlayer 이전에 설정.
+      playerInstance.volume(PLAYBACK.DEFAULT_VOLUME);
 
       // context.player가 실제 인스턴스를 받도록 state 갱신 (consumer 재렌더 유발)
       // 화질 선택은 PlayerControlBar의 useQualityLevels 훅이 담당(setSelectedQuality 동기화 유지).
