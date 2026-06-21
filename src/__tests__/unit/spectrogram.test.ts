@@ -4,19 +4,11 @@ import {
   computeMagnitudeSpectrum,
   hannWindow,
   isValidSpectrogramData,
-  nextPowerOfTwo,
   spectrogramFrameWidth,
 } from '@/shared/lib/spectrogram';
 import { computeSpectrogram } from '@/lib/spectrogramCompute';
 
 describe('spectrogram utilities', () => {
-  it('calculates powers of two', () => {
-    expect(nextPowerOfTwo(1)).toBe(1);
-    expect(nextPowerOfTwo(2)).toBe(2);
-    expect(nextPowerOfTwo(3)).toBe(4);
-    expect(nextPowerOfTwo(255)).toBe(256);
-  });
-
   it('creates a hann window with tapered edges', () => {
     const window = hannWindow(8);
     expect(window[0]).toBeCloseTo(0);

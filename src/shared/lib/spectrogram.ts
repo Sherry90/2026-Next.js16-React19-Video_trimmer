@@ -42,11 +42,6 @@ export function spectrogramFrameWidth(
   return width / frameCount;
 }
 
-export function nextPowerOfTwo(value: number): number {
-  if (value <= 1) return 1;
-  return 2 ** Math.ceil(Math.log2(value));
-}
-
 export function hannWindow(size: number): Float32Array {
   const window = new Float32Array(size);
   if (size <= 1) {

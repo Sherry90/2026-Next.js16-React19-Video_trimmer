@@ -67,6 +67,7 @@ function extractPcm(ytdlp: string, ffmpeg: string, url: string, signal?: AbortSi
     let total = 0;
     let settled = false;
     let stderr = '';
+    let dlStderr = '';
 
     const cleanup = () => {
       clearTimeout(timer);
@@ -102,7 +103,16 @@ function extractPcm(ytdlp: string, ffmpeg: string, url: string, signal?: AbortSi
 
     dl.on('error', (e) => fail(new Error(`yt-dlp 실행 실패: ${e.message}`)));
     ff.on('error', (e) => fail(new Error(`ffmpeg 실행 실패: ${e.message}`)));
+    dl.stderr.on('data', (d) => { dlStderr += d.toString(); });
     ff.stderr.on('data', (d) => { stderr += d.toString(); });
+
+    // yt-dlp 비정상 종료(지역차단/비공개/잘못된 URL)는 ff EOF→0바이트로 이어져
+    // ffmpeg 일반 에러에 가려진다. dl 종료를 먼저 잡아 진짜 원인을 노출.
+    dl.on('close', (code) => {
+      if (code !== 0 && code !== null) {
+        fail(new Error(dlStderr.trim() || `yt-dlp 종료 코드 ${code}`));
+      }
+    });
 
     ff.stdout.on('data', (chunk: Buffer) => {
       total += chunk.length;

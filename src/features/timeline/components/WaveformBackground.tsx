@@ -78,22 +78,38 @@ export function WaveformBackground() {
       width
     );
 
-    for (let x = 0; x < frames.length; x++) {
+    // 프레임을 frameCount×binCount 오프스크린 ImageData 한 장으로 채운 뒤
+    // 메인 캔버스로 스케일 blit — fillRect 수만~수십만 회 대신 putImageData+drawImage 2회.
+    const frameCount = frames.length;
+    const offscreen = document.createElement('canvas');
+    offscreen.width = frameCount;
+    offscreen.height = binCount;
+    const offCtx = offscreen.getContext('2d');
+    if (!offCtx) return;
+
+    const image = offCtx.createImageData(frameCount, binCount);
+    for (let x = 0; x < frameCount; x++) {
       const frame = frames[x];
       for (let y = 0; y < frame.length; y++) {
         const intensity = Math.max(0, Math.min(1, frame[y]));
         const hue = 226 - intensity * 178;
-        const lightness = 10 + intensity * 54;
         const saturation = 50 + intensity * 45;
-        ctx.fillStyle = `hsl(${hue} ${saturation}% ${lightness}%)`;
-        ctx.fillRect(
-          x * frameWidth,
-          height - ((y + 1) / binCount) * height,
-          Math.ceil(frameWidth) + 1,
-          Math.ceil(height / binCount) + 1
-        );
+        const lightness = 10 + intensity * 54;
+        const [r, g, b] = hslToRgb(hue, saturation, lightness);
+        // 저주파(y=0)를 하단에 배치 → row 뒤집기
+        const row = binCount - 1 - y;
+        const idx = (row * frameCount + x) * 4;
+        image.data[idx] = r;
+        image.data[idx + 1] = g;
+        image.data[idx + 2] = b;
+        image.data[idx + 3] = 255;
       }
     }
+    offCtx.putImageData(image, 0, 0);
+
+    // drawImage 로 frameWidth(=videoDuration 정합 폭)에 맞춰 가로 스케일, 세로는 height 가득.
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(offscreen, 0, 0, frameCount, binCount, 0, 0, frameCount * frameWidth, height);
 
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
     ctx.lineWidth = 1;
@@ -257,7 +273,12 @@ export function WaveformBackground() {
         wavesurferRef.current = null;
       }
     };
-  }, [videoFile, zoom, setProgress]);
+  }, [videoFile, setProgress]);
+
+  // barWidth만 zoom 에 반응 — 인스턴스 재생성 없이 옵션만 갱신(줌마다 리로드/로딩 깜빡임 방지).
+  useEffect(() => {
+    wavesurferRef.current?.setOptions({ barWidth: zoom > 4 ? 1 : 2 });
+  }, [zoom]);
 
   // 스펙트럼은 displayMode와 무관하게 영상 로드 시 백그라운드에서 미리 연산해 둔다.
   // → 'Spectral' 토글 시 새로 계산하지 않고 즉시 표시(파형과 동일하게 준비 완료 상태).
@@ -380,6 +401,30 @@ export function WaveformBackground() {
   );
 }
 
+// hsl(h, s%, l%) → [r,g,b] (0-255). ImageData 픽셀 직접 채우기용.
+function hslToRgb(h: number, s: number, l: number): [number, number, number] {
+  const sat = s / 100;
+  const lig = l / 100;
+  const c = (1 - Math.abs(2 * lig - 1)) * sat;
+  const hp = ((h % 360) + 360) % 360 / 60;
+  const x = c * (1 - Math.abs((hp % 2) - 1));
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  if (hp < 1) [r, g, b] = [c, x, 0];
+  else if (hp < 2) [r, g, b] = [x, c, 0];
+  else if (hp < 3) [r, g, b] = [0, c, x];
+  else if (hp < 4) [r, g, b] = [0, x, c];
+  else if (hp < 5) [r, g, b] = [x, 0, c];
+  else [r, g, b] = [c, 0, x];
+  const m = lig - c / 2;
+  return [
+    Math.round((r + m) * 255),
+    Math.round((g + m) * 255),
+    Math.round((b + m) * 255),
+  ];
+}
+
 async function computeLocalSpectrogram(url: string, duration: number): Promise<SpectrogramData> {
   if (shouldSkipWaveform(duration)) {
     return { duration: 0, sampleRate: LOCAL_SPECTROGRAM_SAMPLE_RATE, fftSize: LOCAL_FFT_SIZE, frames: [], skipped: true };
@@ -397,9 +442,25 @@ async function computeLocalSpectrogram(url: string, duration: number): Promise<S
     const source = decoded.getChannelData(0);
     const sampleCount = Math.floor(decoded.duration * LOCAL_SPECTROGRAM_SAMPLE_RATE);
     const samples = new Float32Array(sampleCount);
+    // step>1(컨텍스트가 8kHz 강제를 무시하고 native rate 로 디코드한 브라우저)이면
+    // 단순 데시메이션은 앨리어싱을 부른다 → 구간 박스 평균으로 1차 로우패스.
     const step = decoded.sampleRate / LOCAL_SPECTROGRAM_SAMPLE_RATE;
-    for (let i = 0; i < sampleCount; i++) {
-      samples[i] = source[Math.min(source.length - 1, Math.floor(i * step))] ?? 0;
+    if (step <= 1) {
+      for (let i = 0; i < sampleCount; i++) {
+        samples[i] = source[Math.min(source.length - 1, Math.floor(i * step))] ?? 0;
+      }
+    } else {
+      const window = Math.max(1, Math.floor(step));
+      for (let i = 0; i < sampleCount; i++) {
+        const start = Math.floor(i * step);
+        let sum = 0;
+        let count = 0;
+        for (let j = 0; j < window && start + j < source.length; j++) {
+          sum += source[start + j];
+          count++;
+        }
+        samples[i] = count > 0 ? sum / count : 0;
+      }
     }
 
     const windowValues = hannWindow(LOCAL_FFT_SIZE);
