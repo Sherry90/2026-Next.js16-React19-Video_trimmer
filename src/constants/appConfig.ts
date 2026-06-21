@@ -12,6 +12,8 @@ export const APP_CONFIG = {
     MIN_ZOOM: 0.1,
     /** 최대 줌 배율 */
     MAX_ZOOM: 10,
+    /** content track 최대 폭(px) — 캔버스/파형 폭 폭주 방지 */
+    MAX_CONTENT_PX: 32000,
     /** Playhead 이동 throttle 지연 시간 (ms) */
     PLAYHEAD_SEEK_THROTTLE_MS: 50,
     /** Seek 확인 타임아웃 (ms) */
