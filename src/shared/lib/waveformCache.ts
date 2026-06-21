@@ -23,6 +23,34 @@ export function shouldSkipWaveform(durationSec: number): boolean {
   return durationSec > WAVEFORM.MAX_DURATION_SEC;
 }
 
+/**
+ * peaks 를 videoDuration 길이에 맞게 스케일.
+ *
+ * WaveSurfer 는 `duration` 옵션과 무관하게 peaks 배열을 컨테이너 폭에 가득 펴서 그린다.
+ * 따라서 추출된 오디오 길이(audioDuration)가 videoDuration 과 다르면 파형이 playhead 와
+ * 어긋난다. 이를 막기 위해 peaks 길이를 videoDuration 기준으로 맞춘다:
+ * - audio < video: 오른쪽을 0(무음)으로 패딩 → 파형이 좌측만 채우고 우측 여백(스펙트럴과 동일).
+ * - audio > video: video 길이만큼 잘라냄.
+ */
+export function scalePeaksToDuration(
+  peaks: number[][],
+  audioDuration: number,
+  videoDuration: number
+): number[][] {
+  if (audioDuration <= 0 || videoDuration <= 0 || audioDuration === videoDuration) {
+    return peaks;
+  }
+  return peaks.map((channel) => {
+    if (channel.length === 0) return channel;
+    const targetLen = Math.max(1, Math.round(channel.length * (videoDuration / audioDuration)));
+    if (targetLen === channel.length) return channel;
+    if (targetLen < channel.length) return channel.slice(0, targetLen);
+    const padded = channel.slice();
+    for (let i = channel.length; i < targetLen; i++) padded.push(0);
+    return padded;
+  });
+}
+
 interface Entry {
   url: string;
   promise: Promise<WaveformPeaks>;
