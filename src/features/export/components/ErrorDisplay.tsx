@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useStore } from '@/stores/useStore';
 import type { AppError } from '@/types/types';
+import { AlertCircleIcon, ChevronDownIcon } from '@/shared/ui/icons';
 
 interface ErrorDisplayProps {
   error?: AppError | null;
@@ -73,19 +74,7 @@ export function ErrorDisplay({
       {/* Error Icon and Title */}
       <div className="flex items-start gap-4">
         <div className="flex-shrink-0">
-          <svg
-            className="w-6 h-6 text-red-600"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
+          <AlertCircleIcon className="w-6 h-6 text-red-600" />
         </div>
 
         <div className="flex-1">
@@ -109,21 +98,11 @@ export function ErrorDisplay({
                 <span>
                   {showDetails ? '상세 정보 숨기기' : '상세 정보 보기'}
                 </span>
-                <svg
+                <ChevronDownIcon
                   className={`w-4 h-4 transition-transform ${
                     showDetails ? 'rotate-180' : ''
                   }`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
+                />
               </button>
 
               {showDetails && (

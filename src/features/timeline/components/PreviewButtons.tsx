@@ -1,5 +1,7 @@
 'use client';
 
+import { ChevronLeftIcon, ChevronRightIcon } from '@/shared/ui/icons';
+
 interface PreviewButtonsProps {
   onPreviewEdges: () => void;
 }
@@ -21,17 +23,7 @@ export function PreviewButtons({ onPreviewEdges }: PreviewButtonsProps) {
     >
       {/* Left edge indicator - full height */}
       <div className="w-6 bg-[#2962ff] flex items-center justify-center">
-        <svg
-          className="w-3 h-3"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          viewBox="0 0 12 12"
-        >
-          <path d="M9 2 L3 6 L9 10" />
-        </svg>
+        <ChevronLeftIcon className="w-3 h-3" />
       </div>
 
       {/* Center text - with background and hover effect */}
@@ -41,17 +33,7 @@ export function PreviewButtons({ onPreviewEdges }: PreviewButtonsProps) {
 
       {/* Right edge indicator - full height */}
       <div className="w-6 bg-[#2962ff] flex items-center justify-center">
-        <svg
-          className="w-3 h-3"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          viewBox="0 0 12 12"
-        >
-          <path d="M3 2 L9 6 L3 10" />
-        </svg>
+        <ChevronRightIcon className="w-3 h-3" />
       </div>
     </button>
   );

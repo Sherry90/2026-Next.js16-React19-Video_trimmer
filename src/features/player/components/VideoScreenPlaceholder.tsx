@@ -1,5 +1,7 @@
 'use client';
 
+import { PlayIcon } from '@/shared/ui/icons';
+
 interface VideoScreenPlaceholderProps {
   label?: string;
   aspectRatio?: string; // e.g. "16 / 9"
@@ -22,9 +24,7 @@ export function VideoScreenPlaceholder({
       style={{ aspectRatio }}
     >
       <div className="flex flex-col items-center gap-2 text-white/30">
-        <svg className="w-12 h-12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <path d="M8 5.14v13.72a1 1 0 0 0 1.54.84l10.29-6.86a1 1 0 0 0 0-1.68L9.54 4.3A1 1 0 0 0 8 5.14Z" />
-        </svg>
+        <PlayIcon className="w-12 h-12" />
         <span className="text-sm">{label}</span>
       </div>
     </div>

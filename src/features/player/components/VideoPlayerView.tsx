@@ -9,6 +9,7 @@ import { useVideoUrl, useVideoFile, usePlayerActions } from '@/stores/selectors'
 import { VideoPlayerProvider } from '../context/VideoPlayerContext';
 import { VideoScreen } from './VideoScreen';
 import { PlayerControlBar } from './PlayerControlBar';
+import { PlayIcon, PauseIcon } from '@/shared/ui/icons';
 
 interface VideoPlayerViewProps {
   children?: React.ReactNode;
@@ -173,14 +174,9 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
                 >
                   <span className="flex items-center justify-center w-20 h-20 rounded-full bg-black/50 text-white">
                     {flash.playing ? (
-                      <svg className="w-10 h-10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <path d="M8 5.14v13.72a1 1 0 0 0 1.54.84l10.29-6.86a1 1 0 0 0 0-1.68L9.54 4.3A1 1 0 0 0 8 5.14Z" />
-                      </svg>
+                      <PlayIcon className="w-10 h-10" />
                     ) : (
-                      <svg className="w-10 h-10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <rect x="6" y="5" width="4" height="14" rx="1" />
-                        <rect x="14" y="5" width="4" height="14" rx="1" />
-                      </svg>
+                      <PauseIcon className="w-10 h-10" />
                     )}
                   </span>
                 </div>
