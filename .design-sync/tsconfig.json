@@ -1,0 +1,12 @@
+{
+  "//": "IDE-only tsconfig for .design-sync/previews/*.tsx. The converter uses tsconfig.bundle.json (cfg.tsconfig); this file exists ONLY so the editor's TS service resolves the converter-internal '@ds-stories/*' alias instead of flagging 'cannot find module'. Does NOT alias video.js/wavesurfer to mocks (the bundle tsconfig does that for runtime) — the IDE wants the REAL types, same as the root tsconfig. NOT referenced by the app build — root tsconfig's '**' glob skips dot-dirs, so .design-sync is never type-checked by `npm run type-check`.",
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "..",
+    "paths": {
+      "@/*": ["src/*"],
+      "@ds-stories/*": ["./*"]
+    }
+  },
+  "include": ["previews/**/*.ts", "previews/**/*.tsx", "entry.ts", "../next-env.d.ts"]
+}
