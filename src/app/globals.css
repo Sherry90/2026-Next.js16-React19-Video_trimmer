@@ -9,11 +9,23 @@
   --accent-yellow: #ffee65;
 }
 
+html,
+body {
+  height: 100%;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  min-height: 100vh;
+}
+
+/* 보조: 매우 낮은 viewport(예: 16:9 windowed)에서 영상 영역 패딩을 줄여 영상 공간 확보.
+   타임라인(250px 고정)은 건드리지 않음 — flex-fit이 영상으로 슬랙을 흡수. */
+@media (max-height: 700px) {
+  .player-area {
+    padding: 0.5rem;
+  }
 }
 
 /* Indeterminate progress bar animation */

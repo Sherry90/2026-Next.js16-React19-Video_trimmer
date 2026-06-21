@@ -23,5 +23,6 @@ export function VideoScreen({ videoRef, hasVideo, onScreenClick }: VideoScreenPr
       </div>
     );
   }
-  return <div ref={videoRef} data-vjs-player onClick={onScreenClick} />;
+  // fill 모드 video.js는 부모가 definite height여야 채워진다 → 마운트 div를 w/h-full로.
+  return <div ref={videoRef} data-vjs-player onClick={onScreenClick} className="w-full h-full" />;
 }
