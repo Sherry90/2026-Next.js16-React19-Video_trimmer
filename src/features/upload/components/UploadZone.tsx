@@ -2,6 +2,7 @@
 
 import { useCallback, useState, type ReactNode } from 'react';
 import { useFileUpload } from '@/features/upload/hooks/useFileUpload';
+import { UploadCloudIcon } from '@/shared/ui/icons';
 
 // URL 입력 등 부가 소스 UI는 상위(랜딩)에서 children으로 합성한다
 // (upload feature가 url-input feature를 직접 참조하지 않도록 결합 제거).
@@ -63,19 +64,7 @@ export function UploadZone({ children }: { children?: ReactNode }) {
       }`}
       onClick={() => document.getElementById('file-upload')?.click()}
     >
-      <svg
-        className="w-16 h-16 mb-6 opacity-50"
-        fill="none"
-        stroke="#74808c"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={1.5}
-          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-        />
-      </svg>
+      <UploadCloudIcon className="w-16 h-16 mb-6 opacity-50" stroke="#74808c" />
 
       <h3 className="mb-3 text-[18px] font-medium text-[#d9dce3]">
         Drop video file here
