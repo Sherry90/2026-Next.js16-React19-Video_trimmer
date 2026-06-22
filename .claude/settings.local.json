@@ -10,7 +10,6 @@
       "Bash(git mv:*)",
       "Bash(git push:*)",
       "Bash(git reset:*)",
-
       "Bash(npm init -y)",
       "Bash(npm install:*)",
       "Bash(npm ls *)",
@@ -24,22 +23,18 @@
       "Bash(npx tailwindcss:*)",
       "Bash(npx tsc:*)",
       "Bash(timeout 10 npm run dev:*)",
-
       "Bash(node -e:*)",
       "Bash(node test-ffmpeg-parser.js:*)",
       "Bash(node test-segment-parser.js:*)",
       "Bash(node:*)",
       "Bash(python3:*)",
-
       "Bash(ffmpeg:*)",
       "Bash(ffprobe:*)",
       "Bash(streamlink:*)",
       "Bash(yt-dlp:*)",
-
       "Bash(claude --version)",
       "Bash(claude config *)",
       "Bash(claude update *)",
-
       "Bash(brew list *)",
       "Bash(curl:*)",
       "Bash(env)",
@@ -57,12 +52,10 @@
       "Bash(xargs kill:*)",
       "Bash(xargs:*)",
       "Bash(/tmp/test_script.js << 'EOF'\n// Fill end time and click download\ndocument.querySelector\\('[value=\"00:00:00.000\"]'\\).value = \"00:01:00.000\";\ndocument.querySelector\\('[value=\"00:00:00.000\"]'\\).dispatchEvent\\(new Event\\('input', { bubbles: true }\\)\\);\ndocument.querySelector\\('[value=\"00:00:00.000\"]'\\).dispatchEvent\\(new Event\\('blur', { bubbles: true }\\)\\);\nsetTimeout\\(\\(\\) => {\n  const downloadBtn = Array.from\\(document.querySelectorAll\\('button'\\)\\).find\\(b => b.textContent.includes\\('Download'\\)\\);\n  if \\(downloadBtn && !downloadBtn.disabled\\) {\n    downloadBtn.click\\(\\);\n    console.log\\('Download started!'\\);\n  }\n}, 1000\\);\nEOF)",
-
       "Read(//Users/pc/.claude/**)",
       "Read(//Users/pc/.local/share/claude/**)",
       "Read(//Users/pc/.local/share/claude/versions/**)",
       "Read(//tmp/**)",
-
       "mcp__chrome-devtools__click",
       "mcp__chrome-devtools__evaluate_script",
       "mcp__chrome-devtools__fill",
@@ -79,16 +72,15 @@
       "mcp__chrome-devtools__take_snapshot",
       "mcp__chrome-devtools__upload_file",
       "mcp__chrome-devtools__wait_for",
-
       "mcp__jetbrains__find_files_by_name_keyword",
       "mcp__jetbrains__get_file_text_by_path",
       "mcp__jetbrains__list_directory_tree",
       "mcp__jetbrains__search_in_files_by_text",
-
       "WebFetch(domain:github.com)",
       "WebFetch(domain:online-video-cutter.com)",
       "WebFetch(domain:streamlink.github.io)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(awk -F: '{s+=$2} END{print s\" it/test calls in unit\"}')"
     ]
   },
   "enableAllProjectMcpServers": true,
