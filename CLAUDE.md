@@ -37,7 +37,7 @@ npm run test:e2e:ui   # Playwright UI
 | **←** / **→** | 1초 이동 |
 | **Shift + ←/→** | 0.1초 이동 (프레임) |
 | **Home** / **End** | In Point / Out Point로 점프 |
-| **Ctrl + 휠** | 타임라인 줌 (0.1x ~ 10x) |
+| **Ctrl + 휠** | 타임라인 줌 (1x ~ 10x) |
 
 단축키는 입력 필드 포커스 시 비활성화됩니다.
 
@@ -202,7 +202,7 @@ git add -p  # or git add --patch
 feat: 타임라인 줌 기능 추가
 
 Ctrl+휠로 타임라인 줌 조절 가능
-- 줌 범위: 0.1x ~ 10x
+- 줌 범위: 1x ~ 10x
 - Waveform과 연동
 ```
 

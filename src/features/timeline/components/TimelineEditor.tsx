@@ -21,7 +21,6 @@ export function TimelineEditor() {
   const inPoint = useStore((state) => state.timeline.inPoint);
   const outPoint = useStore((state) => state.timeline.outPoint);
   const duration = useStore((state) => state.videoFile?.duration ?? 0);
-  const zoom = useStore((state) => state.timeline.zoom);
   const isInPointLocked = useStore((state) => state.timeline.isInPointLocked);
   const isOutPointLocked = useStore((state) => state.timeline.isOutPointLocked);
 
@@ -31,7 +30,7 @@ export function TimelineEditor() {
 
   // Use custom hooks for preview and zoom functionality
   const { handlePreviewEdges } = usePreviewPlayback(inPoint, outPoint);
-  useTimelineZoom(timelineRef, zoom, setZoom);
+  useTimelineZoom(timelineRef, setZoom);
 
   return (
     <div ref={timelineRef} className="w-full h-full">
