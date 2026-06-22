@@ -188,6 +188,7 @@ const ffmpegArgs = [
    - `src/app/api/video/manifest/route.ts` - 생성된 DASH MPD 서빙
    - `src/app/api/video/proxy/route.ts` - CORS 우회 프록시
    - `src/app/api/video/waveform/route.ts` - 파형 PCM 추출
+   - `src/app/api/video/spectrogram/route.ts` - STFT 스펙트로그램 추출(파형 오버레이용)
    - `src/app/api/video/trim/route.ts` - Streamlink 2-stage 트리밍
 
 2. **SSE (Server-Sent Events)**
@@ -310,7 +311,7 @@ const cleanup = () => {
 **3. 기술적 우수성**
 - 계층 아키텍처 (features / widgets / shared)
 - 자동 의존성 관리 (postinstall)
-- 194개 유닛 테스트 통과 (안정성)
+- 206개 유닛 테스트 통과 (안정성)
 
 ### 기술 스택
 
@@ -375,11 +376,14 @@ src/
 │   │   ├── components/      UrlInputZone
 │   │   └── hooks/           useUrlInput
 │   ├── player/
-│   │   ├── components/      VideoPlayerView   (player 인스턴스를 context로 노출)
+│   │   ├── components/      VideoPlayerView(context 노출), VideoScreen, PlayerControlBar →
+│   │   │                    PlayerControls → PlayButton, VolumeControl, Scrubber, TimeDisplay,
+│   │   │                    FullscreenButton, QualitySelector
+│   │   ├── hooks/           useFullscreen, useQualityLevels
 │   │   └── context/         VideoPlayerContext
 │   ├── timeline/
-│   │   ├── components/      TimelineEditor, TrimHandle, Playhead,
-│   │   │                    TimelineControls, PreviewButtons, WaveformBackground
+│   │   ├── components/      TimelineEditor, TimelineBar, TrimHandle, Playhead, TimelineControls,
+│   │   │                    PreviewButtons, LockButton, WaveformBackground(파형+스펙트럴 오버레이)
 │   │   └── hooks/           useDragHandle, useKeyboardShortcuts, usePreviewPlayback,
 │   │                        useTimelineZoom, usePlayheadSeek
 │   └── export/
@@ -393,10 +397,11 @@ src/
 │   └── EditingSection.tsx   # VideoPlayerView + TimelineEditor + 키보드 단축키 합성
 │
 └── shared/
-    ├── ui/ProgressBar.tsx   # 재사용 UI 프리미티브
+    ├── ui/                  # 재사용 UI 프리미티브: ProgressBar, Modal, icons/ (공용 SVG 아이콘 모듈)
     └── lib/                 # 클라이언트 공유 순수 유틸 (상위 레이어 미참조 leaf)
-                             waveformCache, platformUrl, timeFormatter, mathUtils,
-                             stringUtils, formatBytes, errorHandler, ffmpegLogParser, memoryMonitor
+                             waveformCache, spectrogram, spectrogramCache, retry, platformUrl,
+                             timeFormatter, mathUtils, stringUtils, formatBytes, errorHandler,
+                             ffmpegLogParser, memoryMonitor
 ```
 
 > 서버 전용 유틸은 `src/lib/`(예: downloadJob, downloaders, binPaths, apiUtils), API 라우트는
@@ -1066,8 +1071,7 @@ export interface SSEProgressEvent {
 }
 
 export interface SSECompleteEvent {
-  type: 'complete';
-  filename: string;
+  type: 'complete';   // 페이로드 없음 — 파일명은 다운로드 응답의 Content-Disposition이 정함
 }
 
 export interface SSEErrorEvent {
@@ -1091,7 +1095,7 @@ function handleEvent(event: SSEEvent) {
       break;
 
     case 'complete':
-      console.log(event.filename);  // 타입 안전!
+      window.location.href = `/api/download/${jobId}`;  // 페이로드 없음, jobId로 파일 받음
       break;
 
     case 'error':
