@@ -57,6 +57,17 @@ export async function mockWaveformApi(page: Page) {
   );
 }
 
+// 오디오가 없는(빈 peaks) 응답 — 파형 빈 상태 검증용
+export async function mockWaveformEmpty(page: Page) {
+  await page.route('**/api/video/waveform**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ duration: 120, peaks: [[]] }),
+    })
+  );
+}
+
 export async function mockSpectrogramApi(page: Page) {
   await page.route('**/api/video/spectrogram**', (route) =>
     route.fulfill({
@@ -84,28 +95,55 @@ export async function mockSpectrogramApiError(page: Page) {
   );
 }
 
-export async function mockTrimApi(page: Page) {
-  await page.route('**/api/video/trim', (route) =>
+// URL 소스 Export는 서버 구간 다운로드(SSE) 흐름을 탄다:
+//   POST /api/download/start → { jobId }
+//   GET  /api/download/stream/[jobId] → SSE 진행률/완료/에러
+//   GET  /api/download/[jobId] → 완료 파일
+const DOWNLOAD_JOB_ID = 'e2e-test-job';
+
+function sseBody(events: object[]): string {
+  return events.map((e) => `data: ${JSON.stringify(e)}\n\n`).join('');
+}
+
+export async function mockDownloadStart(page: Page, jobId = DOWNLOAD_JOB_ID) {
+  await page.route('**/api/download/start', (route) =>
     route.fulfill({
       status: 200,
-      contentType: 'video/mp4',
-      headers: {
-        'Content-Length': '1024',
-        'Content-Disposition': "attachment; filename*=UTF-8''trimmed_video.mp4",
-      },
-      body: Buffer.alloc(1024),
+      contentType: 'application/json',
+      body: JSON.stringify({ jobId }),
     })
   );
 }
 
-export async function mockTrimApiError(page: Page, status: number, message: string) {
-  await page.route('**/api/video/trim', (route) =>
+// 진행 → 완료 SSE. delayMs로 처리 UI를 관찰할 시간을 준다.
+export async function mockDownloadStreamSuccess(page: Page, delayMs = 0) {
+  await page.route('**/api/download/stream/**', async (route) => {
+    if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      body: sseBody([
+        { type: 'progress', phase: 'downloading', progress: 50 },
+        { type: 'complete' },
+      ]),
+    });
+  });
+}
+
+export async function mockDownloadStreamError(page: Page, message: string) {
+  await page.route('**/api/download/stream/**', (route) =>
     route.fulfill({
-      status,
-      contentType: 'application/json',
-      body: JSON.stringify({ error: message }),
+      status: 200,
+      contentType: 'text/event-stream',
+      body: sseBody([{ type: 'error', message }]),
     })
   );
+}
+
+// 모든 다운로드 mock을 한 번에 설치 (성공 흐름)
+export async function mockDownloadSuccess(page: Page, delayMs = 0) {
+  await mockDownloadStart(page);
+  await mockDownloadStreamSuccess(page, delayMs);
 }
 
 export async function loadUrlVideo(page: Page) {

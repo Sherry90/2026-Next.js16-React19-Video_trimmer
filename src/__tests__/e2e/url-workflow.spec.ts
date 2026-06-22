@@ -5,9 +5,11 @@ import {
   mockProxyApi,
   mockSpectrogramApi,
   mockSpectrogramApiError,
-  mockTrimApi,
-  mockTrimApiError,
   mockWaveformApi,
+  mockWaveformEmpty,
+  mockDownloadSuccess,
+  mockDownloadStart,
+  mockDownloadStreamError,
   loadUrlVideo,
   DEFAULT_RESOLVE_RESPONSE,
 } from './helpers';
@@ -112,15 +114,15 @@ test.describe('URL Source Editing', () => {
     await expect(page.getByTestId('export-button')).toHaveText('Export');
   });
 
-  test('should render spectral canvas after switching to Spectral mode', async ({ page }) => {
+  // 파형/스펙트럴 토글은 제거됨 — 스펙트럼은 항상 파형 위에 겹쳐 자동 렌더된다.
+  test('should auto-render the spectrogram canvas overlay', async ({ page }) => {
     await mockSpectrogramApi(page);
     await loadUrlVideo(page);
 
-    await page.getByRole('button', { name: 'Spectral' }).click();
-    await expect(page.getByRole('button', { name: 'Spectral' })).toHaveAttribute('aria-pressed', 'true');
     const canvas = page.getByTestId('spectrogram-canvas');
     await expect(canvas).toBeVisible();
 
+    // 캔버스에 실제 색이 칠해졌는지(스펙트럼 데이터가 렌더됐는지) 확인
     await expect.poll(async () => {
       return canvas.evaluate((node) => {
         const canvasElement = node as HTMLCanvasElement;
@@ -138,42 +140,48 @@ test.describe('URL Source Editing', () => {
     }, { timeout: 5000 }).toBeGreaterThan(3);
   });
 
-  test('should show spectral error instead of hanging on API failure', async ({ page }) => {
+  // 파형도 없고(빈 peaks) 스펙트럼도 실패하면 빈 상태 메시지가 떠야 한다(무한 로딩 금지).
+  test('should show empty message when both waveform and spectrum are unavailable', async ({ page }) => {
+    await mockResolveApi(page);
+    await mockProxyApi(page);
+    await mockWaveformEmpty(page);
     await mockSpectrogramApiError(page);
+
+    await page.goto('/');
+    const urlInput = page.getByTestId('url-input');
+    await urlInput.fill('https://www.youtube.com/watch?v=test123');
+    await page.getByTestId('url-load-button').click();
+    await page.locator('[data-vjs-player]').waitFor({ state: 'visible', timeout: 10000 });
+
+    await expect(page.getByTestId('waveform-empty-message')).toContainText(
+      '스펙트럼을 표시할 수 없습니다',
+      { timeout: 10000 }
+    );
+  });
+
+  test('should set In/Out points via the time inputs', async ({ page }) => {
     await loadUrlVideo(page);
 
-    await page.getByRole('button', { name: 'Spectral' }).click();
-    await expect(page.getByTestId('waveform-empty-message')).toContainText('스펙트럼을 표시할 수 없습니다');
+    const inInput = page.getByLabel('In', { exact: true });
+    const outInput = page.getByLabel('Out', { exact: true });
+
+    await inInput.fill('00:00:10.000');
+    await inInput.press('Enter');
+    await expect(inInput).toHaveValue('00:00:10.000');
+
+    await outInput.fill('00:00:30.000');
+    await outInput.press('Enter');
+    await expect(outInput).toHaveValue('00:00:30.000');
   });
 });
 
 test.describe('URL Source Trimming & Download', () => {
   test('should complete export → download flow', async ({ page }) => {
-    // Use a delayed trim response to observe processing state
     await mockResolveApi(page);
     await mockProxyApi(page);
     await mockWaveformApi(page);
-    await mockWaveformApi(page);
-
-    const fs = await import('fs');
-    const path = await import('path');
-    const videoBuffer = fs.readFileSync(
-      path.join(__dirname, 'fixtures', 'test-video.mp4')
-    );
-
-    await page.route('**/api/video/trim', async (route) => {
-      // Delay to allow processing UI to appear
-      await new Promise((r) => setTimeout(r, 500));
-      await route.fulfill({
-        status: 200,
-        contentType: 'video/mp4',
-        headers: {
-          'Content-Length': String(videoBuffer.length),
-          'Content-Disposition': "attachment; filename*=UTF-8''trimmed_video.mp4",
-        },
-        body: videoBuffer,
-      });
-    });
+    // 구간 다운로드(SSE) 성공 흐름 — 500ms 지연으로 processing UI를 관찰
+    await mockDownloadSuccess(page, 500);
 
     await page.goto('/');
     const urlInput = page.getByTestId('url-input');
@@ -181,54 +189,56 @@ test.describe('URL Source Trimming & Download', () => {
     await page.getByTestId('url-load-button').click();
     await page.locator('[data-vjs-player]').waitFor({ state: 'visible', timeout: 10000 });
 
-    // Click Export
+    // Export 클릭
     await page.getByTestId('export-button').click();
 
-    // Should show progress (with delayed response we can catch it)
+    // 처리 진행 UI 노출 (지연 응답으로 포착 가능)
     await expect(page.getByTestId('export-progress')).toBeVisible({ timeout: 5000 });
 
-    // Should eventually show download screen
+    // 완료 화면
     await expect(page.getByTestId('download-button')).toBeVisible({ timeout: 30000 });
     await expect(page.getByText('Video Ready!')).toBeVisible();
   });
 
-  test('should show error and allow retry on trim failure', async ({ page }) => {
+  test('should show error and allow retry on download failure', async ({ page }) => {
     await mockResolveApi(page);
     await mockProxyApi(page);
     await mockWaveformApi(page);
-    // Mock trim to fail
-    await mockTrimApiError(page, 500, '트리밍에 실패했습니다');
+    // 다운로드 시작은 성공하되 SSE 스트림이 에러 이벤트를 보냄
+    await mockDownloadStart(page);
+    await mockDownloadStreamError(page, '트리밍에 실패했습니다');
 
     await page.goto('/');
-
     const urlInput = page.getByTestId('url-input');
     await urlInput.fill('https://www.youtube.com/watch?v=test123');
     await page.getByTestId('url-load-button').click();
     await page.locator('[data-vjs-player]').waitFor({ state: 'visible', timeout: 10000 });
 
-    // Click Export
+    // Export 클릭
     await page.getByTestId('export-button').click();
 
-    // Should show error display
+    // 에러 표시 + 재시도 버튼
     await expect(page.getByTestId('error-display')).toBeVisible({ timeout: 15000 });
-
-    // Retry button should be visible
     await expect(page.getByTestId('retry-button')).toBeVisible();
   });
 
   test('should return to idle after "Edit Another File"', async ({ page }) => {
+    await mockResolveApi(page);
+    await mockProxyApi(page);
+    await mockWaveformApi(page);
+    await mockDownloadSuccess(page);
     await loadUrlVideo(page);
 
     // Export
     await page.getByTestId('export-button').click();
 
-    // Wait for download screen
+    // 완료 화면 대기
     await expect(page.getByTestId('download-button')).toBeVisible({ timeout: 30000 });
 
-    // Click Edit Another
+    // Edit Another
     await page.getByTestId('edit-another-button').click();
 
-    // Should return to upload/URL input screen
+    // 초기 화면 복귀
     await expect(page.getByTestId('url-input')).toBeVisible();
     await expect(page.getByText('Drop video file here')).toBeVisible();
   });
@@ -236,36 +246,35 @@ test.describe('URL Source Trimming & Download', () => {
 
 test.describe('Full URL Workflow', () => {
   test('URL input → load → export → download → edit another', async ({ page }) => {
-    // Set up all mocks
     await mockResolveApi(page);
     await mockProxyApi(page);
     await mockWaveformApi(page);
-    await mockTrimApi(page);
+    await mockDownloadSuccess(page);
 
     await page.goto('/');
 
-    // Step 1: Enter URL
+    // 1. URL 입력
     const urlInput = page.getByTestId('url-input');
     await expect(urlInput).toBeVisible();
     await urlInput.fill('https://www.youtube.com/watch?v=test123');
 
-    // Step 2: Load
+    // 2. Load
     await page.getByTestId('url-load-button').click();
     await page.locator('[data-vjs-player]').waitFor({ state: 'visible', timeout: 10000 });
 
-    // Step 3: Export
+    // 3. Export
     const exportButton = page.getByTestId('export-button');
     await expect(exportButton).toBeVisible();
     await exportButton.click();
 
-    // Step 4: Wait for completion
+    // 4. 완료 대기
     await expect(page.getByTestId('download-button')).toBeVisible({ timeout: 30000 });
     await expect(page.getByText('Video Ready!')).toBeVisible();
 
-    // Step 5: Edit Another
+    // 5. Edit Another
     await page.getByTestId('edit-another-button').click();
 
-    // Back to initial state
+    // 초기 상태 복귀
     await expect(page.getByTestId('url-input')).toBeVisible();
     await expect(page.getByText('Drop video file here')).toBeVisible();
   });
