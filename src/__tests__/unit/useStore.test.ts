@@ -168,10 +168,10 @@ describe('useStore', () => {
         expect(useStore.getState().timeline.zoom).toBe(2);
       });
 
-      it('should constrain zoom to minimum', () => {
+      it('should constrain zoom to minimum (fit = 1)', () => {
         const { setZoom } = useStore.getState();
         setZoom(0.05);
-        expect(useStore.getState().timeline.zoom).toBe(0.1);
+        expect(useStore.getState().timeline.zoom).toBe(1);
       });
 
       it('should constrain zoom to maximum', () => {

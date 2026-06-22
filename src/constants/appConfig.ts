@@ -8,8 +8,9 @@ export const APP_CONFIG = {
    * 타임라인 관련 설정
    */
   TIMELINE: {
-    /** 최소 줌 배율 */
-    MIN_ZOOM: 0.1,
+    /** 최소 줌 배율 (= fit). 1 미만은 화면(viewport)에 맞춤 폭으로 floor 되어
+     *  렌더에 보이지 않으므로, store도 1로 하한해 숨은 누적(zoom-out banking) 방지. */
+    MIN_ZOOM: 1,
     /** 최대 줌 배율 */
     MAX_ZOOM: 10,
     /** content track 최대 폭(px) — 캔버스/파형 폭 폭주 방지 */
