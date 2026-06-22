@@ -25,7 +25,7 @@
 
 **대상**: 서버 API를 호출하거나 연동 로직을 수정하는 개발자
 
-모든 Next.js API 엔드포인트 스펙. Video API(`/api/video/preview`, `/api/video/resolve`, `/api/video/manifest`, `/api/video/proxy`, `/api/video/waveform`, `/api/video/trim`)와 Download API(`/api/download/start`, `stream/:jobId`, `:jobId`)의 요청/응답, 플랫폼별 다운로드 전략, SSE 이벤트 타입, 타입 정의, 에러 처리를 다룬다.
+모든 Next.js API 엔드포인트 스펙. Video API(`/api/video/preview`, `/api/video/resolve`, `/api/video/manifest`, `/api/video/proxy`, `/api/video/waveform`, `/api/video/spectrogram`, `/api/video/trim`)와 Download API(`/api/download/start`, `stream/:jobId`, `:jobId`)의 요청/응답, 플랫폼별 다운로드 전략, SSE 이벤트 타입, 타입 정의, 에러 처리를 다룬다.
 
 ### `03_DEPENDENCIES.md` — 외부 의존성 관리
 
