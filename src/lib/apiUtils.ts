@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { ProcessError } from '@/types/process';
+import { buildServerError, logServerError } from './errorReport';
 
 /**
  * yt-dlp 명령 에러 파싱
@@ -73,10 +74,21 @@ export function handleApiError(
   defaultMessage: string = '요청 처리 중 오류가 발생했습니다',
   status: number = 500
 ): NextResponse {
-  const msg = error instanceof Error ? error.message : String(error);
-  console.error(`[${context}] Error:`, msg);
+  // 원시 원인을 분류해 구조화 리포트 생성·로그. 응답엔 친화 메시지 + 코드 + 기술 상세 포함.
+  const report = buildServerError(context, error);
+  logServerError(report);
 
-  return NextResponse.json({ error: defaultMessage }, { status });
+  // 분류가 UNKNOWN이면 호출부가 준 defaultMessage를 사용자 메시지로 우선.
+  const userMessage = report.code === 'UNKNOWN' ? defaultMessage : report.userMessage;
+
+  return NextResponse.json(
+    {
+      error: userMessage,
+      code: report.code,
+      technicalDetails: report.cause || undefined,
+    },
+    { status }
+  );
 }
 
 /**

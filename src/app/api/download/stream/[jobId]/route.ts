@@ -34,7 +34,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }
 
       if (currentJob.status === 'failed') {
-        controller.enqueue(encode({ type: 'error', message: currentJob.errorMessage ?? '다운로드에 실패했습니다' }));
+        controller.enqueue(encode({ type: 'error', message: currentJob.errorMessage ?? '다운로드에 실패했습니다', code: currentJob.errorCode, technicalDetails: currentJob.errorDetails }));
         controller.close();
         return;
       }

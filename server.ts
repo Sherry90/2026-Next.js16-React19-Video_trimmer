@@ -99,7 +99,7 @@ function tryServeProgressSse(req: any, res: any, pathname: string): boolean {
 
   // 재연결 시 종료 상태 즉시 반영
   if (job.status === 'completed') { send({ type: 'complete' }); res.end(); return true; }
-  if (job.status === 'failed') { send({ type: 'error', message: job.errorMessage ?? '다운로드에 실패했습니다' }); res.end(); return true; }
+  if (job.status === 'failed') { send({ type: 'error', message: job.errorMessage ?? '다운로드에 실패했습니다', code: job.errorCode, technicalDetails: job.errorDetails }); res.end(); return true; }
 
   res.write(': connected\n\n'); // 초기 플러시(버퍼링 방지)
 

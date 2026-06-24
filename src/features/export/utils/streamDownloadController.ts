@@ -28,12 +28,12 @@ function closeStream() {
   }
 }
 
-function fail(message: string) {
+function fail(message: string, code: string = 'DOWNLOAD_ERROR', technicalDetails?: string) {
   closeStream();
   const s = actions();
   s.setDownloadPhase(null);
   s.setActiveDownloadJobId(null);
-  s.setErrorAndTransition(message, 'DOWNLOAD_ERROR');
+  s.setErrorAndTransition(message, code, technicalDetails);
 }
 
 function complete(jobId: string) {
@@ -71,7 +71,7 @@ function connect(jobId: string) {
         closeStream();
         complete(jobId);
       } else if (data.type === 'error') {
-        fail(data.message);
+        fail(data.message, data.code ?? 'DOWNLOAD_ERROR', data.technicalDetails);
       }
     } catch (err) {
       console.error('[StreamDownload] Failed to parse event:', err);
@@ -80,7 +80,11 @@ function connect(jobId: string) {
 
   es.onerror = () => {
     if (!eventSource) return; // 정상 종료 후 발생한 onerror 무시
-    fail('서버 연결이 끊어졌습니다');
+    fail(
+      '서버 연결이 끊어졌습니다',
+      'NETWORK_ERROR',
+      `EventSource 연결 끊김 (jobId=${jobId}). 서버가 실행 중인지, 네트워크가 안정적인지 확인하세요.`,
+    );
   };
 }
 

@@ -98,6 +98,8 @@ function updateJobStatus(jobId: string, updates: Partial<Job>) {
   if (updates.status !== undefined) job.status = updates.status;
   if (updates.outputPath !== undefined) job.outputPath = updates.outputPath;
   if (updates.errorMessage !== undefined) job.errorMessage = updates.errorMessage;
+  if (updates.errorCode !== undefined) job.errorCode = updates.errorCode;
+  if (updates.errorDetails !== undefined) job.errorDetails = updates.errorDetails;
 
 }
 

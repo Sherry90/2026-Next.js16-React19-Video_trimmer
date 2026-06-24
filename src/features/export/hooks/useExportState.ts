@@ -6,6 +6,7 @@ import { generateTrimFilename } from '@/features/export/utils/generateFilename';
 import { requiresFFmpegDownload } from '@/features/export/utils/formatDetector';
 import { startStreamDownload } from '@/features/export/utils/streamDownloadController';
 import { useFFmpegLoader } from './useFFmpegLoader';
+import { errorFromRaw } from '@/shared/lib/errorHandler';
 import type { VideoFile } from '@/types/store';
 
 /**
@@ -69,13 +70,18 @@ export function useExportState(
           : null;
 
       if (appError) {
-        // Use parsed error code and user-friendly message
-        setErrorAndTransition(appError.userMessage, appError.code);
+        // Use parsed error code and user-friendly message (+ 기술 상세)
+        setErrorAndTransition(
+          appError.userMessage,
+          appError.code,
+          appError.technicalDetails ?? appError.message,
+        );
       } else {
-        // Fallback to basic error
-        const errorMessage =
+        // Fallback: 실제 원인을 분류해 친화 메시지 + 기술 상세로 전달 (원인 삼키지 않음)
+        const rawMessage =
           error instanceof Error ? error.message : 'Export failed';
-        setErrorAndTransition(errorMessage, 'EXPORT_ERROR');
+        const parsed = errorFromRaw(rawMessage, 'EXPORT_ERROR');
+        setErrorAndTransition(parsed.userMessage, parsed.code, rawMessage);
       }
     }
   }, [
