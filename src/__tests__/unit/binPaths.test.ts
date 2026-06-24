@@ -5,6 +5,8 @@ import {
   getYtdlpPath,
   getStreamlinkPath,
   hasStreamlink,
+  getAria2cPath,
+  hasAria2c,
 } from '@/lib/binPaths';
 
 describe('binPaths - Dependency Installation Verification', () => {
@@ -72,6 +74,20 @@ describe('binPaths - Dependency Installation Verification', () => {
       }
 
       expect(deps.streamlink.available, errorMessage).toBe(true);
+    });
+
+    it('aria2c must be installed and executable', () => {
+      const deps = checkDependencies();
+
+      expect(
+        deps.aria2c.available,
+        `❌ CRITICAL: aria2c not found.\n` +
+          `   Path checked: ${deps.aria2c.path}\n` +
+          `   aria2c는 yt-dlp 병렬 다운로드 가속에 쓰인다.\n` +
+          `   Resolution:\n` +
+          `   1. Run: npm install (triggers postinstall → .bin/aria2)\n` +
+          `   2. Check scripts/setup-deps.mjs logs if download failed`
+      ).toBe(true);
     });
   });
 
@@ -144,6 +160,16 @@ describe('binPaths - Dependency Installation Verification', () => {
         expect(hasIt).toBe(true);
       }
     });
+
+    it('getAria2cPath should return valid path or null', () => {
+      const path = getAria2cPath();
+      expect(path === null || typeof path === 'string').toBe(true);
+    });
+
+    it('hasAria2c should match getAria2cPath result', () => {
+      const path = getAria2cPath();
+      expect(hasAria2c()).toBe(path !== null);
+    });
   });
 
   describe('Deployment Readiness Check', () => {
@@ -154,6 +180,7 @@ describe('binPaths - Dependency Installation Verification', () => {
       if (!deps.ffmpeg.available) missing.push('ffmpeg');
       if (!deps.ytdlp.available) missing.push('yt-dlp');
       if (!deps.streamlink.available) missing.push('streamlink');
+      if (!deps.aria2c.available) missing.push('aria2c');
 
       expect(
         missing.length === 0,
@@ -163,7 +190,8 @@ describe('binPaths - Dependency Installation Verification', () => {
           `Current status:\n` +
           `  - ffmpeg: ${deps.ffmpeg.available ? '✅' : '❌'} (${deps.ffmpeg.path})\n` +
           `  - yt-dlp: ${deps.ytdlp.available ? '✅' : '❌'} (${deps.ytdlp.path})\n` +
-          `  - streamlink: ${deps.streamlink.available ? '✅' : '❌'} (${deps.streamlink.path})\n`
+          `  - streamlink: ${deps.streamlink.available ? '✅' : '❌'} (${deps.streamlink.path})\n` +
+          `  - aria2c: ${deps.aria2c.available ? '✅' : '❌'} (${deps.aria2c.path})\n`
       ).toBe(true);
     });
   });

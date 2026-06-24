@@ -1,15 +1,28 @@
-import { ChildProcess } from 'child_process';
+import { ChildProcess, spawn } from 'child_process';
 
 /**
- * 프로세스 + 그 자식까지(프로세스 그룹) 죽인다.
+ * 프로세스 + 그 자식까지(프로세스 그룹/트리) 죽인다.
  *
  * yt-dlp가 aria2c를 외부 다운로더로 spawn하면 aria2c는 yt-dlp의 자식이라,
  * yt-dlp만 kill하면 aria2c가 고아로 남아 계속 돌며 서버를 잡아먹는다.
- * `spawn(..., { detached: true })`로 띄운 프로세스는 자기 PID가 곧 프로세스 그룹 ID라
- * `process.kill(-pid, signal)`로 그룹 전체(자식 aria2c 포함)를 한 번에 정리한다.
+ *
+ * - POSIX: `spawn(..., { detached: true })`로 띄운 프로세스는 자기 PID가 곧 프로세스 그룹 ID라
+ *   `process.kill(-pid, signal)`로 그룹 전체(자식 aria2c 포함)를 한 번에 정리한다.
+ * - Windows: 프로세스 그룹 개념이 달라 음수 pid가 안 통한다. `taskkill /T`로 자식 트리까지 종료한다.
  */
 export function killProcessTree(proc: ChildProcess, signal: NodeJS.Signals = 'SIGKILL'): void {
   if (!proc.pid) return;
+
+  if (process.platform === 'win32') {
+    try {
+      // /T: 자식 프로세스 트리 포함, /F: 강제 종료. spawn 실패해도 fallback으로 단일 kill.
+      spawn('taskkill', ['/pid', String(proc.pid), '/T', '/F'], { stdio: 'ignore' });
+    } catch {
+      try { proc.kill(signal); } catch { /* 이미 종료됨 */ }
+    }
+    return;
+  }
+
   try {
     process.kill(-proc.pid, signal); // 음수 pid = 프로세스 그룹 전체
   } catch {

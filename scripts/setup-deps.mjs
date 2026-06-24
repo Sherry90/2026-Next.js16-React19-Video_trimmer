@@ -5,7 +5,7 @@
  */
 
 import { execFileSync } from 'child_process';
-import { existsSync, mkdirSync, createWriteStream, copyFileSync, unlinkSync, rmSync, readFileSync } from 'fs';
+import { existsSync, mkdirSync, createWriteStream, copyFileSync, unlinkSync, rmSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
@@ -30,7 +30,9 @@ const childProcessTimeoutMs = Number.parseInt(
 
 function hasCommand(cmd) {
   try {
-    execFileSync('which', [cmd], { stdio: 'ignore' });
+    // Windows는 `which`가 없으므로 `where`를 쓴다.
+    const probe = process.platform === 'win32' ? 'where' : 'which';
+    execFileSync(probe, [cmd], { stdio: 'ignore' });
     return true;
   } catch {
     return false;
@@ -430,6 +432,138 @@ async function setupStreamlink() {
 }
 
 /**
+ * aria2c 핀 버전/태그. 갱신 시 여기만 바꾼다.
+ * - Windows: 공식 aria2/aria2 prebuilt(win-64bit)
+ * - macOS: 공식 prebuilt 없음 → q741451 standalone(arm64/x86_64), aria2는 pip 패키지도 아님
+ * - Linux: abcfy2 musl static(x86_64/aarch64)
+ */
+const ARIA2 = {
+  version: '1.37.0', // 공식·linux 빌드 버전 (appConfig ARIA2C 상수와 동일 계열)
+  macTag: 'v1.0.0', // q741451 릴리스 태그 (aria2 1.37.0 기반)
+};
+
+/**
+ * .bin/aria2 하위 aria2c 실행 파일 경로 (플랫폼별).
+ */
+function getAria2cBundlePath() {
+  return join(binDir, 'aria2', process.platform === 'win32' ? 'aria2c.exe' : 'aria2c');
+}
+
+/**
+ * dir 이하에서 name과 일치하는 첫 파일 경로를 재귀 탐색. 없으면 null.
+ * (아카이브 내부 디렉터리 구조가 소스마다 달라 고정 경로 대신 탐색한다.)
+ */
+function findFile(dir, name) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      const found = findFile(p, name);
+      if (found) return found;
+    } else if (entry.name === name) {
+      return p;
+    }
+  }
+  return null;
+}
+
+/**
+ * zip URL을 받아 내부에서 searchName 바이너리를 찾아 destBin으로 복사한다.
+ * (win/linux aria2c 공통 추출 경로 — 내부 디렉터리 구조가 소스마다 달라 findFile로 탐색.)
+ */
+async function extractZipBinary(url, destBin, searchName, workDir) {
+  const AdmZip = (await import('adm-zip')).default;
+  const tmpZip = join(workDir, 'temp-aria2.zip');
+  const tmpDir = join(workDir, '_extract');
+  await downloadFile(url, tmpZip);
+  new AdmZip(tmpZip).extractAllTo(tmpDir, true);
+  unlinkSync(tmpZip);
+  const found = findFile(tmpDir, searchName);
+  if (!found) throw new Error(`${searchName} not found in archive`);
+  copyFileSync(found, destBin);
+  rmSync(tmpDir, { recursive: true, force: true });
+}
+
+/**
+ * Setup aria2c binary
+ * Priority: system > bundled (.bin/aria2, auto-download)
+ *
+ * yt-dlp의 외부 다운로더로 병렬 다운로드에 쓴다. brew/apt 의존을 없애기 위해
+ * 플랫폼별 prebuilt를 .bin/aria2에 받아둔다(ffmpeg/yt-dlp/streamlink와 동일 철학).
+ * 실패해도 치명적이지 않다 — YouTube 1차 byte-range 경로는 aria2c 없이 동작하고,
+ * 폴백(전체 다운)만 yt-dlp 네이티브 다운로더로 느려진다.
+ */
+async function setupAria2c() {
+  // 1. System aria2c
+  if (hasCommand('aria2c')) {
+    try {
+      const v = execFileSync('aria2c', ['--version'], { encoding: 'utf-8' }).split('\n')[0].trim();
+      console.log(`  aria2c: ${v} (system)`);
+    } catch {
+      console.log('  aria2c: found (system)');
+    }
+    return;
+  }
+
+  const { platform, arch } = process;
+  const dest = getAria2cBundlePath();
+
+  // 2. Bundled already present — 단, 실제로 실행되는지 검증한다.
+  //    arm64 mac의 무서명 바이너리(SIGKILL)·손상 파일이면 삭제 후 재다운로드한다.
+  if (existsSync(dest)) {
+    try {
+      const v = execFileSync(dest, ['--version'], { encoding: 'utf-8' }).split('\n')[0].trim();
+      console.log(`  aria2c: ${v} (.bin/aria2)`);
+      return;
+    } catch (e) {
+      console.warn(`  aria2c: 번들 바이너리 실행 불가(${e.message}) → 재다운로드`);
+      rmSync(dest, { force: true });
+    }
+  }
+
+  // 3. Download platform prebuilt
+  console.log('  aria2c: not found, downloading...');
+  const aria2Dir = join(binDir, 'aria2');
+  try {
+    if (!existsSync(aria2Dir)) mkdirSync(aria2Dir, { recursive: true });
+
+    if (platform === 'win32') {
+      const url = `https://github.com/aria2/aria2/releases/download/release-${ARIA2.version}/aria2-${ARIA2.version}-win-64bit-build1.zip`;
+      console.log(`    Downloading from ${url}`);
+      await extractZipBinary(url, dest, 'aria2c.exe', aria2Dir);
+    } else if (platform === 'darwin') {
+      const a = arch === 'arm64' ? 'arm64' : 'x86_64';
+      const url = `https://github.com/q741451/aria2c-macos-standalone-binary/releases/download/${ARIA2.macTag}/aria2c-macos-${a}.tar.gz`;
+      console.log(`    Downloading from ${url}`);
+      const tgz = join(aria2Dir, 'temp-aria2.tar.gz');
+      await downloadFile(url, tgz);
+      execFileSync('tar', ['-xzf', tgz, '-C', aria2Dir], { timeout: childProcessTimeoutMs });
+      unlinkSync(tgz);
+      if (!existsSync(dest)) {
+        const found = findFile(aria2Dir, 'aria2c');
+        if (found && found !== dest) copyFileSync(found, dest);
+      }
+      if (!existsSync(dest)) throw new Error('aria2c not found after extract');
+      execFileSync('chmod', ['+x', dest], { timeout: childProcessTimeoutMs });
+    } else if (platform === 'linux') {
+      const a = arch === 'arm64' ? 'aarch64' : 'x86_64';
+      const url = `https://github.com/abcfy2/aria2-static-build/releases/download/${ARIA2.version}/aria2-${a}-linux-musl_static.zip`;
+      console.log(`    Downloading from ${url}`);
+      await extractZipBinary(url, dest, 'aria2c', aria2Dir);
+      execFileSync('chmod', ['+x', dest], { timeout: childProcessTimeoutMs });
+    } else {
+      console.warn(`  aria2c: no prebuilt for ${platform} ${arch}`);
+      return;
+    }
+
+    const v = execFileSync(dest, ['--version'], { encoding: 'utf-8' }).split('\n')[0].trim();
+    console.log(`  aria2c: ${v} (.bin/aria2, downloaded)`);
+  } catch (error) {
+    console.warn(`  aria2c: download failed - ${error.message}`);
+    console.warn('          YouTube 폴백(전체 다운) 경로가 느려질 수 있음 (1차 byte-range는 정상)');
+  }
+}
+
+/**
  * Copy FFmpeg.wasm files from node_modules to public/ffmpeg/
  */
 function copyWasmFiles() {
@@ -489,6 +623,7 @@ if (skipOptionalBinaryDownloads) {
 } else {
   await setupYtDlp();
   await setupStreamlink();
+  await setupAria2c();
 }
 
 copyWasmFiles();
