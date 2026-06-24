@@ -10,19 +10,39 @@
 // ============================================================
 
 export type ErrorCode =
+  // 클라이언트 처리 계열
   | 'MEMORY_INSUFFICIENT'
   | 'CODEC_UNSUPPORTED'
   | 'FILE_CORRUPTED'
   | 'FFMPEG_LOAD_FAILED'
   | 'PROCESSING_FAILED'
+  // 서버/네트워크/다운로드 계열
+  | 'NETWORK_ERROR'
+  | 'DOWNLOAD_ERROR'
+  | 'VIDEO_UNAVAILABLE'
+  | 'BINARY_MISSING'
+  | 'TIMEOUT'
+  | 'VALIDATION_ERROR'
+  | 'EXPORT_ERROR'
+  | 'SERVER_ERROR'
   | 'UNKNOWN';
+
+/** 에러 발생 정황 — 리포트/디버깅에 쓰는 부가 정보 */
+export interface ErrorContext {
+  jobId?: string;
+  stage?: string; // 실패 단계 (예: 'yt-dlp byte-range', 'ffmpeg cut')
+  command?: string; // 실행 명령 (서버)
+  exitCode?: number | null; // 프로세스 종료 코드
+  timestamp?: string; // ISO 문자열
+}
 
 export interface AppError {
   code: ErrorCode;
   message: string;
   userMessage: string; // 사용자 친화적 메시지
   solution?: string; // 해결 방법
-  technicalDetails?: string; // 기술적 상세 정보
+  technicalDetails?: string; // 기술적 상세 정보 (stderr 등)
+  context?: ErrorContext; // 정황 (jobId/stage/exitCode/timestamp)
 }
 
 export interface ErrorDisplayProps {

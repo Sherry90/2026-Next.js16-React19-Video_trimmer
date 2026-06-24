@@ -58,6 +58,7 @@ export interface ErrorState {
   hasError: boolean;
   errorMessage: string | null;
   errorCode: string | null;
+  technicalDetails: string | null; // 기술적 원인 (stderr 등, 접이식 노출용)
 }
 
 export interface ExportState {

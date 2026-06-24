@@ -16,11 +16,12 @@ import { existsSync, promises as fsPromises } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { YtdlpProgressParser } from './progressParser';
-import { getFfmpegPath, getYtdlpPath } from './binPaths';
+import { getFfmpegPath, getYtdlpPath, getAria2cPath } from './binPaths';
 import { runWithTimeout, killProcessTree, watchStall } from './processUtils';
 import { DOWNLOAD, PROCESS } from '@/constants/appConfig';
 import { buildYtdlpFormatSpec, QUALITY_PRESETS } from './formatSelector';
 import { downloadClipByteRange } from './byteRangeDownloader';
+import { reportServerError } from './errorReport';
 import { safeUnlink, ensureFileComplete, DownloadProgressTracker, type Job, type EventEmitter } from './downloadTypes';
 
 /**
@@ -36,8 +37,14 @@ export function buildYtdlpArgs(params: {
   outputPath: string;
   /** 최대 화질 height(px). 지정 시 그 이하 선호(fallback 허용), 미지정 시 최고 화질. */
   maxHeight?: number;
+  /**
+   * aria2c 실행 파일 경로. 주어지면 외부 다운로더로 써 다중연결 가속(~30배).
+   * 미지정(번들/시스템 모두 없음)이면 외부 다운로더 인자를 생략해 yt-dlp 네이티브
+   * 다운로더로 graceful 폴백한다 — 느리지만 죽지 않는다.
+   */
+  aria2cPath?: string | null;
 }): string[] {
-  const { url, outputPath, maxHeight } = params;
+  const { url, outputPath, maxHeight, aria2cPath } = params;
 
   // 화질 형식 지정자: maxHeight 지정 시 그 이하 선호(없으면 최고), 미지정 시 제한 없는 최고 화질
   const formatSpec =
@@ -45,13 +52,20 @@ export function buildYtdlpArgs(params: {
       ? buildYtdlpFormatSpec({ maxHeight, strictMode: false }) // 예: bestvideo[height<=?1080]+bestaudio/best
       : buildYtdlpFormatSpec(QUALITY_PRESETS.BEST); // 최고 화질 (제한 없음)
 
+  // aria2c가 있으면 외부 다운로더로 가속, 없으면 두 인자 생략(네이티브 폴백).
+  const aria2Args = aria2cPath
+    ? [
+        '--external-downloader',
+        aria2cPath,
+        '--downloader-args',
+        `aria2c:-x ${DOWNLOAD.ARIA2C_MAX_CONNECTIONS} -s ${DOWNLOAD.ARIA2C_SPLIT_COUNT} -k ${DOWNLOAD.ARIA2C_CHUNK_SIZE} --console-log-level=warn --summary-interval=0`,
+      ]
+    : [];
+
   return [
     '-f',
     formatSpec,
-    '--external-downloader',
-    'aria2c',
-    '--downloader-args',
-    `aria2c:-x ${DOWNLOAD.ARIA2C_MAX_CONNECTIONS} -s ${DOWNLOAD.ARIA2C_SPLIT_COUNT} -k ${DOWNLOAD.ARIA2C_CHUNK_SIZE} --console-log-level=warn --summary-interval=0`,
+    ...aria2Args,
     '-N',
     String(DOWNLOAD.YTDLP_CONCURRENT_FRAGMENTS),
     '--progress',
@@ -251,11 +265,11 @@ export async function downloadWithYtdlp(
   } catch (error) {
     safeUnlink(fullPath);
     safeUnlink(outputPath);
-    console.error(`[SSE] Job failed: ${jobId}`, error);
 
-    const errorMessage = error instanceof Error ? error.message : 'yt-dlp 다운로드 중 오류가 발생했습니다';
-    updateJobStatus(jobId, { outputPath: null, status: 'failed', errorMessage }); // status 먼저 → orphan 타이머 방지
-    tracker.emitError(errorMessage);
+    // 원시 원인을 분류해 구조화 리포트 생성·로그. 사용자에겐 친화 메시지, 상세는 stderr/원인.
+    const report = reportServerError('yt-dlp download', error, { jobId });
+    updateJobStatus(jobId, { outputPath: null, status: 'failed', errorMessage: report.userMessage, errorCode: report.code, errorDetails: report.cause }); // status 먼저 → orphan 타이머 방지
+    tracker.emitError(report.userMessage, report.code, report.cause);
   }
 }
 
@@ -283,12 +297,17 @@ async function downloadFullThenCut(
   if (abortSignal?.aborted) throw new Error('다운로드가 취소되었습니다');
 
   tracker.emitProgress('downloading', true);
-  // detached: true → yt-dlp가 자기 프로세스 그룹의 리더가 됨. 그래야 외부 다운로더 aria2c(자식)까지
+  // detached(POSIX): yt-dlp가 자기 프로세스 그룹의 리더가 됨. 그래야 외부 다운로더 aria2c(자식)까지
   // killProcessTree(음수 pid)로 한 번에 정리된다 (안 그러면 aria2c 고아 → 서버 잡아먹음).
-  const ytdlpProc = spawn(ytdlpBin, buildYtdlpArgs({ url, outputPath: fullPath, maxHeight }), {
-    stdio: ['ignore', 'pipe', 'pipe'],
-    detached: true,
-  });
+  // Windows는 프로세스 그룹 개념이 달라(detached=새 콘솔) 끄고, killProcessTree가 taskkill /T로 정리.
+  const ytdlpProc = spawn(
+    ytdlpBin,
+    buildYtdlpArgs({ url, outputPath: fullPath, maxHeight, aria2cPath: getAria2cPath() }),
+    {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      detached: process.platform !== 'win32',
+    },
+  );
 
   abortSignal?.addEventListener('abort', () => {
     killProcessTree(ytdlpProc, 'SIGTERM');

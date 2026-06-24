@@ -2,6 +2,8 @@
  * SSE (Server-Sent Events) 타입 정의
  */
 
+import type { ErrorCode } from '@/types/types';
+
 /**
  * 다운로드 단계 타입
  */
@@ -30,7 +32,9 @@ export interface SSECompleteEvent {
  */
 export interface SSEErrorEvent {
   type: 'error';
-  message: string;
+  message: string; // 사용자 친화적 메시지
+  code?: ErrorCode; // 분류 코드
+  technicalDetails?: string; // 기술적 원인 (stderr 등, 접이식 노출용)
 }
 
 /**

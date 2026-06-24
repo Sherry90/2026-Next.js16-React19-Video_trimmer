@@ -6,6 +6,7 @@ import { getFfmpegPath } from '@/lib/binPaths';
 vi.mock('@/lib/binPaths', () => ({
   getFfmpegPath: vi.fn(() => '/usr/local/bin/ffmpeg'),
   getYtdlpPath: vi.fn(() => '/usr/local/bin/yt-dlp'),
+  getAria2cPath: vi.fn(() => '/usr/local/bin/aria2c'),
 }));
 
 describe('ytdlpDownloader', () => {
@@ -20,11 +21,19 @@ describe('ytdlpDownloader', () => {
       expect(args).not.toContain('--download-sections');
     });
 
-    it('uses aria2c external downloader for parallel speed', () => {
-      const args = buildYtdlpArgs(baseParams);
+    it('uses bundled aria2c path as external downloader when provided', () => {
+      const args = buildYtdlpArgs({ ...baseParams, aria2cPath: '/opt/.bin/aria2/aria2c' });
       expect(args).toContain('--external-downloader');
       const i = args.indexOf('--external-downloader');
-      expect(args[i + 1]).toBe('aria2c');
+      expect(args[i + 1]).toBe('/opt/.bin/aria2/aria2c');
+      // 다운로더 인자도 함께 전달
+      expect(args).toContain('--downloader-args');
+    });
+
+    it('omits external downloader when aria2c unavailable (native fallback)', () => {
+      const args = buildYtdlpArgs({ ...baseParams, aria2cPath: null });
+      expect(args).not.toContain('--external-downloader');
+      expect(args).not.toContain('--downloader-args');
     });
 
     it('uses best quality by default', () => {

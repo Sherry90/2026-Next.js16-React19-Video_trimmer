@@ -7,6 +7,7 @@
 
 import { unlinkSync, existsSync, promises as fsPromises } from 'fs';
 import type { SSEProgressEvent, SSECompleteEvent, SSEErrorEvent, DownloadPhase } from '@/types/sse';
+import type { ErrorCode } from '@/types/types';
 import { clamp } from '@/shared/lib/mathUtils';
 import { DOWNLOAD } from '@/constants/appConfig';
 
@@ -23,6 +24,8 @@ export type Job = {
   status: 'running' | 'completed' | 'failed';
   listeners: JobListener[];
   errorMessage?: string;
+  errorCode?: ErrorCode;
+  errorDetails?: string; // 기술적 원인 (재연결 시 접이식 노출용)
   createdAt: number;
   abort?: () => void;
   orphanCleanupScheduled?: boolean;
@@ -167,11 +170,13 @@ export class DownloadProgressTracker {
     });
   }
 
-  emitError(message: string): void {
+  emitError(message: string, code?: ErrorCode, technicalDetails?: string): void {
     this.emitEvent(this.jobId, {
       type: 'error',
       jobId: this.jobId,
       message,
+      code,
+      technicalDetails,
     });
   }
 }

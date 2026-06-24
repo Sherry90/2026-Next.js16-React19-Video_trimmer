@@ -3,6 +3,7 @@ import { useStore } from '@/stores/useStore';
 import { prefetchWaveform, clearWaveform } from '@/shared/lib/waveformCache';
 import { prefetchSpectrogram } from '@/shared/lib/spectrogramCache';
 import { getYoutubeThumbnail } from '@/shared/lib/platformUrl';
+import { errorFromRaw } from '@/shared/lib/errorHandler';
 
 export interface UrlPreview {
   title: string | null;
@@ -115,10 +116,12 @@ export function useUrlInput() {
       setInPoint(0);
 
       setPhase('editing');
-    } catch {
+    } catch (err) {
       clearWaveform(trimmedUrl);
       setPreview(null);
-      setError('서버에 연결할 수 없습니다');
+      // 원인 삼키지 않기: 실제 에러를 분류해 친화 메시지 노출, 원본은 콘솔에.
+      console.error('[useUrlInput] resolve failed:', err);
+      setError(errorFromRaw(err).userMessage);
     } finally {
       setIsLoading(false);
     }

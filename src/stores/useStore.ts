@@ -80,7 +80,7 @@ interface StoreActions {
   setIsScrubbing: (scrubbing: boolean) => void;
 
   // 에러 관련
-  setError: (message: string, code?: string) => void;
+  setError: (message: string, code?: string, technicalDetails?: string) => void;
   clearError: () => void;
 
   // 내보내기 관련
@@ -91,7 +91,7 @@ interface StoreActions {
   reset: () => void;
 
   // 복합 액션 (상태 + 페이즈 전환)
-  setErrorAndTransition: (message: string, code?: string) => void;
+  setErrorAndTransition: (message: string, code?: string, technicalDetails?: string) => void;
   setExportResultAndComplete: (url: string, filename: string) => void;
 }
 
@@ -129,6 +129,7 @@ const initialState: StoreState = {
     hasError: false,
     errorMessage: null,
     errorCode: null,
+    technicalDetails: null,
   },
   export: {
     outputUrl: null,
@@ -270,14 +271,14 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
     set((state) => ({ player: { ...state.player, isScrubbing: scrubbing } })),
 
   // 에러 관련
-  setError: (message, code) =>
+  setError: (message, code, technicalDetails) =>
     set({
-      error: { hasError: true, errorMessage: message, errorCode: code ?? null },
+      error: { hasError: true, errorMessage: message, errorCode: code ?? null, technicalDetails: technicalDetails ?? null },
     }),
 
   clearError: () =>
     set({
-      error: { hasError: false, errorMessage: null, errorCode: null },
+      error: { hasError: false, errorMessage: null, errorCode: null, technicalDetails: null },
     }),
 
   // 내보내기 관련
@@ -316,9 +317,9 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
   },
 
   // 복합 액션 (상태 + 페이즈 전환)
-  setErrorAndTransition: (message, code) => {
+  setErrorAndTransition: (message, code, technicalDetails) => {
     set({
-      error: { hasError: true, errorMessage: message, errorCode: code ?? null },
+      error: { hasError: true, errorMessage: message, errorCode: code ?? null, technicalDetails: technicalDetails ?? null },
       phase: 'error',
     });
   },

@@ -13,6 +13,7 @@ import { join } from 'path';
 import { FFmpegProgressTracker } from './progressParser';
 import { getFfmpegPath, getStreamlinkPath } from './binPaths';
 import { safeUnlink, ensureFileComplete, DownloadProgressTracker, type Job, type EventEmitter } from './downloadTypes';
+import { reportServerError } from './errorReport';
 import { runWithTimeout, watchStall } from './processUtils';
 import { PROCESS, EXPORT, POLLING, DOWNLOAD } from '@/constants/appConfig';
 import { formatTime } from '@/shared/lib/timeFormatter';
@@ -210,10 +211,9 @@ export async function downloadWithStreamlink(
   } catch (error) {
     safeUnlink(tempFile);
     safeUnlink(outputPath);
-    console.error(`[SSE] Job failed: ${jobId}`, error);
 
-    const errorMessage = error instanceof Error ? error.message : '다운로드에 실패했습니다';
-    updateJobStatus(jobId, { outputPath: null, status: 'failed', errorMessage }); // status 먼저 → orphan 타이머 방지
-    tracker.emitError(errorMessage);
+    const report = reportServerError('streamlink download', error, { jobId });
+    updateJobStatus(jobId, { outputPath: null, status: 'failed', errorMessage: report.userMessage, errorCode: report.code, errorDetails: report.cause }); // status 먼저 → orphan 타이머 방지
+    tracker.emitError(report.userMessage, report.code, report.cause);
   }
 }
