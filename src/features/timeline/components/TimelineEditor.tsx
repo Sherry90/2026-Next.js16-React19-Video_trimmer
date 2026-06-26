@@ -1,6 +1,5 @@
 'use client';
 
-import { useRef } from 'react';
 import { useStore } from '@/stores/useStore';
 import { useTimelineActions } from '@/stores/selectors';
 import { TimelineBar } from './TimelineBar';
@@ -8,15 +7,12 @@ import { TrimHandle } from './TrimHandle';
 import { Playhead } from './Playhead';
 import { TimelineControls } from './TimelineControls';
 import { usePreviewPlayback } from '../hooks/usePreviewPlayback';
-import { useTimelineZoom } from '../hooks/useTimelineZoom';
 
 /**
  * Timeline editor component for video trimming
  * Orchestrates timeline bar, trim handles, playhead, and controls
  */
 export function TimelineEditor() {
-  const timelineRef = useRef<HTMLDivElement>(null);
-
   // Get state from store
   const inPoint = useStore((state) => state.timeline.inPoint);
   const outPoint = useStore((state) => state.timeline.outPoint);
@@ -25,15 +21,15 @@ export function TimelineEditor() {
   const isOutPointLocked = useStore((state) => state.timeline.isOutPointLocked);
 
   // Actions (identity 불변 → 그룹 셀렉터로 묶어도 재렌더 무해, 스토어 액션 결합 일원화)
-  const { setInPoint, setOutPoint, setZoom, setInPointLocked, setOutPointLocked } =
+  // 줌은 TimelineBar(viewport 소유)의 useTimelineZoom에서 처리.
+  const { setInPoint, setOutPoint, setInPointLocked, setOutPointLocked } =
     useTimelineActions();
 
-  // Use custom hooks for preview and zoom functionality
+  // Use custom hooks for preview playback
   const { handlePreviewEdges } = usePreviewPlayback(inPoint, outPoint);
-  useTimelineZoom(timelineRef, setZoom);
 
   return (
-    <div ref={timelineRef} className="w-full h-full">
+    <div className="w-full h-full">
       {/* Timeline Bar */}
       <TimelineBar>
         <TrimHandle type="in" />
