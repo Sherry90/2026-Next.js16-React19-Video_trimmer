@@ -5,6 +5,7 @@ import { useStore } from '@/stores/useStore';
 import { TIMELINE } from '@/constants/appConfig';
 import { formatSimpleTime } from '@/shared/lib/timeFormatter';
 import { WaveformBackground } from './WaveformBackground';
+import { useTimelineZoom } from '../hooks/useTimelineZoom';
 
 interface TimelineBarProps {
   children?: React.ReactNode;
@@ -21,6 +22,9 @@ export function TimelineBar({ children }: TimelineBarProps) {
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const [viewportWidth, setViewportWidth] = useState<number>(0);
+
+  // 휠 줌(커서 기준) + Shift+휠 가로 패닝 — scroll viewport 요소에 부착
+  useTimelineZoom(viewportRef);
 
   // 뷰포트(고정 폭) 측정 → content track 폭 계산의 하한(fit)으로 사용
   useEffect(() => {
