@@ -1,5 +1,5 @@
 import { createFile } from 'mp4box';
-import type { ISOFile, Track, Sample, MP4BoxBuffer } from 'mp4box';
+import type { ISOFile, Track, Sample, MP4BoxBuffer, Box, SampleEntryFourCC } from 'mp4box';
 import { filterSamplesByTimeRange, createCompletionDetector } from './mp4boxHelpers';
 
 // Movie type from mp4box
@@ -25,6 +25,8 @@ interface SampleData {
   trackId: number;
   info: Track;
   completed: boolean;
+  sampleEntryType?: SampleEntryFourCC;  // 실제 fourcc: 'avc1' | 'hvc1' | 'mp4a' ...
+  descriptionBoxes?: Box[];              // 소스 sample entry의 avcC/hvcC/esds/pasp
 }
 
 export async function trimVideoMP4Box(options: TrimOptions): Promise<Blob> {
@@ -97,11 +99,19 @@ async function parseAndExtractSamples(
 
       // Set extraction options for all tracks
       [...parsedInfo.videoTracks, ...parsedInfo.audioTracks].forEach(track => {
+        // 파싱된 ISOFile이 살아있는 동안 소스 sample entry(코덱 설정 포함)를 캡처.
+        // entries[0]의 type(실제 fourcc)과 child boxes(avcC/hvcC/esds/pasp)를 보존해
+        // 재구성 시 디코더 설정을 복원한다.
+        const trak = mp4boxfile.getTrackById(track.id);
+        const stsdEntry = trak?.mdia?.minf?.stbl?.stsd?.entries?.[0];
+
         tracksData.set(track.id, {
           samples: [],
           trackId: track.id,
           info: track,
           completed: false,
+          sampleEntryType: stsdEntry?.type as SampleEntryFourCC | undefined,
+          descriptionBoxes: stsdEntry?.boxes ?? [],
         });
 
         // Extract all samples (we'll filter by time later)
@@ -160,7 +170,17 @@ async function createTrimmedMP4(
         const track = trackData.info;
         const isVideo = info.videoTracks.some(t => t.id === oldTrackId);
 
-        let trackOptions: any = {
+        // 레지스트리에 등록된 실제 sample entry가 없으면 addTrack이 undefined를 반환하며
+        // 트랙이 조용히 사라진다. 명시적 실패로 전환해 출력에 트랙 누락을 막는다.
+        if (!trackData.sampleEntryType) {
+          throw new Error(
+            `Missing sample entry for track ${oldTrackId}; cannot rebuild codec config`
+          );
+        }
+
+        const trackOptions: any = {
+          type: trackData.sampleEntryType,               // 실제 fourcc (avc1/hvc1/mp4a ...)
+          description_boxes: trackData.descriptionBoxes, // avcC/hvcC/esds/pasp 복원
           timescale: track.timescale,
           duration: Math.floor((endTime - startTime) * track.timescale),
           language: track.language || 'und',
@@ -168,11 +188,7 @@ async function createTrimmedMP4(
           height: track.track_height || 0,
         };
 
-        if (isVideo) {
-          trackOptions.type = 'video';
-          trackOptions.avcDecoderConfigRecord = (track as any).codec_config || null;
-        } else {
-          trackOptions.type = 'audio';
+        if (!isVideo) {
           trackOptions.samplerate = (track as any).audio?.sample_rate || 48000;
           trackOptions.channel_count = (track as any).audio?.channel_count || 2;
           trackOptions.samplesize = (track as any).audio?.sample_size || 16;
@@ -203,8 +219,10 @@ async function createTrimmedMP4(
         });
       });
 
-      // Save the file
-      const blob = mp4boxfile.save('output.mp4');
+      // getBuffer()는 save()가 blob화하는 동일한 트림 ArrayBuffer를
+      // <a download> 자동 다운로드 부작용 없이 반환한다.
+      const stream = mp4boxfile.getBuffer();
+      const blob = new Blob([stream.buffer], { type: 'video/mp4' });
       resolve(blob);
     } catch (error) {
       reject(error);
