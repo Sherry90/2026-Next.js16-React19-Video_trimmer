@@ -3,7 +3,7 @@
 # ── base: 런타임/빌드 공통 베이스 + 외부 바이너리 (ffmpeg, yt-dlp, streamlink, openssl) ──
 # 프로젝트가 로컬에서 쓰는 바이너리를 이미지에 내장한다. binPaths.ts의 system 폴백 경로로
 # 해석된다(ffmpeg: @ffmpeg-installer 우선 → apt, yt-dlp/streamlink: system `which`).
-FROM node:22-bookworm-slim AS base
+FROM node:24-bookworm-slim AS base
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \

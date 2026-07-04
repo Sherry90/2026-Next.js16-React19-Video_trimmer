@@ -10,9 +10,9 @@
     "prebuild": "node scripts/copy-wasm.mjs",
     "build": "next build --webpack && npm run build:server",
     "build:turbopack": "next build && npm run build:server",
-    "build:server": "esbuild server.ts --bundle --platform=node --target=node22 --packages=external --outfile=server.cjs",
+    "build:server": "esbuild server.ts --bundle --platform=node --target=node24 --packages=external --outfile=server.cjs",
     "start": "cross-env NODE_ENV=production node server.cjs",
-    "lint": "next lint",
+    "lint": "eslint .",
     "type-check": "tsc --noEmit",
     "test": "vitest",
     "test:ui": "vitest --ui",
@@ -30,6 +30,9 @@
   "author": "",
   "license": "ISC",
   "description": "",
+  "engines": {
+    "node": ">=24"
+  },
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@ffmpeg/core": "^0.12.6",
@@ -49,11 +52,13 @@
     "@eslint/eslintrc": "^3.3.3",
     "@playwright/test": "^1.57.0",
     "@storybook/addon-essentials": "^8.6.17",
+    "@storybook/react": "^8.6.17",
     "@storybook/react-vite": "^8.6.17",
     "@storybook/test": "^8.6.17",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
-    "@types/node": "^25.0.9",
+    "@ttsc/graph": "^0.16.7",
+    "@types/node": "^24.13.2",
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.2",
@@ -67,7 +72,8 @@
     "storybook": "^8.6.17",
     "tailwindcss": "^4.1.18",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
+    "ttsc": "^0.16.7",
+    "typescript": "^6.0.3",
     "vitest": "^4.0.18"
   }
 }

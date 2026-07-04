@@ -80,7 +80,9 @@
       "WebFetch(domain:online-video-cutter.com)",
       "WebFetch(domain:streamlink.github.io)",
       "WebSearch",
-      "Bash(awk -F: '{s+=$2} END{print s\" it/test calls in unit\"}')"
+      "Bash(awk -F: '{s+=$2} END{print s\" it/test calls in unit\"}')",
+      "Bash(rm -f aria2c-self-bundle.md error-reporting.md)",
+      "Bash(ls aria2c-self-bundle.md error-reporting.md)"
     ]
   },
   "enableAllProjectMcpServers": true,
