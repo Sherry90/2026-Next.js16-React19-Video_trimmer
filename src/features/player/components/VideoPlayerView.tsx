@@ -2,7 +2,9 @@
 
 import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import videojs from 'video.js';
-import 'videojs-contrib-quality-levels';
+// 주의: `import 'videojs-contrib-quality-levels'` 금지. video.js 8.x 코어가 VHS와 함께
+// qualityLevels 플러그인을 이미 등록한다 → 중복 import 시 "plugin already exists" 경고.
+// player.qualityLevels()는 코어 제공분으로 동작(useQualityLevels 훅 참조).
 import type Player from 'video.js/dist/types/player';
 import { useStore } from '@/stores/useStore';
 import { useVideoUrl, useVideoFile, usePlayerActions } from '@/stores/selectors';
