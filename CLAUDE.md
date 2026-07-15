@@ -9,6 +9,7 @@ A client-side web application for trimming videos in the browser without server 
 ## Commands
 
 ### Development
+
 ```bash
 npm run dev           # Start dev server (localhost:3000, Turbopack)
 npm run build         # Production build
@@ -18,6 +19,7 @@ npm run type-check    # TypeScript type checking
 ```
 
 ### Testing
+
 ```bash
 npm test              # Run Vitest unit tests
 npm run test:ui       # Vitest UI
@@ -30,15 +32,17 @@ npm run test:e2e:ui   # Playwright UI
 
 ### 키보드 단축키 (편집 화면)
 
-| 키 | 기능 |
-|----|------|
-| **Space** | 재생/일시정지 |
-| **I** / **O** | In Point / Out Point 설정 |
-| **←** / **→** | 1초 이동 |
-| **Shift + ←/→** | 0.1초 이동 (프레임) |
+
+| 키                  | 기능                       |
+| ------------------ | ------------------------ |
+| **Space**          | 재생/일시정지                  |
+| **I** / **O**      | In Point / Out Point 설정  |
+| **←** / **→**      | 1초 이동                    |
+| **Shift + ←/→**    | 0.1초 이동 (프레임)            |
 | **Home** / **End** | In Point / Out Point로 점프 |
-| **휠** | 타임라인 줌 (1x ~ 10x, 커서 기준) |
-| **Shift + 휠** | 타임라인 가로 패닝 (줌>1일 때) |
+| **휠**              | 타임라인 줌 (1x ~ 10x, 커서 기준) |
+| **Shift + 휠**      | 타임라인 가로 패닝 (줌&gt;1일 때)   |
+
 
 단축키는 입력 필드 포커스 시 비활성화됩니다.
 
@@ -67,6 +71,7 @@ src/features/<feature>/
 ### 1. Player-Timeline Synchronization
 
 **Race condition 방지**:
+
 ```typescript
 // VideoPlayerView.tsx - timeupdate handler
 player.on('timeupdate', () => {
@@ -82,6 +87,7 @@ player.on('timeupdate', () => {
 ```
 
 **Playhead dragging** (`Playhead.tsx`):
+
 - `isScrubbing: true` on mousedown
 - Works in PERCENTAGE coordinates during drag
 - Converts to time only at drag end
@@ -90,18 +96,21 @@ player.on('timeupdate', () => {
 ### 2. Phase-based Workflow
 
 상태는 항상 순차적으로 진행:
+
 - `idle` → `uploading` → `editing` → `processing` → `completed` | `error`
 - Phase 변경 시 이전 phase 상태 정리 필요 (URL revoke 등)
 
 ### 3. Memory Management
 
 **필수 cleanup**:
+
 - Object URLs: `URL.revokeObjectURL()` on reset/unmount
 - Video.js player: `player.dispose()` on unmount
 - Wavesurfer: `wavesurfer.destroy()` when video changes
 - Event listeners: cleanup in useEffect return
 
 **URL sources**:
+
 - `source: 'file' | 'url'` 필드로 구분
 - `file: File | null` (URL sources는 null)
 - URL sources는 revokeObjectURL 스킵
@@ -120,21 +129,25 @@ player.currentTime(time);
 ### 5. URL Download Strategy
 
 **Platform detection** (`src/lib/platformDetector.ts`):
+
 - Chzzk → Streamlink downloader
 - YouTube → yt-dlp downloader
 - Generic → yt-dlp (fallback)
 
 **Two-phase process**:
+
 1. Download/extract segment → temp file
 2. FFmpeg timestamp reset → final file
 
 **Progress**: SSE (Server-Sent Events)
+
 - Phase 1 (downloading): 0-90%
 - Phase 2 (processing): 90-100%
 
 ## Development Workflow
 
 ### Adding Features
+
 1. Add state to Zustand store with validation
 2. Create feature folder with components/hooks/utils
 3. Use context only if needed (avoid prop drilling)
@@ -142,11 +155,13 @@ player.currentTime(time);
 5. Run `npm run type-check` before committing
 
 ### Debugging Timeline Sync
+
 - Check `isScrubbing` and `isSeeking` flags
 - Verify timeupdate handlers ignore events during user interaction
 - Use refs for stable closures in event handlers
 
 ### Working with video.js
+
 - Access player via `useVideoPlayerContext()`
 - Always check player exists before calling methods
 - Dispose player on component unmount
@@ -154,15 +169,18 @@ player.currentTime(time);
 ## Important Constraints
 
 ### Supported Formats
+
 MP4, WebM, OGG, MOV, M4V, AVI, WMV, MKV, FLV, TS, 3GP, 3G2, MPEG, MPG (14 formats)
 
 ### File Size Limits
+
 - **Recommended**: 500MB (safe)
 - **Warning**: 1GB (caution)
 - **Soft max**: 2GB (memory check)
 - **Hard max**: 5GB (absolute limit)
 
 ### Keyframe Accuracy
+
 MP4Box trimming finds the nearest keyframe, resulting in ±1-2 second accuracy (not frame-accurate). This is a trade-off for fast, no-encoding trimming.
 
 ## Git Commit Guidelines
@@ -170,6 +188,7 @@ MP4Box trimming finds the nearest keyframe, resulting in ±1-2 second accuracy (
 ### Commit Process
 
 **ALWAYS use interactive staging**:
+
 ```bash
 git add -p  # or git add --patch
 ```
@@ -179,11 +198,13 @@ git add -p  # or git add --patch
 **Language**: Write commit messages in Korean (한국어)
 
 **DO NOT include**:
+
 - AI authorship mentions
 - Co-Authored-By lines
 - References to Claude or AI assistance
 
 **Format**:
+
 ```
 <type>: <subject in Korean>
 
@@ -191,6 +212,7 @@ git add -p  # or git add --patch
 ```
 
 **Types**:
+
 - `feat`: 새 기능
 - `fix`: 버그 수정
 - `refactor`: 리팩토링
@@ -199,6 +221,7 @@ git add -p  # or git add --patch
 - `chore`: 기타 변경
 
 **Example**:
+
 ```
 feat: 타임라인 줌 기능 추가
 
@@ -210,11 +233,12 @@ Ctrl+휠로 타임라인 줌 조절 가능
 ## Documentation
 
 **For detailed information, always refer to:**
-- **`.docs/00_INDEX.md`** - Documentation index
-- **`.docs/01_OVERVIEW.md`** - Architecture, tech stack, performance
-- **`.docs/02_API.md`** - API endpoint specs
-- **`.docs/03_DEPENDENCIES.md`** - Dependency bundling (ffmpeg/yt-dlp/streamlink)
-- **`.docs/04_DEVELOPER_GUIDE.md`** - Patterns, testing, implementation details
-- **`scripts/README.md`** - Scripts documentation
+
+- `**.docs/00_INDEX.md**` - Documentation index
+- `**.docs/01_OVERVIEW.md**` - Architecture, tech stack, performance
+- `**.docs/02_API.md**` - API endpoint specs
+- `**.docs/03_DEPENDENCIES.md**` - Dependency bundling (ffmpeg/yt-dlp/streamlink)
+- `**.docs/04_DEVELOPER_GUIDE.md**` - Patterns, testing, implementation details
+- `**scripts/README.md**` - Scripts documentation
 
 This file (CLAUDE.md) is a quick reference guide for Claude Code. For comprehensive technical details, patterns, and implementation specifics, see `.docs/`.
