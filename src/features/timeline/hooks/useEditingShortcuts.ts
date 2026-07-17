@@ -2,9 +2,9 @@
 
 import { useCallback } from 'react';
 import { usePlayerCurrentTime, useVideoDuration, useTrimPoints, useTrimPointActions } from '@/stores/hooks';
-import { useVideoPlayerContext } from '@/features/player/context/VideoPlayerContext';
+import { useVideoPlayerContext } from '@/shared/video-player/VideoPlayerContext';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
-import { usePreviewPlayback } from './usePreviewPlayback';
+import { usePreviewPlaybackContext } from '../context/PreviewPlaybackContext';
 import { stepClamped } from '@/features/timeline/utils/timelineCoords';
 import { FRAME_STEP, SECOND_STEP } from '@/constants/keyboardShortcuts';
 
@@ -23,7 +23,8 @@ export function useEditingShortcuts(): void {
   const { setInPoint, setOutPoint } = useTrimPointActions();
 
   // 키보드 preview도 버튼과 동일한 buffer-aware 경로 사용(스트리밍 stall 방지, 로직 단일화).
-  const { handlePreview } = usePreviewPlayback(inPoint, outPoint);
+  // 단일 인스턴스(PreviewPlaybackProvider)를 공유 — 같은 player에 리스너 이중 부착 방지.
+  const { handlePreview } = usePreviewPlaybackContext();
 
   const handleFrameForward = useCallback(() => seek(stepClamped(currentTime, FRAME_STEP, 0, duration)), [currentTime, duration, seek]);
   const handleFrameBackward = useCallback(() => seek(stepClamped(currentTime, -FRAME_STEP, 0, duration)), [currentTime, duration, seek]);
