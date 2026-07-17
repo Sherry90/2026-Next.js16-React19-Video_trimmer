@@ -3,6 +3,11 @@
 import { useState, useCallback, useRef } from 'react';
 import { useUrlInput } from '@/features/url-input/hooks/useUrlInput';
 import { URL_INPUT } from '@/constants/appConfig';
+import { Button } from '@/shared/ui/Button';
+import { TextInput } from '@/shared/ui/TextInput';
+import { UrlDivider } from './UrlDivider';
+import { UrlPreview } from './UrlPreview';
+import { UrlStatus } from './UrlStatus';
 
 export function UrlInputZone() {
   const [url, setUrl] = useState('');
@@ -49,20 +54,12 @@ export function UrlInputZone() {
       className="w-full mt-4"
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Divider */}
-      <div className="flex items-center gap-3 mb-4">
-        <div className="flex-1 h-px bg-white/10" />
-        <span className="text-[11px] text-[#74808c] uppercase tracking-wider">
-          or paste URL
-        </span>
-        <div className="flex-1 h-px bg-white/10" />
-      </div>
+      <UrlDivider />
 
       {/* URL Input */}
       <div className="flex gap-2">
-        <input
+        <TextInput
           ref={inputRef}
-          type="text"
           value={url}
           onChange={(e) => {
             setUrl(e.target.value);
@@ -76,54 +73,23 @@ export function UrlInputZone() {
           data-testid="url-input"
           className="flex-1 px-3 py-2 text-[13px] text-[#d9dce3] bg-[#1a1a1e] border border-white/10 rounded-sm outline-none placeholder:text-[#74808c]/50 focus:border-[#2962ff]/50 transition-colors disabled:opacity-50"
         />
-        <button
+        <Button
+          variant="primary"
           onClick={handleSubmit}
           disabled={!url.trim() || isLoading}
           data-testid="url-load-button"
-          className="px-4 py-2 text-[13px] font-medium text-white bg-[#2962ff] border-none rounded-sm cursor-pointer transition-colors duration-200 hover:bg-[#0041f5] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          className="px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
         >
           {isLoading ? 'Loading...' : 'Load'}
-        </button>
+        </Button>
       </div>
 
       {/* Instant Preview (oembed/thumbnail) — resolve가 도는 동안 즉시 영상 정보 표시 */}
       {isLoading && preview?.thumbnail && (
-        <div
-          className="mt-3 flex gap-3 items-center rounded-sm overflow-hidden bg-[#1a1a1e] border border-white/10 p-2"
-          data-testid="url-preview"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={preview.thumbnail}
-            alt={preview.title ?? 'preview'}
-            className="w-24 aspect-video object-cover rounded-sm bg-black shrink-0"
-          />
-          <p className="text-[12px] text-[#d9dce3] line-clamp-2">
-            {preview.title ?? (
-              <span className="text-[#74808c] animate-pulse">제목 불러오는 중…</span>
-            )}
-          </p>
-        </div>
+        <UrlPreview thumbnail={preview.thumbnail} title={preview.title} />
       )}
 
-      {/* Loading State */}
-      {isLoading && (
-        <p className="mt-2 text-[11px] text-[#2962ff] animate-pulse" data-testid="url-loading">
-          영상 정보를 가져오는 중...
-        </p>
-      )}
-
-      {/* Error State */}
-      {error && (
-        <p className="mt-2 text-[11px] text-red-400" data-testid="url-error">
-          {error}
-        </p>
-      )}
-
-      {/* Supported platforms hint */}
-      <p className="mt-2 text-[10px] text-[#74808c] opacity-50">
-        Chzzk, YouTube
-      </p>
+      <UrlStatus isLoading={isLoading} error={error} />
     </div>
   );
 }
