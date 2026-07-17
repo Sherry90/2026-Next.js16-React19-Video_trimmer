@@ -1,13 +1,13 @@
 'use client';
 
-import { useStore } from '@/stores/useStore';
+import { usePhase, useTrimProgress, useVideoFile } from '@/stores/hooks';
 import { ProgressBar } from '@/shared/ui/ProgressBar';
 import { getTrimmerType, getTrimmerName } from '@/features/export/utils/formatDetector';
 
 export function ExportProgress() {
-  const phase = useStore((state) => state.phase);
-  const trimProgress = useStore((state) => state.processing.trimProgress);
-  const videoFile = useStore((state) => state.videoFile);
+  const phase = usePhase();
+  const trimProgress = useTrimProgress();
+  const videoFile = useVideoFile();
 
   if (phase !== 'processing') {
     return null;

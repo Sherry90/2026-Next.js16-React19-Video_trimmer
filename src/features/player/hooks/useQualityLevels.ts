@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type Player from 'video.js/dist/types/player';
-import { useStore } from '@/stores/useStore';
+import { getStoreActions } from '@/stores/snapshot';
 
 /**
  * 화질 레벨 훅 — 기존 qualityMenuButton.ts(video.js MenuButton)의 로직을 React로 포팅.
@@ -65,7 +65,7 @@ export function useQualityLevels(player: Player | null): UseQualityLevels {
         ql[i].enabled = height === null ? true : ql[i].height === height;
       }
       setSelected(height);
-      useStore.getState().setSelectedQuality(height);
+      getStoreActions().setSelectedQuality(height);
     };
 
     const refresh = () => {
@@ -99,7 +99,7 @@ export function useQualityLevels(player: Player | null): UseQualityLevels {
         }
       }
       setSelected(height);
-      useStore.getState().setSelectedQuality(height);
+      getStoreActions().setSelectedQuality(height);
     },
     [player]
   );

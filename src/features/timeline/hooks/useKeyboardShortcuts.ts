@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react';
-import { useStore } from '@/stores/useStore';
+import { usePhase } from '@/stores/hooks';
 
 export interface KeyboardShortcutsConfig {
   onPlayPause?: () => void;
@@ -15,7 +15,7 @@ export interface KeyboardShortcutsConfig {
 }
 
 export function useKeyboardShortcuts(config: KeyboardShortcutsConfig) {
-  const phase = useStore((state) => state.phase);
+  const phase = usePhase();
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {

@@ -1,4 +1,4 @@
-import { useStore } from '@/stores/useStore';
+import { getStoreActions, getMediaSnapshot, getTimelineSnapshot, getProcessingSnapshot } from '@/stores/snapshot';
 import type { SSEEvent, DownloadRequest, DownloadJobResponse } from '@/types/sse';
 import { calculateOverallProgress, getPhaseMessage } from './sseProgressUtils';
 import { generateTrimFilename } from './generateFilename';
@@ -18,7 +18,7 @@ import { generateTrimFilename } from './generateFilename';
 let eventSource: EventSource | null = null;
 
 function actions() {
-  return useStore.getState();
+  return getStoreActions();
 }
 
 function closeStream() {
@@ -37,18 +37,20 @@ function fail(message: string, code: string = 'DOWNLOAD_ERROR', technicalDetails
 }
 
 function complete(jobId: string) {
-  const s = actions();
-  const { videoFile, timeline } = s;
+  // 데이터 read는 snapshot 게터, action 호출은 actions()로 분리(비반응형 접근면 일원화).
+  const { videoFile } = getMediaSnapshot();
+  const { inPoint, outPoint } = getTimelineSnapshot();
   // URL 소스의 name은 항상 "${title}.mp4" → generateTrimFilename이 .mp4 보존.
   // 파일 소스 트림과 동일한 MMmSSs 포맷으로 통일.
   const filename = generateTrimFilename(
     videoFile?.name || 'video.mp4',
-    timeline.inPoint,
-    timeline.outPoint
+    inPoint,
+    outPoint
   );
 
   // blob 적재 없음: 완료 파일은 서버에서 디스크로 직행 스트리밍된다.
   // outputUrl = API URL (jobId 내장 → reset 시 정리에 사용).
+  const s = actions();
   s.setActiveDownloadJobId(null);
   s.setDownloadPhase(null);
   s.setExportResultAndComplete(`/api/download/${jobId}`, filename);
@@ -94,8 +96,9 @@ function connect(jobId: string) {
  * 검증 실패 시 false 반환(에러 전환은 호출자가 처리하도록 메시지 throw).
  */
 export async function startStreamDownload(): Promise<void> {
-  const state = useStore.getState();
-  const { videoFile, timeline } = state;
+  // 데이터 read는 snapshot 게터, action 호출은 actions()로 분리(비반응형 접근면 일원화).
+  const { videoFile, selectedQuality } = getMediaSnapshot();
+  const timeline = getTimelineSnapshot();
 
   if (!videoFile || videoFile.source !== 'url' || !videoFile.originalUrl) {
     throw new Error('URL 소스가 아닙니다');
@@ -108,14 +111,17 @@ export async function startStreamDownload(): Promise<void> {
   // 구간 길이 상한 없음: 병목이 브라우저 메모리가 아니라 서버 디스크/시간이므로
   // 최종 다운로드를 서버→디스크 직행 스트리밍으로 처리한다(blob 미적재).
 
+  const s = actions();
+
   // 이미 진행 중인 job이 있으면 재연결만 (중복 시작 방지)
-  if (state.processing.activeDownloadJobId) {
-    if (!eventSource) connect(state.processing.activeDownloadJobId);
+  const activeJobId = getProcessingSnapshot().activeDownloadJobId;
+  if (activeJobId) {
+    if (!eventSource) connect(activeJobId);
     return;
   }
 
-  state.setProgress('trim', 0);
-  state.setDownloadPhase(null);
+  s.setProgress('trim', 0);
+  s.setDownloadPhase(null);
 
   const startResponse = await fetch('/api/download/start', {
     method: 'POST',
@@ -127,7 +133,7 @@ export async function startStreamDownload(): Promise<void> {
       filename: videoFile.name || 'video.mp4',
       tbr: videoFile.tbr ?? null,
       // 플레이어에서 고른 화질로 다운로드도 일치 (미선택 시 기본 1080p)
-      maxHeight: state.selectedQuality ?? 1080,
+      maxHeight: selectedQuality ?? 1080,
     } satisfies DownloadRequest),
   });
 
@@ -137,6 +143,6 @@ export async function startStreamDownload(): Promise<void> {
   }
 
   const { jobId }: DownloadJobResponse = await startResponse.json();
-  state.setActiveDownloadJobId(jobId);
+  s.setActiveDownloadJobId(jobId);
   connect(jobId);
 }

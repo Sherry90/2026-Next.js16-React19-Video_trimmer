@@ -1,13 +1,13 @@
 import { useCallback } from 'react';
-import { useStore } from '@/stores/useStore';
+import { useMediaActions, usePhaseActions, useErrorActions, useProgressActions } from '@/stores/hooks';
 import { validateFile } from '@/features/upload/utils/validateFile';
 import type { VideoFile } from '@/types/store';
 
 export function useFileUpload() {
-  const setVideoFile = useStore((state) => state.setVideoFile);
-  const setPhase = useStore((state) => state.setPhase);
-  const setErrorAndTransition = useStore((state) => state.setErrorAndTransition);
-  const setProgress = useStore((state) => state.setProgress);
+  const { setVideoFile } = useMediaActions();
+  const { setPhase } = usePhaseActions();
+  const { setErrorAndTransition } = useErrorActions();
+  const { setProgress } = useProgressActions();
 
   const handleFileSelect = useCallback(
     async (file: File) => {

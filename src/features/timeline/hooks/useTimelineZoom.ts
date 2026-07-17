@@ -1,13 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, RefObject } from 'react';
 import { UI } from '@/constants/appConfig';
-import { useStore } from '@/stores/useStore';
-
-interface ZoomAnchor {
-  /** 줌 직전 커서가 가리키던 content 내 위치 비율 (0..1) */
-  ratio: number;
-  /** viewport 좌측 기준 커서 x (px) */
-  cursorX: number;
-}
+import { useTimelineZoomValue } from '@/stores/hooks';
+import { getTimelineSnapshot, getStoreActions } from '@/stores/snapshot';
+import { nextZoom, computeZoomAnchor, anchorScrollLeft, type ZoomAnchor } from '@/features/timeline/utils/zoomMath';
 
 /**
  * 타임라인 줌/패닝 휠 제어.
@@ -15,11 +10,12 @@ interface ZoomAnchor {
  * - Shift+휠: 가로 패닝(scrollLeft 이동)
  *
  * scroll geometry(scrollLeft/scrollWidth/rect)가 필요하므로 scroll viewport 요소에 부착한다.
+ * 줌 계산은 zoomMath util, store 접근은 hook(반응형)/snapshot(휠 내부 라이브 read)로 일원화.
  * @param viewportRef - overflow-x-auto scroll viewport (TimelineBar)
  */
 export function useTimelineZoom(viewportRef: RefObject<HTMLDivElement | null>) {
   const anchorRef = useRef<ZoomAnchor | null>(null);
-  const zoom = useStore((state) => state.timeline.zoom);
+  const zoom = useTimelineZoomValue();
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -36,19 +32,20 @@ export function useTimelineZoom(viewportRef: RefObject<HTMLDivElement | null>) {
 
       // 일반 휠 → 커서 기준 줌
       event.preventDefault();
-      // 라이브 zoom을 store에서 읽어 stale-closure 방지(휠은 리렌더보다 빠르게 발생).
-      const currentZoom = useStore.getState().timeline.zoom;
-      const zoomDelta = event.deltaY > 0 ? -UI.TIMELINE_ZOOM_STEP : UI.TIMELINE_ZOOM_STEP;
-      const newZoom = currentZoom + zoomDelta; // 클램프는 setZoom 내부 constrainZoom
+      // 라이브 zoom을 snapshot에서 읽어 stale-closure 방지(휠은 리렌더보다 빠르게 발생).
+      const currentZoom = getTimelineSnapshot().zoom;
+      const newZoom = nextZoom(currentZoom, event.deltaY, UI.TIMELINE_ZOOM_STEP);
 
       // 커서 앵커 기록 — content 폭은 리렌더 후 갱신되므로 layout effect에서 scrollLeft 보정.
       const rect = viewport.getBoundingClientRect();
-      const cursorX = event.clientX - rect.left;
-      const scrollWidth = viewport.scrollWidth;
-      anchorRef.current =
-        scrollWidth > 0 ? { ratio: (viewport.scrollLeft + cursorX) / scrollWidth, cursorX } : null;
+      anchorRef.current = computeZoomAnchor(
+        rect.left,
+        viewport.scrollLeft,
+        viewport.scrollWidth,
+        event.clientX
+      );
 
-      useStore.getState().setZoom(newZoom);
+      getStoreActions().setZoom(newZoom);
     };
 
     viewport.addEventListener('wheel', handleWheel, { passive: false });
@@ -60,7 +57,7 @@ export function useTimelineZoom(viewportRef: RefObject<HTMLDivElement | null>) {
     const anchor = anchorRef.current;
     const viewport = viewportRef.current;
     if (!anchor || !viewport) return;
-    viewport.scrollLeft = anchor.ratio * viewport.scrollWidth - anchor.cursorX;
+    viewport.scrollLeft = anchorScrollLeft(anchor, viewport.scrollWidth);
     anchorRef.current = null;
   }, [zoom, viewportRef]);
 }

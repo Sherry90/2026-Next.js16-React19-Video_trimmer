@@ -1,12 +1,12 @@
 'use client';
 
-import { useStore } from '@/stores/useStore';
+import { useErrorState, useErrorActions, useReset } from '@/stores/hooks';
 import { AlertCircleIcon } from '@/shared/ui/icons';
 
 export function FileValidationError() {
-  const error = useStore((state) => state.error);
-  const clearError = useStore((state) => state.clearError);
-  const reset = useStore((state) => state.reset);
+  const error = useErrorState();
+  const { clearError } = useErrorActions();
+  const reset = useReset();
 
   if (!error.hasError || error.errorCode !== 'VALIDATION_ERROR') {
     return null;

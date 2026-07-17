@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import WaveSurfer from 'wavesurfer.js';
-import { useStore } from '@/stores/useStore';
+import { useVideoFile, useTimelineZoomValue, useWaveformProgress, useProgressActions } from '@/stores/hooks';
 import { UI, WAVEFORM_VIEW } from '@/constants/appConfig';
 import { getWaveform, clearWaveform, shouldSkipWaveform, scalePeaksToDuration } from '@/shared/lib/waveformCache';
 import { getSpectrogram, clearSpectrogram } from '@/shared/lib/spectrogramCache';
@@ -32,10 +32,10 @@ export function WaveformBackground() {
   // 길이 초과로 파형을 생략한 상태 (no-audio와 구분된 안내 표시)
   const [skipped, setSkipped] = useState<boolean>(false);
 
-  const videoFile = useStore((state) => state.videoFile);
-  const zoom = useStore((state) => state.timeline.zoom);
-  const waveformProgress = useStore((state) => state.processing.waveformProgress);
-  const setProgress = useStore((state) => state.setProgress);
+  const videoFile = useVideoFile();
+  const zoom = useTimelineZoomValue();
+  const waveformProgress = useWaveformProgress();
+  const { setProgress } = useProgressActions();
   const spectrogramCanvasRef = useRef<HTMLCanvasElement>(null);
   const [spectrogram, setSpectrogram] = useState<SpectrogramData | null>(null);
   const [spectrogramStatus, setSpectrogramStatus] = useState<SpectrogramStatus>('idle');

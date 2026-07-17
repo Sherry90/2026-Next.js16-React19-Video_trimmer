@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useStore } from '@/stores/useStore';
+import { useErrorState, useErrorActions, useReset } from '@/stores/hooks';
 import type { AppError } from '@/types/types';
 import { getErrorDefinition, isErrorCode, formatErrorReport } from '@/shared/lib/errorHandler';
 import { AlertCircleIcon, ChevronDownIcon } from '@/shared/ui/icons';
@@ -21,9 +21,9 @@ export function ErrorDisplay({
   const [copied, setCopied] = useState(false);
 
   // Use props if provided, otherwise fall back to store
-  const storeError = useStore((state) => state.error);
-  const clearError = useStore((state) => state.clearError);
-  const reset = useStore((state) => state.reset);
+  const storeError = useErrorState();
+  const { clearError } = useErrorActions();
+  const reset = useReset();
 
   // Determine which error to show
   let displayError: AppError | null = null;

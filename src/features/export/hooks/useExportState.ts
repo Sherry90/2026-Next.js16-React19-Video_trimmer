@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
-import { useStore } from '@/stores/useStore';
-import { useCommonActions, useProgressActions } from '@/stores/selectors';
+import { usePhaseActions, useErrorActions, useExportActions, useProgressActions } from '@/stores/hooks';
 import { trimVideo } from '@/features/export/utils/trimVideoDispatcher';
 import { generateTrimFilename } from '@/features/export/utils/generateFilename';
 import { requiresFFmpegDownload } from '@/features/export/utils/formatDetector';
@@ -19,8 +18,9 @@ export function useExportState(
   inPoint: number,
   outPoint: number
 ) {
-  const { setPhase, setErrorAndTransition, setExportResultAndComplete } =
-    useCommonActions();
+  const { setPhase } = usePhaseActions();
+  const { setErrorAndTransition } = useErrorActions();
+  const { setExportResultAndComplete } = useExportActions();
   const { setProgress } = useProgressActions();
 
   // FFmpeg loading state (delegated to separate hook)

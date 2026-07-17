@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useStore } from '@/stores/useStore';
+import { useVideoDuration, useTrimPoints, useTimelineZoomValue } from '@/stores/hooks';
 import { TIMELINE } from '@/constants/appConfig';
 import { formatSimpleTime } from '@/shared/lib/timeFormatter';
 import { WaveformBackground } from './WaveformBackground';
@@ -12,13 +12,12 @@ interface TimelineBarProps {
 }
 
 export function TimelineBar({ children }: TimelineBarProps) {
-  const duration = useStore((state) => state.videoFile?.duration ?? 0);
-  const inPoint = useStore((state) => state.timeline.inPoint);
-  const outPoint = useStore((state) => state.timeline.outPoint);
-  const zoom = useStore((state) => state.timeline.zoom);
+  const duration = useVideoDuration();
+  const { inPoint, outPoint } = useTrimPoints();
+  const zoom = useTimelineZoomValue();
   // 파형/스펙트럴을 항상 겹쳐 표시하므로 토글 비활성(아래 버튼 주석). 롤백 시 함께 복구.
-  // const waveformDisplayMode = useStore((state) => state.timeline.waveformDisplayMode ?? 'waveform');
-  // const setWaveformDisplayMode = useStore((state) => state.setWaveformDisplayMode);
+  // const waveformDisplayMode = useWaveformDisplayMode();
+  // const { setWaveformDisplayMode } = useTimelineActions();
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const [viewportWidth, setViewportWidth] = useState<number>(0);
