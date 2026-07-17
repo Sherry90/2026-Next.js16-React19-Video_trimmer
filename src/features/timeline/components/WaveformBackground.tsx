@@ -7,20 +7,10 @@ import { UI, WAVEFORM_VIEW } from '@/constants/appConfig';
 import { getWaveform, clearWaveform, shouldSkipWaveform, scalePeaksToDuration } from '@/shared/lib/waveformCache';
 import { getSpectrogram, clearSpectrogram } from '@/shared/lib/spectrogramCache';
 import { withRetry } from '@/shared/lib/retry';
-import {
-  bucketMagnitudes,
-  computeMagnitudeSpectrum,
-  hannWindow,
-  isValidSpectrogramData,
-  spectrogramFrameWidth,
-  type SpectrogramData,
-} from '@/shared/lib/spectrogram';
-
-const LOCAL_SPECTROGRAM_SAMPLE_RATE = WAVEFORM_VIEW.SPECTRAL_SAMPLE_RATE;
-const LOCAL_FFT_SIZE = WAVEFORM_VIEW.SPECTRAL_FFT_SIZE;
-const LOCAL_HOP_SIZE = WAVEFORM_VIEW.SPECTRAL_HOP_SIZE;
-const LOCAL_FREQ_BINS = WAVEFORM_VIEW.SPECTRAL_FREQ_BINS;
-const LOCAL_MAX_FRAMES = WAVEFORM_VIEW.SPECTRAL_MAX_FRAMES;
+import { isValidSpectrogramData, spectrogramFrameWidth, type SpectrogramData } from '@/shared/lib/spectrogram';
+import { hslToRgb } from '@/shared/lib/color';
+import { computeLocalSpectrogram } from '@/shared/lib/spectrogramLocal';
+import { Overlay } from '@/shared/ui/Overlay';
 
 type SpectrogramStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error' | 'skipped';
 
@@ -385,111 +375,17 @@ export function WaveformBackground() {
 
       {/* Loading overlay — 파형/스펙트럴 중 하나라도 준비 중 */}
       {showLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-[#1c1d20] z-10">
-          <div className="text-xs text-[#74808c]">
-            {isLoading ? `Loading waveform... ${Math.round(waveformProgress)}%` : '스펙트럼 분석 중...'}
-          </div>
-        </div>
+        <Overlay>
+          {isLoading ? `Loading waveform... ${Math.round(waveformProgress)}%` : '스펙트럼 분석 중...'}
+        </Overlay>
       )}
 
       {/* 빈 상태 — 파형도 없고 스펙트럴도 사용 불가 */}
       {!showLoading && showEmpty && (
-        <div className="absolute inset-0 flex items-center justify-center bg-[#1c1d20] z-10">
-          <div className="text-xs text-[#74808c]" data-testid="waveform-empty-message">
-            {skipped ? '영상이 길어 파형을 생략했습니다' : spectrogramMessage || 'No audio track'}
-          </div>
-        </div>
+        <Overlay data-testid="waveform-empty-message">
+          {skipped ? '영상이 길어 파형을 생략했습니다' : spectrogramMessage || 'No audio track'}
+        </Overlay>
       )}
     </div>
   );
-}
-
-// hsl(h, s%, l%) → [r,g,b] (0-255). ImageData 픽셀 직접 채우기용.
-function hslToRgb(h: number, s: number, l: number): [number, number, number] {
-  const sat = s / 100;
-  const lig = l / 100;
-  const c = (1 - Math.abs(2 * lig - 1)) * sat;
-  const hp = ((h % 360) + 360) % 360 / 60;
-  const x = c * (1 - Math.abs((hp % 2) - 1));
-  let r = 0;
-  let g = 0;
-  let b = 0;
-  if (hp < 1) [r, g, b] = [c, x, 0];
-  else if (hp < 2) [r, g, b] = [x, c, 0];
-  else if (hp < 3) [r, g, b] = [0, c, x];
-  else if (hp < 4) [r, g, b] = [0, x, c];
-  else if (hp < 5) [r, g, b] = [x, 0, c];
-  else [r, g, b] = [c, 0, x];
-  const m = lig - c / 2;
-  return [
-    Math.round((r + m) * 255),
-    Math.round((g + m) * 255),
-    Math.round((b + m) * 255),
-  ];
-}
-
-async function computeLocalSpectrogram(url: string, duration: number): Promise<SpectrogramData> {
-  if (shouldSkipWaveform(duration)) {
-    return { duration: 0, sampleRate: LOCAL_SPECTROGRAM_SAMPLE_RATE, fftSize: LOCAL_FFT_SIZE, frames: [], skipped: true };
-  }
-
-  const AudioContextCtor = window.AudioContext ||
-    (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AudioContextCtor) {
-    throw new Error('AudioContext를 사용할 수 없습니다');
-  }
-  const audioContext = new AudioContextCtor({ sampleRate: LOCAL_SPECTROGRAM_SAMPLE_RATE });
-  try {
-    const buffer = await fetch(url).then((res) => res.arrayBuffer());
-    const decoded = await audioContext.decodeAudioData(buffer.slice(0));
-    const source = decoded.getChannelData(0);
-    const sampleCount = Math.floor(decoded.duration * LOCAL_SPECTROGRAM_SAMPLE_RATE);
-    const samples = new Float32Array(sampleCount);
-    // step>1(컨텍스트가 8kHz 강제를 무시하고 native rate 로 디코드한 브라우저)이면
-    // 단순 데시메이션은 앨리어싱을 부른다 → 구간 박스 평균으로 1차 로우패스.
-    const step = decoded.sampleRate / LOCAL_SPECTROGRAM_SAMPLE_RATE;
-    if (step <= 1) {
-      for (let i = 0; i < sampleCount; i++) {
-        samples[i] = source[Math.min(source.length - 1, Math.floor(i * step))] ?? 0;
-      }
-    } else {
-      const window = Math.max(1, Math.floor(step));
-      for (let i = 0; i < sampleCount; i++) {
-        const start = Math.floor(i * step);
-        let sum = 0;
-        let count = 0;
-        for (let j = 0; j < window && start + j < source.length; j++) {
-          sum += source[start + j];
-          count++;
-        }
-        samples[i] = count > 0 ? sum / count : 0;
-      }
-    }
-
-    const windowValues = hannWindow(LOCAL_FFT_SIZE);
-    const totalFrames = Math.max(1, Math.floor((sampleCount - LOCAL_FFT_SIZE) / LOCAL_HOP_SIZE) + 1);
-    const stride = Math.max(1, Math.ceil(totalFrames / LOCAL_MAX_FRAMES));
-    const frames: number[][] = [];
-
-    for (let frame = 0; frame < totalFrames; frame += stride) {
-      const start = frame * LOCAL_HOP_SIZE;
-      const windowed = new Float32Array(LOCAL_FFT_SIZE);
-      for (let i = 0; i < LOCAL_FFT_SIZE; i++) {
-        windowed[i] = (samples[start + i] ?? 0) * windowValues[i];
-      }
-      frames.push(
-        bucketMagnitudes(computeMagnitudeSpectrum(windowed), LOCAL_FREQ_BINS)
-          .map((value) => Math.round(Math.min(1, Math.log10(1 + value * WAVEFORM_VIEW.SPECTRAL_LOG_SCALE)) * 1000) / 1000)
-      );
-    }
-
-    return {
-      duration: decoded.duration,
-      sampleRate: LOCAL_SPECTROGRAM_SAMPLE_RATE,
-      fftSize: LOCAL_FFT_SIZE,
-      frames,
-    };
-  } finally {
-    void audioContext.close();
-  }
 }
