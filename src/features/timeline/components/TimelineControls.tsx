@@ -1,38 +1,28 @@
 'use client';
 
+import {
+  useTrimPoints,
+  useVideoDuration,
+  useTrimLocks,
+  useTimelineActions,
+} from '@/stores/hooks';
+import { usePreviewPlaybackContext } from '../context/PreviewPlaybackContext';
 import { TimeInput } from './TimeInput';
 import { LockButton } from './LockButton';
 import { PreviewButtons } from './PreviewButtons';
 
-interface TimelineControlsProps {
-  inPoint: number;
-  outPoint: number;
-  duration: number;
-  isInPointLocked: boolean;
-  isOutPointLocked: boolean;
-  onInPointChange: (value: number | null) => void;
-  onOutPointChange: (value: number | null) => void;
-  onInPointLockToggle: () => void;
-  onOutPointLockToggle: () => void;
-  onPreviewEdges: () => void;
-}
-
 /**
- * Timeline controls component containing time inputs, lock buttons, and preview buttons
- * Separated for better organization and testability
+ * Timeline controls (connected) — time inputs, lock buttons, preview buttons.
+ * 스토어를 직접 소비하고 순수 하위 모듈을 1단계 props로 합성한다
+ * (기존 TimelineEditor→TimelineControls 11-prop pass-through 제거).
  */
-export function TimelineControls({
-  inPoint,
-  outPoint,
-  duration,
-  isInPointLocked,
-  isOutPointLocked,
-  onInPointChange,
-  onOutPointChange,
-  onInPointLockToggle,
-  onOutPointLockToggle,
-  onPreviewEdges,
-}: TimelineControlsProps) {
+export function TimelineControls() {
+  const { inPoint, outPoint } = useTrimPoints();
+  const duration = useVideoDuration();
+  const { isInPointLocked, isOutPointLocked } = useTrimLocks();
+  const { setInPoint, setOutPoint, setInPointLocked, setOutPointLocked } = useTimelineActions();
+  const { handlePreviewEdges } = usePreviewPlaybackContext();
+
   return (
     <div className="px-4 pb-4 flex items-center justify-between gap-4">
       {/* Time inputs */}
@@ -41,14 +31,14 @@ export function TimelineControls({
           <TimeInput
             label="In"
             value={inPoint}
-            onChange={onInPointChange}
+            onChange={(value) => { if (value !== null) setInPoint(value); }}
             min={0}
             max={outPoint}
             disabled={isInPointLocked}
           />
           <LockButton
             locked={isInPointLocked}
-            onToggle={onInPointLockToggle}
+            onToggle={() => setInPointLocked(!isInPointLocked)}
             label="In Point"
           />
         </div>
@@ -56,21 +46,21 @@ export function TimelineControls({
           <TimeInput
             label="Out"
             value={outPoint}
-            onChange={onOutPointChange}
+            onChange={(value) => { if (value !== null) setOutPoint(value); }}
             min={inPoint}
             max={duration}
             disabled={isOutPointLocked}
           />
           <LockButton
             locked={isOutPointLocked}
-            onToggle={onOutPointLockToggle}
+            onToggle={() => setOutPointLocked(!isOutPointLocked)}
             label="Out Point"
           />
         </div>
       </div>
 
       {/* Preview button */}
-      <PreviewButtons onPreviewEdges={onPreviewEdges} />
+      <PreviewButtons onPreviewEdges={handlePreviewEdges} />
     </div>
   );
 }

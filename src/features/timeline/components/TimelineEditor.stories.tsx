@@ -1,16 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { fn } from '@storybook/test';
 import { TimelineEditor } from './TimelineEditor';
-import { VideoPlayerProvider } from '@/features/player/context/VideoPlayerContext';
-
-const mockContextValue = {
-  player: null,
-  play: fn(),
-  pause: fn(),
-  seek: fn(),
-  togglePlay: fn(),
-  setIsScrubbing: fn(),
-};
+import { VideoPlayerProvider } from '@/shared/video-player/VideoPlayerContext';
+import { mockVideoPlayerContext } from '@/shared/video-player/videoPlayerContextMock';
+import { PreviewPlaybackProvider } from '../context/PreviewPlaybackContext';
 
 const meta: Meta<typeof TimelineEditor> = {
   title: 'Timeline/TimelineEditor',
@@ -21,10 +13,12 @@ const meta: Meta<typeof TimelineEditor> = {
   },
   decorators: [
     (Story) => (
-      <VideoPlayerProvider value={mockContextValue}>
-        <div style={{ width: '800px' }}>
-          <Story />
-        </div>
+      <VideoPlayerProvider value={mockVideoPlayerContext}>
+        <PreviewPlaybackProvider>
+          <div style={{ width: '800px' }}>
+            <Story />
+          </div>
+        </PreviewPlaybackProvider>
       </VideoPlayerProvider>
     ),
   ],
