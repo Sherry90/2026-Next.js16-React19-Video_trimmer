@@ -2,6 +2,7 @@
 
 import { useVideoFile, useUploadProgress, usePhase } from '@/stores/hooks';
 import { ProgressBar } from '@/shared/ui/ProgressBar';
+import { Card } from '@/shared/ui/Card';
 import { formatBytes } from '@/shared/lib/formatBytes';
 
 export function UploadProgress() {
@@ -14,7 +15,7 @@ export function UploadProgress() {
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+    <Card variant="white">
       <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
         Loading...
       </h3>
@@ -32,6 +33,6 @@ export function UploadProgress() {
           label="File Upload"
         />
       </div>
-    </div>
+    </Card>
   );
 }
