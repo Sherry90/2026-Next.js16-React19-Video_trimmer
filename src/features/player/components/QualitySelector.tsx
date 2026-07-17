@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { SettingsIcon } from '@/shared/ui/icons';
+import { IconButton } from '@/shared/ui/IconButton';
 
 interface QualitySelectorProps {
   heights: number[]; // sorted desc, e.g. [1080, 720, 480]
@@ -28,15 +29,13 @@ export function QualitySelector({ heights, selected, onSelect, className = '' }:
 
   return (
     <div className={`relative ${className}`}>
-      <button
-        type="button"
+      <IconButton
         onClick={() => setOpen((o) => !o)}
         aria-label="화질"
         aria-expanded={open}
-        className="flex items-center justify-center w-9 h-9 rounded text-white hover:bg-white/10 transition-colors"
       >
         <SettingsIcon className="w-5 h-5" />
-      </button>
+      </IconButton>
       {open && (
         <ul
           role="listbox"
