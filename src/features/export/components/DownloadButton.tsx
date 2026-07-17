@@ -1,56 +1,31 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { usePhase, useExportResult, usePhaseActions, useReset } from '@/stores/hooks';
+import { usePhase } from '@/stores/hooks';
 import { CheckCircleIcon } from '@/shared/ui/icons';
+import { Card } from '@/shared/ui/Card';
+import { Button } from '@/shared/ui/Button';
+import { TextInput } from '@/shared/ui/TextInput';
+import { useDownload } from '../hooks/useDownload';
 
 export function DownloadButton() {
   const phase = usePhase();
-  const { outputUrl, outputFilename } = useExportResult();
-  const { setPhase } = usePhaseActions();
-  const reset = useReset();
-
-  const lastDot = outputFilename ? outputFilename.lastIndexOf('.') : -1;
-  const baseName = outputFilename
-    ? lastDot !== -1 ? outputFilename.slice(0, lastDot) : outputFilename
-    : '';
-  const ext = outputFilename && lastDot !== -1 ? outputFilename.slice(lastDot) : '';
-
-  const [editableName, setEditableName] = useState('');
-
-  useEffect(() => {
-    if (outputFilename) setEditableName(baseName);
-  }, [outputFilename, baseName]);
-
-  const triggerDownload = useCallback(
-    (name: string) => {
-      if (!outputUrl || !outputFilename) return;
-      const link = document.createElement('a');
-      link.href = outputUrl;
-      link.download = name + ext;
-      link.click();
-    },
-    [outputUrl, outputFilename, ext]
-  );
-
-  const handleDownload = useCallback(() => {
-    triggerDownload(editableName.trim() || baseName);
-  }, [triggerDownload, editableName, baseName]);
-
-  const handleBackToEdit = useCallback(() => {
-    setPhase('editing');
-  }, [setPhase]);
-
-  const handleEditAnother = useCallback(() => {
-    reset();
-  }, [reset]);
+  const {
+    outputUrl,
+    outputFilename,
+    ext,
+    editableName,
+    setEditableName,
+    handleDownload,
+    handleBackToEdit,
+    handleEditAnother,
+  } = useDownload();
 
   if (phase !== 'completed' || !outputUrl || !outputFilename) {
     return null;
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg text-center space-y-4">
+    <Card variant="white" className="text-center space-y-4">
       <CheckCircleIcon className="w-16 h-16 mx-auto text-green-500" />
 
       <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -65,9 +40,8 @@ export function DownloadButton() {
           Save as
         </label>
         <div className="flex items-center gap-1">
-          <input
+          <TextInput
             id="save-as-input"
-            type="text"
             value={editableName}
             onChange={(e) => setEditableName(e.target.value)}
             className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -81,30 +55,30 @@ export function DownloadButton() {
       </div>
 
       <div className="flex gap-3 justify-center">
-        <button
+        <Button
           onClick={handleDownload}
           data-testid="download-button"
           className="px-6 py-3 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
         >
           Download
-        </button>
+        </Button>
 
-        <button
+        <Button
           onClick={handleBackToEdit}
           data-testid="back-to-edit-button"
           className="px-6 py-3 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
         >
           Back to Edit
-        </button>
+        </Button>
 
-        <button
+        <Button
           onClick={handleEditAnother}
           data-testid="edit-another-button"
           className="px-6 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
         >
           Edit Another File
-        </button>
+        </Button>
       </div>
-    </div>
+    </Card>
   );
 }
