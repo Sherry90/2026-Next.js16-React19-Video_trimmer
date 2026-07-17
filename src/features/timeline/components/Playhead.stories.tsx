@@ -1,16 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { fn } from '@storybook/test';
 import { Playhead } from './Playhead';
-import { VideoPlayerProvider } from '@/features/player/context/VideoPlayerContext';
-
-const mockContextValue = {
-  player: null,
-  play: fn(),
-  pause: fn(),
-  seek: fn(),
-  togglePlay: fn(),
-  setIsScrubbing: fn(),
-};
+import { VideoPlayerProvider } from '@/shared/video-player/VideoPlayerContext';
+import { mockVideoPlayerContext } from '@/shared/video-player/videoPlayerContextMock';
 
 const meta: Meta<typeof Playhead> = {
   title: 'Timeline/Playhead',
@@ -21,7 +12,7 @@ const meta: Meta<typeof Playhead> = {
   },
   decorators: [
     (Story) => (
-      <VideoPlayerProvider value={mockContextValue}>
+      <VideoPlayerProvider value={mockVideoPlayerContext}>
         <div style={{ position: 'relative', width: '600px', height: '80px', background: '#1c1d20' }}>
           <Story />
         </div>

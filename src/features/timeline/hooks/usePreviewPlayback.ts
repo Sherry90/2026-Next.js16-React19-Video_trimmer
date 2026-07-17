@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { useVideoPlayerContext } from '@/features/player/context/VideoPlayerContext';
+import { useVideoPlayerContext } from '@/shared/video-player/VideoPlayerContext';
 import { PLAYBACK } from '@/constants/appConfig';
 
 const HAVE_FUTURE_DATA = 3; // HTMLMediaElement.readyState — 재생 시작 가능 수준
