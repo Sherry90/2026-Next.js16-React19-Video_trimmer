@@ -6,9 +6,9 @@ import videojs from 'video.js';
 // qualityLevels 플러그인을 이미 등록한다 → 중복 import 시 "plugin already exists" 경고.
 // player.qualityLevels()는 코어 제공분으로 동작(useQualityLevels 훅 참조).
 import type Player from 'video.js/dist/types/player';
-import { useStore } from '@/stores/useStore';
-import { useVideoUrl, useVideoFile, usePlayerActions } from '@/stores/selectors';
+import { useVideoUrl, useVideoFile, usePlayerActions } from '@/stores/hooks';
 import { PLAYBACK } from '@/constants/appConfig';
+import { bindPlayerStoreSync } from '../utils/playerStoreSync';
 import { VideoPlayerProvider } from '../context/VideoPlayerContext';
 import { VideoScreen } from './VideoScreen';
 import { PlayerControlBar } from './PlayerControlBar';
@@ -29,7 +29,7 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
 
   const videoUrl = useVideoUrl();
   const videoFile = useVideoFile();
-  const { setCurrentTime, setIsPlaying } = usePlayerActions();
+  const { setIsScrubbing } = usePlayerActions();
 
   // Capture MIME type in a ref so it doesn't trigger player re-creation
   const mimeTypeRef = useRef(videoFile?.type || 'video/mp4');
@@ -80,37 +80,9 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
       // 화질 선택은 PlayerControlBar의 useQualityLevels 훅이 담당(setSelectedQuality 동기화 유지).
       setPlayer(playerInstance);
 
-      playerInstance.on('loadedmetadata', () => {
-        const duration = playerInstance.duration();
-        // URL 스트리밍 소스는 resolve 메타데이터로 duration을 미리 설정하므로
-        // (이미 >0) 여기서 덮어쓰지 않는다 — 사용자가 정한 outPoint 구간 보존.
-        // 파일 소스는 duration=0으로 시작하므로 이때 설정된다.
-        const hasDuration = (useStore.getState().videoFile?.duration ?? 0) > 0;
-        if (!hasDuration && duration && !isNaN(duration)) {
-          useStore.getState().setVideoDuration(duration);
-        }
-      });
-
-      playerInstance.on('timeupdate', () => {
-        const currentTime = playerInstance.currentTime();
-        const state = useStore.getState();
-
-        if (state.player.isScrubbing || playerInstance.seeking()) {
-          return;
-        }
-
-        state.setCurrentTime(currentTime || 0);
-
-        const currentOutPoint = state.timeline.outPoint;
-        if ((currentTime || 0) >= currentOutPoint && currentOutPoint > 0 && !playerInstance.paused()) {
-           playerInstance.pause();
-           playerInstance.currentTime(currentOutPoint);
-        }
-      });
-
-      playerInstance.on('play', () => setIsPlaying(true));
-      playerInstance.on('pause', () => setIsPlaying(false));
-      playerInstance.on('ended', () => setIsPlaying(false));
+      // player 이벤트 → store 결선(duration backfill, timeupdate race guard,
+      // auto-pause-at-out, isPlaying 동기화). 로직은 스토어 계층(snapshot 경유)이 담당.
+      bindPlayerStoreSync(playerInstance);
     }));
 
     return () => {
@@ -120,7 +92,7 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
         playerRef.current = null;
       }
     };
-  }, [videoUrl, setIsPlaying]); // Only re-create player when URL changes
+  }, [videoUrl]); // Only re-create player when URL changes
 
   // Sync methods
   const play = useCallback(() => {
@@ -158,8 +130,6 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
     togglePlay();
     setFlash({ playing: willPlay, id: (flashIdRef.current += 1) });
   }, [togglePlay]);
-
-  const setIsScrubbing = useStore((state) => state.setIsScrubbing);
 
   // 안정적인 context value: player(state)나 콜백이 바뀔 때만 새 객체 → consumer 불필요 재렌더 방지.
   // player를 deps에 포함해야 인스턴스 생성 시 consumer가 갱신됨(누락 시 null-player 버그 재발).

@@ -1,7 +1,7 @@
 'use client';
 
 import { lazy, Suspense } from 'react';
-import { useStore } from '@/stores/useStore';
+import { usePhase, usePhaseActions } from '@/stores/hooks';
 
 // Upload feature
 import { UploadZone } from '@/features/upload/components/UploadZone';
@@ -26,8 +26,8 @@ const ExportProgress = lazy(() => import('@/features/export/components/ExportPro
 const DownloadButton = lazy(() => import('@/features/export/components/DownloadButton').then(m => ({ default: m.DownloadButton })));
 
 export default function HomePage() {
-  const phase = useStore((state) => state.phase);
-  const setPhase = useStore((state) => state.setPhase);
+  const phase = usePhase();
+  const { setPhase } = usePhaseActions();
 
   const isEditorMounted = phase === 'editing' || phase === 'processing' || phase === 'completed';
   const isExportModalOpen = phase === 'processing' || phase === 'completed';

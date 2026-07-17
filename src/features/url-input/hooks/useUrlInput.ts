@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { useStore } from '@/stores/useStore';
+import { useMediaActions, usePhaseActions, useTrimPointActions } from '@/stores/hooks';
 import { prefetchWaveform, clearWaveform } from '@/shared/lib/waveformCache';
 import { prefetchSpectrogram } from '@/shared/lib/spectrogramCache';
 import { getYoutubeThumbnail } from '@/shared/lib/platformUrl';
@@ -18,10 +18,9 @@ export function useUrlInput() {
   // 마지막 제출 URL — 늦게 도착한 프리뷰 응답이 새 입력을 덮어쓰지 않도록 가드.
   const latestUrlRef = useRef<string>('');
 
-  const setVideoFile = useStore((state) => state.setVideoFile);
-  const setPhase = useStore((state) => state.setPhase);
-  const setInPoint = useStore((state) => state.setInPoint);
-  const setOutPoint = useStore((state) => state.setOutPoint);
+  const { setVideoFile } = useMediaActions();
+  const { setPhase } = usePhaseActions();
+  const { setInPoint, setOutPoint } = useTrimPointActions();
 
   const handleUrlSubmit = useCallback(async (url: string) => {
     // Basic URL validation

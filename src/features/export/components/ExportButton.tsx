@@ -1,6 +1,6 @@
 'use client';
 
-import { useVideoFile, useTrimPoints, usePhase } from '@/stores/selectors';
+import { useVideoFile, useTrimPoints, usePhase } from '@/stores/hooks';
 import { useExportState } from '../hooks/useExportState';
 
 export function ExportButton() {

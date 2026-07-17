@@ -11,7 +11,7 @@ import {
   usePlayerVolume,
   usePlayerActions,
   useVideoDuration,
-} from '@/stores/selectors';
+} from '@/stores/hooks';
 import { PlayerControls } from './PlayerControls';
 
 interface PlayerControlBarProps {

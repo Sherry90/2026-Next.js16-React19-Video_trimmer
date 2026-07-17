@@ -1,15 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useStore } from '@/stores/useStore';
+import { usePhase, useExportResult, usePhaseActions, useReset } from '@/stores/hooks';
 import { CheckCircleIcon } from '@/shared/ui/icons';
 
 export function DownloadButton() {
-  const phase = useStore((state) => state.phase);
-  const outputUrl = useStore((state) => state.export.outputUrl);
-  const outputFilename = useStore((state) => state.export.outputFilename);
-  const setPhase = useStore((state) => state.setPhase);
-  const reset = useStore((state) => state.reset);
+  const phase = usePhase();
+  const { outputUrl, outputFilename } = useExportResult();
+  const { setPhase } = usePhaseActions();
+  const reset = useReset();
 
   const lastDot = outputFilename ? outputFilename.lastIndexOf('.') : -1;
   const baseName = outputFilename

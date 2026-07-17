@@ -1,7 +1,11 @@
 'use client';
 
-import { useStore } from '@/stores/useStore';
-import { useTimelineActions } from '@/stores/selectors';
+import {
+  useTrimPoints,
+  useVideoDuration,
+  useTrimLocks,
+  useTimelineActions,
+} from '@/stores/hooks';
 import { TimelineBar } from './TimelineBar';
 import { TrimHandle } from './TrimHandle';
 import { Playhead } from './Playhead';
@@ -13,12 +17,10 @@ import { usePreviewPlayback } from '../hooks/usePreviewPlayback';
  * Orchestrates timeline bar, trim handles, playhead, and controls
  */
 export function TimelineEditor() {
-  // Get state from store
-  const inPoint = useStore((state) => state.timeline.inPoint);
-  const outPoint = useStore((state) => state.timeline.outPoint);
-  const duration = useStore((state) => state.videoFile?.duration ?? 0);
-  const isInPointLocked = useStore((state) => state.timeline.isInPointLocked);
-  const isOutPointLocked = useStore((state) => state.timeline.isOutPointLocked);
+  // Get state from store hooks
+  const { inPoint, outPoint } = useTrimPoints();
+  const duration = useVideoDuration();
+  const { isInPointLocked, isOutPointLocked } = useTrimLocks();
 
   // Actions (identity 불변 → 그룹 셀렉터로 묶어도 재렌더 무해, 스토어 액션 결합 일원화)
   // 줌은 TimelineBar(viewport 소유)의 useTimelineZoom에서 처리.

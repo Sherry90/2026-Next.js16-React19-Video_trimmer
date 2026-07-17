@@ -1,13 +1,13 @@
 'use client';
 
-import { useStore } from '@/stores/useStore';
+import { useVideoFile, useUploadProgress, usePhase } from '@/stores/hooks';
 import { ProgressBar } from '@/shared/ui/ProgressBar';
 import { formatBytes } from '@/shared/lib/formatBytes';
 
 export function UploadProgress() {
-  const videoFile = useStore((state) => state.videoFile);
-  const uploadProgress = useStore((state) => state.processing.uploadProgress);
-  const phase = useStore((state) => state.phase);
+  const videoFile = useVideoFile();
+  const uploadProgress = useUploadProgress();
+  const phase = usePhase();
 
   if (!videoFile || phase !== 'uploading') {
     return null;
