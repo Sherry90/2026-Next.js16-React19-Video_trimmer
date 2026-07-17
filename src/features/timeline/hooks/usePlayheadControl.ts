@@ -2,9 +2,9 @@
 
 import { useCallback, useMemo, useRef, useState, useEffect, type RefObject } from 'react';
 import { usePlayerCurrentTime, useVideoDuration, useTrimPoints, usePlayerActions } from '@/stores/hooks';
-import { useVideoPlayerContext } from '@/features/player/context/VideoPlayerContext';
+import { useVideoPlayerContext } from '@/shared/video-player/VideoPlayerContext';
 import { useDragHandle } from './useDragHandle';
-import { usePlayheadSeek } from './usePlayheadSeek';
+import { usePlayheadSeek } from '@/shared/video-player/usePlayheadSeek';
 import { timeToPercent, percentToTime, clampPercentToTrim } from '@/features/timeline/utils/timelineCoords';
 import { TIMELINE } from '@/constants/appConfig';
 

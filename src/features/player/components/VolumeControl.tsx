@@ -1,6 +1,7 @@
 'use client';
 
 import { VolumeIcon } from '@/shared/ui/icons';
+import { IconButton } from '@/shared/ui/IconButton';
 
 interface VolumeControlProps {
   volume: number; // 0..1
@@ -20,14 +21,12 @@ export function VolumeControl({ volume, isMuted, onVolumeChange, onMuteToggle, c
 
   return (
     <div className={`flex items-center gap-1.5 ${className}`}>
-      <button
-        type="button"
+      <IconButton
         onClick={onMuteToggle}
         aria-label={muted ? '음소거 해제' : '음소거'}
-        className="flex items-center justify-center w-9 h-9 rounded text-white hover:bg-white/10 transition-colors"
       >
         <VolumeIcon muted={muted} className="w-5 h-5" />
-      </button>
+      </IconButton>
       <input
         type="range"
         min={0}

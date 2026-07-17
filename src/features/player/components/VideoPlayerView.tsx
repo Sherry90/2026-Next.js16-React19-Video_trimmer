@@ -9,9 +9,9 @@ import type Player from 'video.js/dist/types/player';
 import { useVideoUrl, useVideoFile, usePlayerActions } from '@/stores/hooks';
 import { PLAYBACK } from '@/constants/appConfig';
 import { bindPlayerStoreSync } from '../utils/playerStoreSync';
-import { VideoPlayerProvider } from '../context/VideoPlayerContext';
+import { VideoPlayerProvider } from '@/shared/video-player/VideoPlayerContext';
 import { VideoScreen } from './VideoScreen';
-import { PlayerControlBar } from './PlayerControlBar';
+import { PlayerControls } from './PlayerControls';
 import { PlayIcon, PauseIcon } from '@/shared/ui/icons';
 
 interface VideoPlayerViewProps {
@@ -166,7 +166,7 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
               )}
               {videoUrl && (
                 <div className="absolute inset-x-0 bottom-0 z-20">
-                  <PlayerControlBar wrapperRef={wrapperRef} />
+                  <PlayerControls wrapperRef={wrapperRef} />
                 </div>
               )}
             </div>

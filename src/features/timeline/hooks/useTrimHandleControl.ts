@@ -3,7 +3,7 @@
 import { useCallback, useRef, type RefObject } from 'react';
 import { useVideoDuration, useTrimPoints, useTrimLocks, useTrimPointActions, usePlayerActions } from '@/stores/hooks';
 import { getTimelineSnapshot, getPlayerSnapshot } from '@/stores/snapshot';
-import { useVideoPlayerContext } from '@/features/player/context/VideoPlayerContext';
+import { useVideoPlayerContext } from '@/shared/video-player/VideoPlayerContext';
 import { useDragHandle } from './useDragHandle';
 import { deltaXToTime, timeToPercent } from '@/features/timeline/utils/timelineCoords';
 import { TIMELINE } from '@/constants/appConfig';

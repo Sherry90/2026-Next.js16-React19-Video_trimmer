@@ -51,28 +51,6 @@ export function TimelineBar({ children }: TimelineBarProps) {
     <div className="w-full h-[168px]">
       {/* Timeline Wrapper with padding */}
       <div className="h-full pt-4 px-4">
-        {/* 파형/스펙트럴 토글 — 항상 겹쳐 표시로 전환하여 숨김. 롤백 시 복구.
-        <div className="mb-2 flex h-[24px] items-center justify-end">
-          <div className="flex h-full overflow-hidden rounded border border-white/10 bg-[#111317] text-[11px]">
-            {(['waveform', 'spectrogram'] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                aria-pressed={waveformDisplayMode === mode}
-                className={`px-3 transition-colors ${
-                  waveformDisplayMode === mode
-                    ? 'bg-[#2962ff] text-white'
-                    : 'text-[#9aa3ad] hover:bg-white/10 hover:text-white'
-                }`}
-                onClick={() => setWaveformDisplayMode(mode)}
-              >
-                {mode === 'waveform' ? 'Waveform' : 'Spectral'}
-              </button>
-            ))}
-          </div>
-        </div>
-        */}
-
         {/* Scroll viewport — 줌 시 content track 이 넓어지며 가로 스크롤 */}
         <div
           ref={viewportRef}

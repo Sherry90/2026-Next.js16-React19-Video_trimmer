@@ -3,6 +3,7 @@
 import { useCallback, useState, type ReactNode } from 'react';
 import { useFileUpload } from '@/features/upload/hooks/useFileUpload';
 import { UploadCloudIcon } from '@/shared/ui/icons';
+import { Button } from '@/shared/ui/Button';
 
 // URL 입력 등 부가 소스 UI는 상위(랜딩)에서 children으로 합성한다
 // (upload feature가 url-input feature를 직접 참조하지 않도록 결합 제거).
@@ -82,15 +83,16 @@ export function UploadZone({ children }: { children?: ReactNode }) {
         id="file-upload"
       />
 
-      <button
-        className="px-[30px] py-[7px] text-[13px] font-medium text-white bg-[#2962ff] border-none rounded-sm cursor-pointer transition-colors duration-200 hover:bg-[#0041f5]"
+      <Button
+        variant="primary"
+        className="px-[30px] py-[7px]"
         onClick={(e) => {
           e.stopPropagation();
           document.getElementById('file-upload')?.click();
         }}
       >
         Choose File
-      </button>
+      </Button>
 
       <p className="mt-6 text-[11px] text-[#74808c] opacity-70">
         Supported formats: MP4, WebM, OGG, MOV, AVI, MKV (Max 1GB)

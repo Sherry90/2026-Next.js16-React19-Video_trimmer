@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import type Player from 'video.js/dist/types/player';
 import { usePreviewPlayback } from '@/features/timeline/hooks/usePreviewPlayback';
-import { VideoPlayerProvider } from '@/features/player/context/VideoPlayerContext';
+import { VideoPlayerProvider } from '@/shared/video-player/VideoPlayerContext';
 import { PLAYBACK } from '@/constants/appConfig';
 
 /**

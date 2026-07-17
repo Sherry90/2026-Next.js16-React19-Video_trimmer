@@ -3,8 +3,13 @@
 import { createContext, useContext, ReactNode } from 'react';
 import type Player from 'video.js/dist/types/player';
 
+/**
+ * video.js player 인스턴스 + 제어를 공유하는 컨텍스트.
+ * player·timeline 두 feature가 공유하는 계약이므로 shared 레이어에 위치
+ * (feature 간 직접 결합을 피하기 위한 승격).
+ */
 interface VideoPlayerContextValue {
-  player: Player | null; // Changed from videoRef to player
+  player: Player | null;
   play: () => void;
   pause: () => void;
   seek: (time: number) => void;
