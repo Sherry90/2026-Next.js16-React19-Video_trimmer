@@ -82,7 +82,14 @@
       "WebSearch",
       "Bash(awk -F: '{s+=$2} END{print s\" it/test calls in unit\"}')",
       "Bash(rm -f aria2c-self-bundle.md error-reporting.md)",
-      "Bash(ls aria2c-self-bundle.md error-reporting.md)"
+      "Bash(ls aria2c-self-bundle.md error-reporting.md)",
+      "Bash(awk '{ print length, $0 }')",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('deps:'\\); [print\\(' ',k,v\\) for k,v in d.get\\('dependencies',{}\\).items\\(\\)]; print\\('devDeps:'\\); [print\\(' ',k,v\\) for k,v in d.get\\('devDependencies',{}\\).items\\(\\)]\")",
+      "Bash(git -C /Users/pc/Documents/study/Video_Trimmer mv src/features/timeline/hooks/usePlayheadSeek.ts src/shared/video-player/usePlayheadSeek.ts)",
+      "Bash(sed -i '' \"s#'../context/VideoPlayerContext'#'@/shared/video-player/VideoPlayerContext'#g\" src/features/player/components/VideoPlayerView.tsx src/features/player/components/PlayerControlBar.tsx)",
+      "Bash(sed -i '' \"s#'./usePlayheadSeek'#'@/shared/video-player/usePlayheadSeek'#g\" src/features/timeline/hooks/usePlayheadControl.ts)",
+      "Bash(sed -i '' \"s#'@/features/timeline/hooks/usePlayheadSeek'#'@/shared/video-player/usePlayheadSeek'#g\" src/features/player/components/PlayerControlBar.tsx)",
+      "Bash(npx vitest *)"
     ]
   },
   "enableAllProjectMcpServers": true,
