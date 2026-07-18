@@ -13,8 +13,7 @@ interface PlayButtonProps {
 
 /**
  * 재생/일시정지 버튼 (프레젠테이셔널 — 순수 props).
- * isPlaying에 따라 아이콘만 전환한다. video.js 아이콘 폰트 대신 인라인 SVG라
- * Storybook/Claude Design에서도 동일하게 렌더된다.
+ * isPlaying에 따라 아이콘만 전환한다. video.js 아이콘 폰트 대신 인라인 SVG 사용.
  */
 export function PlayButton({ isPlaying, onToggle, disabled = false, className }: PlayButtonProps) {
   return (
