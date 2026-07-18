@@ -1,7 +1,12 @@
-import { getStoreActions, getMediaSnapshot, getTimelineSnapshot, getProcessingSnapshot } from '@/stores/snapshot';
-import type { SSEEvent, DownloadRequest, DownloadJobResponse } from '@/types/sse';
-import { calculateOverallProgress, getPhaseMessage } from './sseProgressUtils';
-import { generateTrimFilename } from './generateFilename';
+import {
+  getStoreActions,
+  getMediaSnapshot,
+  getTimelineSnapshot,
+  getProcessingSnapshot,
+} from "@/stores/snapshot";
+import type { SSEEvent, DownloadRequest, DownloadJobResponse } from "@/types/sse";
+import { calculateOverallProgress, getPhaseMessage } from "./sseProgressUtils";
+import { generateTrimFilename } from "./generateFilename";
 
 /**
  * URL 구간 다운로드 컨트롤러. 모듈 싱글톤으로 SSE를 관리해, editing → processing →
@@ -28,7 +33,7 @@ function closeStream() {
   }
 }
 
-function fail(message: string, code: string = 'DOWNLOAD_ERROR', technicalDetails?: string) {
+function fail(message: string, code: string = "DOWNLOAD_ERROR", technicalDetails?: string) {
   closeStream();
   const s = actions();
   s.setDownloadPhase(null);
@@ -42,11 +47,7 @@ function complete(jobId: string) {
   const { inPoint, outPoint } = getTimelineSnapshot();
   // URL 소스의 name은 항상 "${title}.mp4" → generateTrimFilename이 .mp4 보존.
   // 파일 소스 트림과 동일한 MMmSSs 포맷으로 통일.
-  const filename = generateTrimFilename(
-    videoFile?.name || 'video.mp4',
-    inPoint,
-    outPoint
-  );
+  const filename = generateTrimFilename(videoFile?.name || "video.mp4", inPoint, outPoint);
 
   // blob 적재 없음: 완료 파일은 서버에서 디스크로 직행 스트리밍된다.
   // outputUrl = API URL (jobId 내장 → reset 시 정리에 사용).
@@ -65,26 +66,29 @@ function connect(jobId: string) {
     try {
       const data: SSEEvent = JSON.parse(event.data);
 
-      if (data.type === 'progress') {
+      if (data.type === "progress") {
         const s = actions();
-        s.setProgress('trim', calculateOverallProgress(data.phase, data.progress));
-        s.setDownloadPhase(data.phase, getPhaseMessage(data.phase, data.processedSeconds, data.totalSeconds));
-      } else if (data.type === 'complete') {
+        s.setProgress("trim", calculateOverallProgress(data.phase, data.progress));
+        s.setDownloadPhase(
+          data.phase,
+          getPhaseMessage(data.phase, data.processedSeconds, data.totalSeconds),
+        );
+      } else if (data.type === "complete") {
         closeStream();
         complete(jobId);
-      } else if (data.type === 'error') {
-        fail(data.message, data.code ?? 'DOWNLOAD_ERROR', data.technicalDetails);
+      } else if (data.type === "error") {
+        fail(data.message, data.code ?? "DOWNLOAD_ERROR", data.technicalDetails);
       }
     } catch (err) {
-      console.error('[StreamDownload] Failed to parse event:', err);
+      console.error("[StreamDownload] Failed to parse event:", err);
     }
   };
 
   es.onerror = () => {
     if (!eventSource) return; // 정상 종료 후 발생한 onerror 무시
     fail(
-      '서버 연결이 끊어졌습니다',
-      'NETWORK_ERROR',
+      "서버 연결이 끊어졌습니다",
+      "NETWORK_ERROR",
       `EventSource 연결 끊김 (jobId=${jobId}). 서버가 실행 중인지, 네트워크가 안정적인지 확인하세요.`,
     );
   };
@@ -100,13 +104,13 @@ export async function startStreamDownload(): Promise<void> {
   const { videoFile, selectedQuality } = getMediaSnapshot();
   const timeline = getTimelineSnapshot();
 
-  if (!videoFile || videoFile.source !== 'url' || !videoFile.originalUrl) {
-    throw new Error('URL 소스가 아닙니다');
+  if (!videoFile || videoFile.source !== "url" || !videoFile.originalUrl) {
+    throw new Error("URL 소스가 아닙니다");
   }
 
   const { inPoint, outPoint } = timeline;
   if (outPoint <= inPoint) {
-    throw new Error('종료 지점이 시작 지점보다 뒤여야 합니다');
+    throw new Error("종료 지점이 시작 지점보다 뒤여야 합니다");
   }
   // 구간 길이 상한 없음: 병목이 브라우저 메모리가 아니라 서버 디스크/시간이므로
   // 최종 다운로드를 서버→디스크 직행 스트리밍으로 처리한다(blob 미적재).
@@ -120,17 +124,17 @@ export async function startStreamDownload(): Promise<void> {
     return;
   }
 
-  s.setProgress('trim', 0);
+  s.setProgress("trim", 0);
   s.setDownloadPhase(null);
 
-  const startResponse = await fetch('/api/download/start', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+  const startResponse = await fetch("/api/download/start", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       url: videoFile.originalUrl,
       startTime: inPoint,
       endTime: outPoint,
-      filename: videoFile.name || 'video.mp4',
+      filename: videoFile.name || "video.mp4",
       tbr: videoFile.tbr ?? null,
       // 플레이어에서 고른 화질로 다운로드도 일치 (미선택 시 기본 1080p)
       maxHeight: selectedQuality ?? 1080,
@@ -139,7 +143,7 @@ export async function startStreamDownload(): Promise<void> {
 
   if (!startResponse.ok) {
     const error = await startResponse.json().catch(() => ({}));
-    throw new Error(error.error || '다운로드 시작에 실패했습니다');
+    throw new Error(error.error || "다운로드 시작에 실패했습니다");
   }
 
   const { jobId }: DownloadJobResponse = await startResponse.json();

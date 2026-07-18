@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, type ReactNode } from 'react';
-import { CloseIcon } from './icons';
+import { useEffect, type ReactNode } from "react";
+import { CloseIcon } from "./icons";
 
 interface ModalProps {
   isOpen: boolean;
@@ -16,10 +16,10 @@ export function Modal({ isOpen, onClose, dismissable = false, children }: ModalP
   useEffect(() => {
     if (!isOpen || !dismissable || !onClose) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, [isOpen, dismissable, onClose]);
 
   if (!isOpen) return null;

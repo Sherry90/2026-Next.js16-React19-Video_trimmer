@@ -4,8 +4,8 @@
  * Reduces boilerplate by providing helper functions for common selector patterns
  */
 
-import { useStore } from './useStore';
-import { useShallow } from 'zustand/react/shallow';
+import { useStore } from "./useStore";
+import { useShallow } from "zustand/react/shallow";
 
 // Extract the full store type (state + actions)
 type Store = ReturnType<typeof useStore.getState>;

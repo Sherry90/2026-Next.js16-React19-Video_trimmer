@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { spawn } from 'child_process';
-import { tmpdir } from 'os';
-import { getYtdlpPath, getFfmpegPath } from '@/lib/binPaths';
-import { validateUrlParseable } from '@/lib/apiUtils';
-import { DOWNLOAD, WAVEFORM } from '@/constants/appConfig';
+import { NextRequest, NextResponse } from "next/server";
+import { spawn } from "child_process";
+import { tmpdir } from "os";
+import { getYtdlpPath, getFfmpegPath } from "@/lib/binPaths";
+import { validateUrlParseable } from "@/lib/apiUtils";
+import { DOWNLOAD, WAVEFORM } from "@/constants/appConfig";
 
 /**
  * Audio-only waveform peaks endpoint.
@@ -31,10 +31,10 @@ const MAX_PCM_BYTES = 200 * 1024 * 1024; // safety cap (~3.4h at 8kHz s16le mono
 class WaveformTooLongError extends Error {}
 
 export async function GET(request: NextRequest) {
-  const url = request.nextUrl.searchParams.get('url');
+  const url = request.nextUrl.searchParams.get("url");
 
   if (!url) {
-    return NextResponse.json({ error: 'url 파라미터가 필요합니다' }, { status: 400 });
+    return NextResponse.json({ error: "url 파라미터가 필요합니다" }, { status: 400 });
   }
   const urlError = validateUrlParseable(url);
   if (urlError) return urlError;
@@ -45,24 +45,21 @@ export async function GET(request: NextRequest) {
   try {
     const pcm = await extractPcm(ytdlp, ffmpeg, url, request.signal);
     const { peaks, duration } = computePeaks(pcm);
-    return NextResponse.json(
-      { peaks, duration },
-      { headers: { 'cache-control': 'no-store' } }
-    );
+    return NextResponse.json({ peaks, duration }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     // 너무 긴 소스: 에러가 아닌 graceful skip (클라가 "파형 생략" 안내)
     if (error instanceof WaveformTooLongError) {
       return NextResponse.json(
-        { skipped: true, reason: 'too_long' },
-        { headers: { 'cache-control': 'no-store' } }
+        { skipped: true, reason: "too_long" },
+        { headers: { "cache-control": "no-store" } },
       );
     }
     // 클라이언트 abort: 이미 떠난 요청 → benign 응답
     if (request.signal.aborted) {
-      return NextResponse.json({ skipped: true, reason: 'aborted' });
+      return NextResponse.json({ skipped: true, reason: "aborted" });
     }
-    const message = error instanceof Error ? error.message : '파형 추출 실패';
-    console.error('[waveform] Error:', message);
+    const message = error instanceof Error ? error.message : "파형 추출 실패";
+    console.error("[waveform] Error:", message);
     return NextResponse.json({ error: message }, { status: 502 });
   }
 }
@@ -70,44 +67,63 @@ export async function GET(request: NextRequest) {
 /**
  * Pipe yt-dlp audio → ffmpeg → raw mono s16le PCM, buffered into memory.
  */
-function extractPcm(ytdlp: string, ffmpeg: string, url: string, signal?: AbortSignal): Promise<Buffer> {
+function extractPcm(
+  ytdlp: string,
+  ffmpeg: string,
+  url: string,
+  signal?: AbortSignal,
+): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const dl = spawn(ytdlp, [
-      '-f', 'worstaudio/bestaudio/best',
-      '--no-playlist',
-      // HLS 세그먼트 오디오 동시 다운로드 → 긴 소스(Chzzk 등) 추출 가속
-      '-N', String(DOWNLOAD.YTDLP_CONCURRENT_FRAGMENTS),
-      // 출력이 stdout(`-o -`)이면 yt-dlp가 fragment 임시파일을 outtmpl 기준(=루트)에
-      // 떨어뜨린다. temp 경로를 tmp로 명시 격리해 서버 루트 오염 방지
-      // (다운로더는 -o가 절대 tmp 경로라 무관). cwd도 tmp로 belt-and-suspenders.
-      '-P', `temp:${tmpdir()}`,
-      '--ffmpeg-location', ffmpeg,
-      '-o', '-',
-      url,
-    ], {
-      cwd: tmpdir(),
-    });
+    const dl = spawn(
+      ytdlp,
+      [
+        "-f",
+        "worstaudio/bestaudio/best",
+        "--no-playlist",
+        // HLS 세그먼트 오디오 동시 다운로드 → 긴 소스(Chzzk 등) 추출 가속
+        "-N",
+        String(DOWNLOAD.YTDLP_CONCURRENT_FRAGMENTS),
+        // 출력이 stdout(`-o -`)이면 yt-dlp가 fragment 임시파일을 outtmpl 기준(=루트)에
+        // 떨어뜨린다. temp 경로를 tmp로 명시 격리해 서버 루트 오염 방지
+        // (다운로더는 -o가 절대 tmp 경로라 무관). cwd도 tmp로 belt-and-suspenders.
+        "-P",
+        `temp:${tmpdir()}`,
+        "--ffmpeg-location",
+        ffmpeg,
+        "-o",
+        "-",
+        url,
+      ],
+      {
+        cwd: tmpdir(),
+      },
+    );
 
     const ff = spawn(ffmpeg, [
-      '-hide_banner',
-      '-loglevel', 'error',
-      '-i', 'pipe:0',
-      '-ac', '1',
-      '-ar', String(SAMPLE_RATE),
-      '-f', 's16le',
-      'pipe:1',
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-i",
+      "pipe:0",
+      "-ac",
+      "1",
+      "-ar",
+      String(SAMPLE_RATE),
+      "-f",
+      "s16le",
+      "pipe:1",
     ]);
 
     const chunks: Buffer[] = [];
     let total = 0;
     let settled = false;
-    let stderr = '';
+    let stderr = "";
 
     const cleanup = () => {
       clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
-      dl.kill('SIGKILL');
-      ff.kill('SIGKILL');
+      signal?.removeEventListener("abort", onAbort);
+      dl.kill("SIGKILL");
+      ff.kill("SIGKILL");
     };
     const fail = (err: Error) => {
       if (settled) return;
@@ -123,35 +139,37 @@ function extractPcm(ytdlp: string, ffmpeg: string, url: string, signal?: AbortSi
     };
 
     // 클라이언트 abort(예: 길이 게이트가 prefetch 중단) 시 자식 프로세스 즉시 kill
-    const onAbort = () => fail(new Error('파형 추출 중단됨'));
+    const onAbort = () => fail(new Error("파형 추출 중단됨"));
     if (signal?.aborted) {
-      fail(new Error('파형 추출 중단됨'));
+      fail(new Error("파형 추출 중단됨"));
       return;
     }
-    signal?.addEventListener('abort', onAbort, { once: true });
+    signal?.addEventListener("abort", onAbort, { once: true });
 
-    const timer = setTimeout(() => fail(new Error('파형 추출 시간 초과')), TIMEOUT_MS);
+    const timer = setTimeout(() => fail(new Error("파형 추출 시간 초과")), TIMEOUT_MS);
 
     dl.stdout.pipe(ff.stdin);
     // EPIPE when ffmpeg exits first — swallow to avoid crashing the route.
-    dl.stdout.on('error', () => {});
-    ff.stdin.on('error', () => {});
+    dl.stdout.on("error", () => {});
+    ff.stdin.on("error", () => {});
 
-    dl.on('error', (e) => fail(new Error(`yt-dlp 실행 실패: ${e.message}`)));
-    ff.on('error', (e) => fail(new Error(`ffmpeg 실행 실패: ${e.message}`)));
+    dl.on("error", (e) => fail(new Error(`yt-dlp 실행 실패: ${e.message}`)));
+    ff.on("error", (e) => fail(new Error(`ffmpeg 실행 실패: ${e.message}`)));
 
-    ff.stderr.on('data', (d) => { stderr += d.toString(); });
+    ff.stderr.on("data", (d) => {
+      stderr += d.toString();
+    });
 
-    ff.stdout.on('data', (chunk: Buffer) => {
+    ff.stdout.on("data", (chunk: Buffer) => {
       total += chunk.length;
       if (total > MAX_PCM_BYTES) {
-        fail(new WaveformTooLongError('오디오가 너무 깁니다'));
+        fail(new WaveformTooLongError("오디오가 너무 깁니다"));
         return;
       }
       chunks.push(chunk);
     });
 
-    ff.on('close', (code) => {
+    ff.on("close", (code) => {
       if (code === 0 || (code !== null && total > 0)) {
         succeed();
       } else {
@@ -180,7 +198,7 @@ function computePeaks(pcm: Buffer): { peaks: number[][]; duration: number } {
   const bucketCount = Math.min(
     Math.max(1, Math.round(duration * WAVEFORM.PEAKS_PER_SEC)),
     WAVEFORM.MAX_PEAKS,
-    sampleCount
+    sampleCount,
   );
   const samplesPerBucket = sampleCount / bucketCount;
   const peaks = new Array<number>(bucketCount);

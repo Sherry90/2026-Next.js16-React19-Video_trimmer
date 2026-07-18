@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { PlayIcon, PauseIcon } from '@/shared/ui/icons';
-import { IconButton } from '@/shared/ui/IconButton';
-import { cn } from '@/shared/lib/cn';
+import { PlayIcon, PauseIcon } from "@/shared/ui/icons";
+import { IconButton } from "@/shared/ui/IconButton";
+import { cn } from "@/shared/lib/cn";
 
 interface PlayButtonProps {
   isPlaying: boolean;
@@ -20,14 +20,10 @@ export function PlayButton({ isPlaying, onToggle, disabled = false, className }:
     <IconButton
       onClick={onToggle}
       disabled={disabled}
-      aria-label={isPlaying ? '일시정지' : '재생'}
-      className={cn('disabled:opacity-40 disabled:cursor-not-allowed', className)}
+      aria-label={isPlaying ? "일시정지" : "재생"}
+      className={cn("disabled:opacity-40 disabled:cursor-not-allowed", className)}
     >
-      {isPlaying ? (
-        <PauseIcon className="w-5 h-5" />
-      ) : (
-        <PlayIcon className="w-5 h-5" />
-      )}
+      {isPlaying ? <PauseIcon className="w-5 h-5" /> : <PlayIcon className="w-5 h-5" />}
     </IconButton>
   );
 }

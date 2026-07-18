@@ -1,4 +1,4 @@
-import { ChildProcess, spawn } from 'child_process';
+import { ChildProcess, spawn } from "child_process";
 
 /**
  * 프로세스 + 그 자식까지(프로세스 그룹/트리) 죽인다.
@@ -10,15 +10,19 @@ import { ChildProcess, spawn } from 'child_process';
  *   `process.kill(-pid, signal)`로 그룹 전체(자식 aria2c 포함)를 한 번에 정리한다.
  * - Windows: 프로세스 그룹 개념이 달라 음수 pid가 안 통한다. `taskkill /T`로 자식 트리까지 종료한다.
  */
-export function killProcessTree(proc: ChildProcess, signal: NodeJS.Signals = 'SIGKILL'): void {
+export function killProcessTree(proc: ChildProcess, signal: NodeJS.Signals = "SIGKILL"): void {
   if (!proc.pid) return;
 
-  if (process.platform === 'win32') {
+  if (process.platform === "win32") {
     try {
       // /T: 자식 프로세스 트리 포함, /F: 강제 종료. spawn 실패해도 fallback으로 단일 kill.
-      spawn('taskkill', ['/pid', String(proc.pid), '/T', '/F'], { stdio: 'ignore' });
+      spawn("taskkill", ["/pid", String(proc.pid), "/T", "/F"], { stdio: "ignore" });
     } catch {
-      try { proc.kill(signal); } catch { /* 이미 종료됨 */ }
+      try {
+        proc.kill(signal);
+      } catch {
+        /* 이미 종료됨 */
+      }
     }
     return;
   }
@@ -26,7 +30,11 @@ export function killProcessTree(proc: ChildProcess, signal: NodeJS.Signals = 'SI
   try {
     process.kill(-proc.pid, signal); // 음수 pid = 프로세스 그룹 전체
   } catch {
-    try { proc.kill(signal); } catch { /* 이미 종료됨 */ }
+    try {
+      proc.kill(signal);
+    } catch {
+      /* 이미 종료됨 */
+    }
   }
 }
 
@@ -96,14 +104,14 @@ export interface ProcessTimeoutOptions {
  */
 export function runWithTimeout(
   proc: ChildProcess,
-  timeoutMsOrOptions: number | ProcessTimeoutOptions
+  timeoutMsOrOptions: number | ProcessTimeoutOptions,
 ): Promise<boolean> {
   // Convert simple timeout to full options
   const options: ProcessTimeoutOptions =
-    typeof timeoutMsOrOptions === 'number'
+    typeof timeoutMsOrOptions === "number"
       ? {
           timeoutMs: timeoutMsOrOptions,
-          logPrefix: '[Process]',
+          logPrefix: "[Process]",
           onSuccess: (code) => code === 0,
         }
       : timeoutMsOrOptions;
@@ -111,35 +119,32 @@ export function runWithTimeout(
   const { timeoutMs, logPrefix, onSuccess } = options;
 
   return new Promise((resolve) => {
-    let stderr = '';
+    let stderr = "";
     let settled = false;
 
-    const settle = (result: boolean, reason: string) => {
+    const settle = (result: boolean, _reason: string) => {
       if (settled) return;
       settled = true;
       if (timeout) clearTimeout(timeout);
-        resolve(result);
+      resolve(result);
     };
 
     // stderr를 무제한 누적하면 장시간 다운로드(yt-dlp/ffmpeg progress 폭주)에서
     // 문자열이 GB까지 자라 Node 힙 OOM이 난다. 진단엔 마지막 50KB면 충분하므로 tail만 보존.
-    proc.stderr?.on('data', (chunk: Buffer) => {
+    proc.stderr?.on("data", (chunk: Buffer) => {
       stderr = (stderr + chunk.toString()).slice(-50_000);
     });
 
-    proc.on('error', (err) => {
+    proc.on("error", (err) => {
       console.log(`${logPrefix} process error:`, err.message);
       settle(false, `process error: ${err.message}`);
     });
 
-    proc.on('close', (code) => {
+    proc.on("close", (code) => {
       if (onSuccess(code, stderr)) {
         settle(true, `exit code ${code}`);
       } else {
-        console.log(
-          `${logPrefix} exited with code ${code}:`,
-          stderr.slice(0, 300)
-        );
+        console.log(`${logPrefix} exited with code ${code}:`, stderr.slice(0, 300));
         settle(false, `exit code ${code}`);
       }
     });
@@ -149,8 +154,8 @@ export function runWithTimeout(
       timeoutMs > 0
         ? setTimeout(() => {
             console.log(`${logPrefix} timed out after ${timeoutMs}ms`);
-            proc.kill('SIGKILL');
-            settle(false, 'timeout');
+            proc.kill("SIGKILL");
+            settle(false, "timeout");
           }, timeoutMs)
         : null;
   });

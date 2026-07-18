@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { createContext, useContext, type ReactNode } from 'react';
-import { useTrimPoints } from '@/stores/hooks';
-import { usePreviewPlayback } from '../hooks/usePreviewPlayback';
+import { createContext, useContext, type ReactNode } from "react";
+import { useTrimPoints } from "@/stores/hooks";
+import { usePreviewPlayback } from "../hooks/usePreviewPlayback";
 
 interface PreviewPlaybackValue {
   /** 선택 구간 전체 미리보기(in point부터). */
@@ -24,16 +24,14 @@ export function PreviewPlaybackProvider({ children }: { children: ReactNode }) {
   const { inPoint, outPoint } = useTrimPoints();
   const value = usePreviewPlayback(inPoint, outPoint);
   return (
-    <PreviewPlaybackContext.Provider value={value}>
-      {children}
-    </PreviewPlaybackContext.Provider>
+    <PreviewPlaybackContext.Provider value={value}>{children}</PreviewPlaybackContext.Provider>
   );
 }
 
 export function usePreviewPlaybackContext(): PreviewPlaybackValue {
   const ctx = useContext(PreviewPlaybackContext);
   if (!ctx) {
-    throw new Error('usePreviewPlaybackContext must be used within PreviewPlaybackProvider');
+    throw new Error("usePreviewPlaybackContext must be used within PreviewPlaybackProvider");
   }
   return ctx;
 }

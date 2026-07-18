@@ -1,20 +1,20 @@
-import '@testing-library/jest-dom';
+import "@testing-library/jest-dom";
 
 // Mock video.js
-vi.mock('video.js', () => ({
+vi.mock("video.js", () => ({
   default: vi.fn(),
   log: vi.fn(),
 }));
 
 // Mock wavesurfer.js
-vi.mock('wavesurfer.js', () => ({
+vi.mock("wavesurfer.js", () => ({
   default: {
     create: vi.fn(),
   },
 }));
 
 // Mock FFmpeg
-vi.mock('@ffmpeg/ffmpeg', () => ({
+vi.mock("@ffmpeg/ffmpeg", () => ({
   FFmpeg: vi.fn(() => ({
     load: vi.fn(),
     writeFile: vi.fn(),
@@ -24,7 +24,7 @@ vi.mock('@ffmpeg/ffmpeg', () => ({
   })),
 }));
 
-vi.mock('@ffmpeg/util', () => ({
+vi.mock("@ffmpeg/util", () => ({
   fetchFile: vi.fn(),
   toBlobURL: vi.fn(),
 }));

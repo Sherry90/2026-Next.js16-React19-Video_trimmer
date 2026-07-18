@@ -83,6 +83,7 @@ Docker Compose 구성은 호스트의 `${HOST_PORT:-3443}`을 컨테이너의 `3
 로컬 테스트만 할 때는 호스트에서 `https://localhost:3443`으로 접속하거나, `/etc/hosts`에 Docker 호스트 IP와 `trimvideo.net`을 매핑한 뒤 `https://trimvideo.net:3443`으로 접속할 수 있습니다.
 
 참고:
+
 - Docker 빌드는 `npm ci --ignore-scripts`로 `postinstall`의 외부 바이너리 다운로드를 건너뜁니다.
 - 대신 이미지 안에서 `ffmpeg`, `yt-dlp`, `streamlink`를 시스템 레벨로 설치합니다.
 - 프로덕션 빌드는 안정성을 위해 webpack 경로(`next build --webpack`)를 사용합니다.
@@ -112,16 +113,16 @@ npm run test:e2e:ui    # Playwright UI
 
 ## 키보드 단축키 (편집 화면)
 
-| 키 | 기능 |
-|----|------|
-| Space | 재생/일시정지 |
-| I / O | In / Out Point 설정 |
-| ← / → | 1프레임 이동 (1/30초) |
-| Shift + ← / → | 1초 이동 |
-| Home / End | In / Out Point로 점프 |
-| A | 미리보기(선택 구간 재생) |
-| 휠 | 타임라인 줌 (1x ~ 10x, 커서 기준) |
-| Shift + 휠 | 타임라인 가로 패닝 (줌 > 1일 때) |
+| 키            | 기능                              |
+| ------------- | --------------------------------- |
+| Space         | 재생/일시정지                     |
+| I / O         | In / Out Point 설정               |
+| ← / →         | 1프레임 이동 (1/30초)             |
+| Shift + ← / → | 1초 이동                          |
+| Home / End    | In / Out Point로 점프             |
+| A             | 미리보기(선택 구간 재생)          |
+| 휠            | 타임라인 줌 (1x ~ 10x, 커서 기준) |
+| Shift + 휠    | 타임라인 가로 패닝 (줌 > 1일 때)  |
 
 단축키는 입력 필드 포커스 시 비활성화된다.
 
@@ -130,6 +131,7 @@ npm run test:e2e:ui    # Playwright UI
 입력 14종: MP4, WebM, OGG, MOV, M4V, AVI, WMV, MKV, FLV, TS, 3GP, 3G2, MPEG, MPG.
 
 **처리 방식**: stream copy(재인코딩 없음)로 원본 화질 유지.
+
 - ISO 형식(MP4/MOV/M4V) → MP4Box.js (±1-2초, 키프레임 기반, 빠름)
 - 그 외 형식 → FFmpeg.wasm (±0.02초, 정밀)
 - 출력은 입력 형식 유지
@@ -143,12 +145,12 @@ npm run test:e2e:ui    # Playwright UI
 
 프로젝트 문서는 `.docs/` 디렉터리에 정리되어 있다.
 
-| 문서 | 내용 |
-|------|------|
-| `.docs/00_INDEX.md` | 문서 인덱스 |
-| `.docs/01_OVERVIEW.md` | 아키텍처 & 설계 |
-| `.docs/02_API.md` | API 레퍼런스 |
-| `.docs/03_DEPENDENCIES.md` | 외부 의존성 관리 |
+| 문서                          | 내용               |
+| ----------------------------- | ------------------ |
+| `.docs/00_INDEX.md`           | 문서 인덱스        |
+| `.docs/01_OVERVIEW.md`        | 아키텍처 & 설계    |
+| `.docs/02_API.md`             | API 레퍼런스       |
+| `.docs/03_DEPENDENCIES.md`    | 외부 의존성 관리   |
 | `.docs/04_DEVELOPER_GUIDE.md` | 개발자 학습 가이드 |
 
 루트의 `CLAUDE.md`는 Claude Code 작업용 Quick Reference다.

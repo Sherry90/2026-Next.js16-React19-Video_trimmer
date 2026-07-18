@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
-import { useVideoDuration, useTrimPoints, useTimelineZoomValue } from '@/stores/hooks';
-import { TIMELINE } from '@/constants/appConfig';
-import { formatSimpleTime } from '@/shared/lib/timeFormatter';
-import { WaveformBackground } from './WaveformBackground';
-import { useTimelineZoom } from '../hooks/useTimelineZoom';
+import { useEffect, useRef, useState } from "react";
+import { useVideoDuration, useTrimPoints, useTimelineZoomValue } from "@/stores/hooks";
+import { TIMELINE } from "@/constants/appConfig";
+import { formatSimpleTime } from "@/shared/lib/timeFormatter";
+import { WaveformBackground } from "./WaveformBackground";
+import { useTimelineZoom } from "../hooks/useTimelineZoom";
 
 interface TimelineBarProps {
   children?: React.ReactNode;
@@ -39,10 +39,7 @@ export function TimelineBar({ children }: TimelineBarProps) {
   // 모든 레이어 공통 축척: time → x 는 contentWidth 위에서 동일(선형 → time 비율 유지).
   // zoom=1 은 화면(viewport)에 정확히 맞춤. zoom>1 일 때만 그 배수로 넓어져 가로 스크롤.
   // (zoom<1 은 화면보다 작아질 뿐이라 1로 하한.)
-  const contentWidth = Math.min(
-    TIMELINE.MAX_CONTENT_PX,
-    viewportWidth * Math.max(1, zoom)
-  );
+  const contentWidth = Math.min(TIMELINE.MAX_CONTENT_PX, viewportWidth * Math.max(1, zoom));
 
   const inPosition = duration > 0 ? (inPoint / duration) * 100 : 0;
   const outPosition = duration > 0 ? (outPoint / duration) * 100 : 100;
@@ -61,7 +58,7 @@ export function TimelineBar({ children }: TimelineBarProps) {
           <div
             data-testid="timeline-content"
             className="relative"
-            style={{ width: contentWidth > 0 ? `${contentWidth}px` : '100%' }}
+            style={{ width: contentWidth > 0 ? `${contentWidth}px` : "100%" }}
           >
             {/* Timeline main area */}
             <div className="relative w-full h-[80px] bg-[#1c1d20] rounded overflow-hidden">
@@ -89,9 +86,7 @@ export function TimelineBar({ children }: TimelineBarProps) {
               </div>
 
               {/* Handles and playhead */}
-              <div className="absolute inset-0">
-                {children}
-              </div>
+              <div className="absolute inset-0">{children}</div>
             </div>
 
             {/* Time ruler — content 와 동일 폭, 함께 스크롤 */}

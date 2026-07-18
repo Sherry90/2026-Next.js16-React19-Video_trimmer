@@ -6,17 +6,18 @@
  * - YouTube/기타 → yt-dlp
  */
 
-import { detectPlatform, selectDownloadStrategy } from './platformDetector';
-import { downloadWithStreamlink } from './streamlinkDownloader';
-import { downloadWithYtdlp } from './ytdlpDownloader';
-import { type Job, type JobListener, type EventEmitter, type JobEvent, safeUnlink } from './downloadTypes';
-import { DOWNLOAD } from '@/constants/appConfig';
+import { detectPlatform, selectDownloadStrategy } from "./platformDetector";
+import { downloadWithStreamlink } from "./streamlinkDownloader";
+import { downloadWithYtdlp } from "./ytdlpDownloader";
+import { type Job, type JobListener, type JobEvent, safeUnlink } from "./downloadTypes";
+import { DOWNLOAD } from "@/constants/appConfig";
 
 // Global job storage (향후 Redis/DB로 교체 가능)
 // globalThis에 저장 → 커스텀 서버(server.ts, Next 우회 raw SSE)가 같은 레지스트리를 본다.
 // (Next 라우트와 server.ts는 모듈 레지스트리가 분리돼 있어도 globalThis는 동일 V8 전역이라 공유됨)
-const jobs: Map<string, Job> =
-  ((globalThis as unknown as { __vtDownloadJobs?: Map<string, Job> }).__vtDownloadJobs ??= new Map<string, Job>());
+const jobs: Map<string, Job> = ((
+  globalThis as unknown as { __vtDownloadJobs?: Map<string, Job> }
+).__vtDownloadJobs ??= new Map<string, Job>());
 
 /**
  * Job 스트림 구독
@@ -34,11 +35,15 @@ export function getJobStream(jobId: string, listener: JobListener): () => void {
 
     // 마지막 리스너 이탈 + 잡 실행 중 → grace period 후 abort
     // orphanCleanupScheduled 플래그로 중복 setTimeout 방지
-    if (currentJob.listeners.length === 0 && currentJob.status === 'running' && !currentJob.orphanCleanupScheduled) {
+    if (
+      currentJob.listeners.length === 0 &&
+      currentJob.status === "running" &&
+      !currentJob.orphanCleanupScheduled
+    ) {
       currentJob.orphanCleanupScheduled = true;
       setTimeout(() => {
         const job = jobs.get(jobId);
-        if (job && job.status === 'running' && job.listeners.length === 0) {
+        if (job && job.status === "running" && job.listeners.length === 0) {
           console.log(`[SSE] Cancelling orphaned job: ${jobId}`);
           job.abort?.();
         }
@@ -54,7 +59,7 @@ function cleanupStaleJobs(): void {
   const now = Date.now();
   for (const [jobId, job] of jobs.entries()) {
     if (
-      (job.status === 'completed' || job.status === 'failed') &&
+      (job.status === "completed" || job.status === "failed") &&
       now - job.createdAt > DOWNLOAD.JOB_TTL_MS
     ) {
       deleteJob(jobId);
@@ -100,7 +105,6 @@ function updateJobStatus(jobId: string, updates: Partial<Job>) {
   if (updates.errorMessage !== undefined) job.errorMessage = updates.errorMessage;
   if (updates.errorCode !== undefined) job.errorCode = updates.errorCode;
   if (updates.errorDetails !== undefined) job.errorDetails = updates.errorDetails;
-
 }
 
 /**
@@ -114,9 +118,9 @@ export async function startDownloadJob(
     endTime: number;
     filename?: string;
     tbr?: number;
-    streamType?: 'hls' | 'mp4'; // 플랫폼 힌트 (선택적)
+    streamType?: "hls" | "mp4"; // 플랫폼 힌트 (선택적)
     maxHeight?: number; // 최대 화질 height(px) — 플레이어 선택 화질과 일치
-  }
+  },
 ) {
   cleanupStaleJobs();
 
@@ -130,26 +134,26 @@ export async function startDownloadJob(
     // 첫 실행: 새 Job 생성
     jobs.set(jobId, {
       outputPath: null,
-      status: 'running',
+      status: "running",
       listeners: [],
       createdAt: Date.now(),
       abort: () => abortController.abort(),
     });
   } else {
-    existingJob.status = 'running';
+    existingJob.status = "running";
     existingJob.outputPath = null;
     existingJob.createdAt = Date.now();
     existingJob.abort = () => abortController.abort();
   }
 
   const platform = detectPlatform(url);
-  const strategy = selectDownloadStrategy(platform, streamType || 'mp4');
+  const strategy = selectDownloadStrategy(platform, streamType || "mp4");
 
   // wall 안전 타임아웃: 잡이 MAX_JOB_MS를 넘기면 강제 abort → 다운로더의 abort 리스너가
   // 자식 프로세스 트리(yt-dlp+aria2c 등)까지 정리. 런어웨이로 서버가 죽는 걸 방지하는 백스톱.
   const wallTimer = setTimeout(() => {
     const job = jobs.get(jobId);
-    if (job && job.status === 'running') {
+    if (job && job.status === "running") {
       console.error(`[SSE] Job ${jobId} exceeded MAX_JOB_MS(${DOWNLOAD.MAX_JOB_MS}ms) → aborting`);
       abortController.abort();
     }
@@ -157,20 +161,20 @@ export async function startDownloadJob(
 
   // 전략별 다운로더에 위임
   const runner =
-    strategy === 'streamlink'
+    strategy === "streamlink"
       ? downloadWithStreamlink(
           jobId,
           { url, startTime, endTime, filename, tbr, maxHeight },
           emitEvent,
           updateJobStatus,
-          abortController.signal
+          abortController.signal,
         )
       : downloadWithYtdlp(
           jobId,
           { url, startTime, endTime, filename, tbr, maxHeight },
           emitEvent,
           updateJobStatus,
-          abortController.signal
+          abortController.signal,
         );
 
   // 완료/실패/abort 어느 경로로 끝나든 wall 타이머 해제 (타이머 누수 방지)

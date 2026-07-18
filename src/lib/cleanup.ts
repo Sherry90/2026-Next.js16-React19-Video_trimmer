@@ -43,7 +43,7 @@ export function runAllCleanups(): void {
     try {
       fn();
     } catch (error) {
-      console.error('Cleanup error:', error);
+      console.error("Cleanup error:", error);
     }
   });
 }

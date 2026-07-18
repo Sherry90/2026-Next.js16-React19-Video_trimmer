@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import type { AppError } from '@/types/types';
-import { AlertCircleIcon } from '@/shared/ui/icons';
-import { Card } from '@/shared/ui/Card';
-import { useErrorDisplay } from '../hooks/useErrorDisplay';
-import { ErrorDetails } from './ErrorDetails';
-import { ErrorActions } from './ErrorActions';
+import type { AppError } from "@/types/types";
+import { AlertCircleIcon } from "@/shared/ui/icons";
+import { Card } from "@/shared/ui/Card";
+import { useErrorDisplay } from "../hooks/useErrorDisplay";
+import { ErrorDetails } from "./ErrorDetails";
+import { ErrorActions } from "./ErrorActions";
 
 interface ErrorDisplayProps {
   error?: AppError | null;
@@ -44,10 +44,11 @@ export function ErrorDisplay(props: ErrorDisplayProps = {}) {
         <div className="flex-1">
           {/* User-friendly message + 코드 배지 */}
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <h3 className="text-lg font-semibold text-red-900">
-              {displayError.userMessage}
-            </h3>
-            <span className="text-xs font-mono px-2 py-0.5 rounded bg-red-200 text-red-800" data-testid="error-code">
+            <h3 className="text-lg font-semibold text-red-900">{displayError.userMessage}</h3>
+            <span
+              className="text-xs font-mono px-2 py-0.5 rounded bg-red-200 text-red-800"
+              data-testid="error-code"
+            >
               {displayError.code}
             </span>
           </div>

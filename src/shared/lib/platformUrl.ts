@@ -24,12 +24,12 @@ export function getYoutubeVideoId(url: string): string | null {
     const u = new URL(url);
     const host = u.hostname.toLowerCase();
 
-    if (host.includes('youtu.be')) {
-      const id = u.pathname.slice(1).split('/')[0];
+    if (host.includes("youtu.be")) {
+      const id = u.pathname.slice(1).split("/")[0];
       return id || null;
     }
-    if (host.includes('youtube.com')) {
-      const v = u.searchParams.get('v');
+    if (host.includes("youtube.com")) {
+      const v = u.searchParams.get("v");
       if (v) return v;
       // /shorts/<id>, /embed/<id>
       const m = u.pathname.match(/\/(?:shorts|embed)\/([^/?#]+)/);
@@ -55,7 +55,7 @@ export function getYoutubeVideoId(url: string): string | null {
 export function getChzzkVideoNo(url: string): string | null {
   try {
     const u = new URL(url);
-    if (!u.hostname.toLowerCase().includes('chzzk.naver.com')) return null;
+    if (!u.hostname.toLowerCase().includes("chzzk.naver.com")) return null;
     // /video/{videoNo} — videoNo는 숫자
     const m = u.pathname.match(/\/video\/(\d+)/);
     return m ? m[1] : null;

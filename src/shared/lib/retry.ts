@@ -20,28 +20,28 @@ export interface RetryOptions {
 }
 
 function isAbortError(err: unknown): boolean {
-  return err instanceof Error && err.name === 'AbortError';
+  return err instanceof Error && err.name === "AbortError";
 }
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
-      reject(new DOMException('Aborted', 'AbortError'));
+      reject(new DOMException("Aborted", "AbortError"));
       return;
     }
     const onAbort = () => {
       cleanup();
-      reject(new DOMException('Aborted', 'AbortError'));
+      reject(new DOMException("Aborted", "AbortError"));
     };
     const cleanup = () => {
       clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
+      signal?.removeEventListener("abort", onAbort);
     };
     const timer = setTimeout(() => {
       cleanup();
       resolve();
     }, ms);
-    signal?.addEventListener('abort', onAbort, { once: true });
+    signal?.addEventListener("abort", onAbort, { once: true });
   });
 }
 
@@ -50,7 +50,7 @@ export async function withRetry<T>(fn: () => Promise<T>, options: RetryOptions =
   let lastError: unknown;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
-    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
     try {
       return await fn();
     } catch (err) {

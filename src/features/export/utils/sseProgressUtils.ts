@@ -1,4 +1,4 @@
-import type { SSEProgressEvent } from '@/types/sse';
+import type { SSEProgressEvent } from "@/types/sse";
 
 /**
  * Phase별 가중치 상수
@@ -16,13 +16,13 @@ export const PHASE_WEIGHTS = {
  * @returns 전체 진행률 (0-100)
  */
 export function calculateOverallProgress(
-  phase: SSEProgressEvent['phase'],
-  progress: number
+  phase: SSEProgressEvent["phase"],
+  progress: number,
 ): number {
-  if (phase === 'downloading') {
+  if (phase === "downloading") {
     // downloading: 0-90%로 매핑
     return Math.round(progress * PHASE_WEIGHTS.DOWNLOADING);
-  } else if (phase === 'processing') {
+  } else if (phase === "processing") {
     // processing: 90-100%로 매핑
     return Math.round(90 + progress * PHASE_WEIGHTS.PROCESSING);
   } else {
@@ -40,20 +40,18 @@ export function calculateOverallProgress(
  * @returns Phase에 맞는 메시지
  */
 export function getPhaseMessage(
-  phase: SSEProgressEvent['phase'],
+  phase: SSEProgressEvent["phase"],
   processedSeconds?: number,
-  totalSeconds?: number
+  totalSeconds?: number,
 ): string {
   switch (phase) {
-    case 'downloading':
-      return `다운로드 중 (${Math.round(processedSeconds ?? 0)}/${Math.round(
-        totalSeconds ?? 0
-      )}s)`;
-    case 'processing':
-      return 'FFmpeg로 타임스탬프 리셋 중...';
-    case 'completed':
-      return '완료!';
+    case "downloading":
+      return `다운로드 중 (${Math.round(processedSeconds ?? 0)}/${Math.round(totalSeconds ?? 0)}s)`;
+    case "processing":
+      return "FFmpeg로 타임스탬프 리셋 중...";
+    case "completed":
+      return "완료!";
     default:
-      return '처리 중...';
+      return "처리 중...";
   }
 }

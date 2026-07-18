@@ -1,5 +1,5 @@
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { toBlobURL } from '@ffmpeg/util';
+import { FFmpeg } from "@ffmpeg/ffmpeg";
+import { toBlobURL } from "@ffmpeg/util";
 
 /**
  * FFmpeg 싱글톤 관리 클래스
@@ -20,9 +20,7 @@ export class FFmpegSingleton {
    * @param onProgress - 로딩 진행률 콜백 (0-100)
    * @returns FFmpeg 인스턴스
    */
-  static async getInstance(
-    onProgress?: (progress: number) => void
-  ): Promise<FFmpeg> {
+  static async getInstance(onProgress?: (progress: number) => void): Promise<FFmpeg> {
     // Return existing instance if already loaded
     if (this.instance) {
       return this.instance;
@@ -48,26 +46,24 @@ export class FFmpegSingleton {
   /**
    * FFmpeg 로드 (내부 메서드)
    */
-  private static async load(
-    onProgress?: (progress: number) => void
-  ): Promise<FFmpeg> {
+  private static async load(onProgress?: (progress: number) => void): Promise<FFmpeg> {
     try {
       onProgress?.(0);
 
       const ffmpeg = new FFmpeg();
 
       // Set up progress callback
-      ffmpeg.on('progress', ({ progress }) => {
+      ffmpeg.on("progress", ({ progress }) => {
         // progress is 0-1, convert to 0-100
         onProgress?.(Math.round(progress * 100));
       });
 
       // Load FFmpeg core from self-hosted files (public/ffmpeg/)
-      const baseURL = '/ffmpeg';
+      const baseURL = "/ffmpeg";
 
       await ffmpeg.load({
-        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
       });
 
       onProgress?.(100);
@@ -75,9 +71,8 @@ export class FFmpegSingleton {
       this.instance = ffmpeg;
       return ffmpeg;
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Failed to load FFmpeg';
-      console.error('FFmpeg load error:', error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to load FFmpeg";
+      console.error("FFmpeg load error:", error);
       throw new Error(errorMessage);
     }
   }

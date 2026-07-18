@@ -1,9 +1,9 @@
 /**
  * Browser memory monitoring utilities
  */
-import { formatBytes } from './formatBytes';
-import { FILE_SIZE } from '@/constants/fileConstraints';
-import { hasMemoryAPI } from '@/types/browser';
+import { formatBytes } from "./formatBytes";
+import { FILE_SIZE } from "@/constants/fileConstraints";
+import { hasMemoryAPI } from "@/types/browser";
 
 // 메모리 안전 배수 (파일 크기의 3배 메모리 필요)
 const MEMORY_MULTIPLIER = 3;
@@ -12,7 +12,7 @@ const MEMORY_MULTIPLIER = 3;
  * Check if browser's memory API is available
  */
 export function isMemoryAPIAvailable(): boolean {
-  return typeof performance !== 'undefined' && hasMemoryAPI(performance);
+  return typeof performance !== "undefined" && hasMemoryAPI(performance);
 }
 
 /**
@@ -20,7 +20,7 @@ export function isMemoryAPIAvailable(): boolean {
  * Returns memory in bytes, or null if API is not available
  */
 export function getAvailableMemory(): number | null {
-  if (typeof performance === 'undefined' || !hasMemoryAPI(performance)) {
+  if (typeof performance === "undefined" || !hasMemoryAPI(performance)) {
     return null;
   }
 
@@ -58,16 +58,14 @@ export function checkMemoryAvailability(fileSize: number): boolean {
 /**
  * Get memory recommendation for file size
  */
-export function getMemoryRecommendation(
-  fileSize: number
-): 'safe' | 'warning' | 'danger' {
+export function getMemoryRecommendation(fileSize: number): "safe" | "warning" | "danger" {
   if (fileSize <= FILE_SIZE.RECOMMENDED_MAX) {
-    return 'safe';
+    return "safe";
   }
   if (fileSize <= FILE_SIZE.WARNING_THRESHOLD) {
-    return 'warning';
+    return "warning";
   }
-  return 'danger';
+  return "danger";
 }
 
 /**
@@ -77,19 +75,19 @@ export function getMemoryStatusMessage(fileSize: number): string | null {
   const recommendation = getMemoryRecommendation(fileSize);
   const availableMemory = getAvailableMemory();
 
-  if (recommendation === 'safe') {
+  if (recommendation === "safe") {
     return null; // No warning needed
   }
 
-  if (recommendation === 'warning') {
+  if (recommendation === "warning") {
     if (availableMemory !== null && !checkMemoryAvailability(fileSize)) {
-      return '파일이 커서 처리 중 메모리 부족이 발생할 수 있습니다. 500MB 이하 파일 사용을 권장합니다.';
+      return "파일이 커서 처리 중 메모리 부족이 발생할 수 있습니다. 500MB 이하 파일 사용을 권장합니다.";
     }
-    return '파일이 큽니다. 처리 시간이 오래 걸릴 수 있습니다.';
+    return "파일이 큽니다. 처리 시간이 오래 걸릴 수 있습니다.";
   }
 
   // danger
-  return '파일이 너무 큽니다. 브라우저 메모리 한계로 처리에 실패할 수 있습니다. 500MB 이하 파일 사용을 권장합니다.';
+  return "파일이 너무 큽니다. 브라우저 메모리 한계로 처리에 실패할 수 있습니다. 500MB 이하 파일 사용을 권장합니다.";
 }
 
 // Re-export formatBytes for backward compatibility

@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
-import type { ProcessError } from '@/types/process';
-import { buildServerError, logServerError } from './errorReport';
+import { NextResponse } from "next/server";
+import type { ProcessError } from "@/types/process";
+import { buildServerError, logServerError } from "./errorReport";
 
 /**
  * yt-dlp 명령 에러 파싱
@@ -16,10 +16,10 @@ export function parseYtdlpError(error: ProcessError): {
   status: number;
 } {
   // yt-dlp 바이너리를 찾을 수 없는 경우
-  if (error.code === 'ENOENT') {
+  if (error.code === "ENOENT") {
     return {
       message:
-        '영상 처리 도구(yt-dlp)를 찾을 수 없습니다. 앱이 올바르게 설치되지 않았을 수 있습니다.',
+        "영상 처리 도구(yt-dlp)를 찾을 수 없습니다. 앱이 올바르게 설치되지 않았을 수 있습니다.",
       status: 500,
     };
   }
@@ -27,23 +27,23 @@ export function parseYtdlpError(error: ProcessError): {
   // 타임아웃으로 프로세스가 강제 종료된 경우
   if (error.killed) {
     return {
-      message: '요청 시간이 초과되었습니다',
+      message: "요청 시간이 초과되었습니다",
       status: 504,
     };
   }
 
   // stderr에서 특정 에러 패턴 확인
-  const stderr = error.stderr || '';
-  if (stderr.includes('Unsupported URL')) {
+  const stderr = error.stderr || "";
+  if (stderr.includes("Unsupported URL")) {
     return {
-      message: '지원하지 않는 URL입니다',
+      message: "지원하지 않는 URL입니다",
       status: 400,
     };
   }
 
   // 기본 에러 (원인 불명)
   return {
-    message: '영상 정보를 가져올 수 없습니다',
+    message: "영상 정보를 가져올 수 없습니다",
     status: 500,
   };
 }
@@ -71,15 +71,15 @@ export function parseYtdlpError(error: ProcessError): {
 export function handleApiError(
   error: unknown,
   context: string,
-  defaultMessage: string = '요청 처리 중 오류가 발생했습니다',
-  status: number = 500
+  defaultMessage: string = "요청 처리 중 오류가 발생했습니다",
+  status: number = 500,
 ): NextResponse {
   // 원시 원인을 분류해 구조화 리포트 생성·로그. 응답엔 친화 메시지 + 코드 + 기술 상세 포함.
   const report = buildServerError(context, error);
   logServerError(report);
 
   // 분류가 UNKNOWN이면 호출부가 준 defaultMessage를 사용자 메시지로 우선.
-  const userMessage = report.code === 'UNKNOWN' ? defaultMessage : report.userMessage;
+  const userMessage = report.code === "UNKNOWN" ? defaultMessage : report.userMessage;
 
   return NextResponse.json(
     {
@@ -87,7 +87,7 @@ export function handleApiError(
       code: report.code,
       technicalDetails: report.cause || undefined,
     },
-    { status }
+    { status },
   );
 }
 
@@ -107,7 +107,7 @@ export function validateUrlParseable(url: string): NextResponse | null {
     new URL(url);
     return null;
   } catch {
-    return createValidationError('유효하지 않은 URL입니다');
+    return createValidationError("유효하지 않은 URL입니다");
   }
 }
 
@@ -117,13 +117,13 @@ export function validateUrlParseable(url: string): NextResponse | null {
  */
 function validateTimeRange(
   startTime: unknown,
-  endTime: unknown
+  endTime: unknown,
 ): { valid: false; error: string; status: number } | null {
-  if (typeof startTime !== 'number' || startTime < 0) {
-    return { valid: false, error: '유효하지 않은 시작 시간입니다', status: 400 };
+  if (typeof startTime !== "number" || startTime < 0) {
+    return { valid: false, error: "유효하지 않은 시작 시간입니다", status: 400 };
   }
-  if (typeof endTime !== 'number' || endTime <= startTime) {
-    return { valid: false, error: '종료 시간은 시작 시간보다 커야 합니다', status: 400 };
+  if (typeof endTime !== "number" || endTime <= startTime) {
+    return { valid: false, error: "종료 시간은 시작 시간보다 커야 합니다", status: 400 };
   }
   return null;
 }
@@ -142,15 +142,15 @@ export interface TrimRequestParams {
  * Trim 요청 검증
  */
 export function validateTrimRequest(
-  body: unknown
+  body: unknown,
 ): { valid: true; data: TrimRequestParams } | { valid: false; error: string; status: number } {
-  if (typeof body !== 'object' || body === null) {
-    return { valid: false, error: '유효하지 않은 요청입니다', status: 400 };
+  if (typeof body !== "object" || body === null) {
+    return { valid: false, error: "유효하지 않은 요청입니다", status: 400 };
   }
   const { originalUrl, startTime, endTime, filename } = body as Record<string, unknown>;
 
-  if (!originalUrl || typeof originalUrl !== 'string' || !originalUrl.trim()) {
-    return { valid: false, error: '유효하지 않은 URL입니다', status: 400 };
+  if (!originalUrl || typeof originalUrl !== "string" || !originalUrl.trim()) {
+    return { valid: false, error: "유효하지 않은 URL입니다", status: 400 };
   }
   const timeError = validateTimeRange(startTime, endTime);
   if (timeError) return timeError;
@@ -161,7 +161,7 @@ export function validateTrimRequest(
       originalUrl: originalUrl.trim(),
       startTime: startTime as number,
       endTime: endTime as number,
-      filename: typeof filename === 'string' ? filename : undefined,
+      filename: typeof filename === "string" ? filename : undefined,
     },
   };
 }
@@ -183,20 +183,20 @@ export interface DownloadRequestParams {
  * Download 요청 검증
  */
 export function validateDownloadRequest(
-  body: unknown
+  body: unknown,
 ): { valid: true; data: DownloadRequestParams } | { valid: false; error: string; status: number } {
-  if (typeof body !== 'object' || body === null) {
-    return { valid: false, error: '유효하지 않은 요청입니다', status: 400 };
+  if (typeof body !== "object" || body === null) {
+    return { valid: false, error: "유효하지 않은 요청입니다", status: 400 };
   }
   const { url, startTime, endTime, filename, tbr, maxHeight } = body as Record<string, unknown>;
 
-  if (!url || typeof url !== 'string' || !url.trim()) {
-    return { valid: false, error: '유효하지 않은 URL입니다', status: 400 };
+  if (!url || typeof url !== "string" || !url.trim()) {
+    return { valid: false, error: "유효하지 않은 URL입니다", status: 400 };
   }
   const timeError = validateTimeRange(startTime, endTime);
   if (timeError) return timeError;
-  if (!filename || typeof filename !== 'string') {
-    return { valid: false, error: '파일명이 필요합니다', status: 400 };
+  if (!filename || typeof filename !== "string") {
+    return { valid: false, error: "파일명이 필요합니다", status: 400 };
   }
 
   return {
@@ -206,8 +206,8 @@ export function validateDownloadRequest(
       startTime: startTime as number,
       endTime: endTime as number,
       filename,
-      tbr: typeof tbr === 'number' ? tbr : undefined,
-      maxHeight: typeof maxHeight === 'number' && maxHeight > 0 ? maxHeight : undefined,
+      tbr: typeof tbr === "number" ? tbr : undefined,
+      maxHeight: typeof maxHeight === "number" && maxHeight > 0 ? maxHeight : undefined,
     },
   };
 }

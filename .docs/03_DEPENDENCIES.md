@@ -44,12 +44,12 @@ Video Trimmer
 
 각 바이너리는 다음 우선순위로 탐색됩니다:
 
-| 바이너리 | 우선순위 |
-|---------|----------|
-| FFmpeg | 번들 (`@ffmpeg-installer`) → 시스템 (`ffmpeg`) |
-| yt-dlp | venv (`.bin/yt-dlp-venv`) → 시스템 (`yt-dlp`) → 번들 onefile (`.bin/yt-dlp`) |
-| Streamlink | 번들 (`.bin/streamlink*`) → 시스템 (`streamlink`) |
-| aria2c | 번들 (`.bin/aria2/aria2c`) → 시스템 (`aria2c`) → `null`(미설치, 폴백 시 aria2c 없이 진행) |
+| 바이너리   | 우선순위                                                                                  |
+| ---------- | ----------------------------------------------------------------------------------------- |
+| FFmpeg     | 번들 (`@ffmpeg-installer`) → 시스템 (`ffmpeg`)                                            |
+| yt-dlp     | venv (`.bin/yt-dlp-venv`) → 시스템 (`yt-dlp`) → 번들 onefile (`.bin/yt-dlp`)              |
+| Streamlink | 번들 (`.bin/streamlink*`) → 시스템 (`streamlink`)                                         |
+| aria2c     | 번들 (`.bin/aria2/aria2c`) → 시스템 (`aria2c`) → `null`(미설치, 폴백 시 aria2c 없이 진행) |
 
 ### Next.js 빌드 설정
 
@@ -57,11 +57,12 @@ Video Trimmer
 
 ```typescript
 const nextConfig = {
-  serverExternalPackages: ['@ffmpeg-installer/ffmpeg'],
+  serverExternalPackages: ["@ffmpeg-installer/ffmpeg"],
 };
 ```
 
 **왜 필요한가?**
+
 - `@ffmpeg-installer/ffmpeg`는 dynamic require 사용
 - 번들러가 번들링 시도 → 실패
 - external로 지정 → node_modules에서 직접 require
@@ -75,6 +76,7 @@ const nextConfig = {
 비디오/오디오 처리의 핵심 도구.
 
 **Video Trimmer에서의 용도:**
+
 1. **타임스탬프 리셋** (메인 용도)
    - Streamlink로 다운로드한 HLS 세그먼트의 타임스탬프를 0부터 시작하도록 리셋
    - `-avoid_negative_ts make_zero` 플래그 사용
@@ -89,11 +91,13 @@ const nextConfig = {
 ### 번들 버전
 
 **패키지:** `@ffmpeg-installer/ffmpeg@1.1.0`
+
 - **FFmpeg 버전:** 4.4.0
 - **설치 방식:** npm dependency
 - **경로:** `node_modules/@ffmpeg-installer/<platform>/ffmpeg`
 
 **플랫폼별 바이너리:**
+
 - Linux: `ffmpeg-4.4-linux-x64`
 - macOS: `ffmpeg-4.4-darwin-x64`
 - Windows: `ffmpeg-4.4-win32-x64.exe`
@@ -116,6 +120,7 @@ ffmpeg -y -i input.mp4 \
 ```
 
 **왜 필요한가?**
+
 - Streamlink가 다운로드한 HLS 세그먼트는 원본 타임스탬프 유지
 - 예: 10초~30초 구간 다운로드 → 타임스탬프가 10초부터 시작
 - 비디오 플레이어가 0초부터 시작하도록 리셋 필요
@@ -160,6 +165,7 @@ class FFmpegProgressTracker {
 #### Chzzk HLS .m4v 세그먼트 거부 (FFmpeg 8.0)
 
 **문제:**
+
 ```bash
 ffmpeg 8.0 -i chzzk_segment.m4v
 # Error: moov atom not found
@@ -168,6 +174,7 @@ ffmpeg 8.0 -i chzzk_segment.m4v
 **원인:** Chzzk의 .m4v 세그먼트가 표준을 벗어남
 
 **해결:**
+
 - FFmpeg 4.4 사용 (번들) ✅
 - Streamlink로 다운로드 후 FFmpeg로 타임스탬프만 리셋
 - ffmpeg 8.0을 사용하는 어떤 플래그로도 수정 불가
@@ -181,6 +188,7 @@ ffmpeg 8.0 -i chzzk_segment.m4v
 YouTube, Twitch 등 다양한 플랫폼에서 비디오 정보와 스트리밍 URL을 추출합니다.
 
 **Video Trimmer에서의 용도:**
+
 1. **메타데이터 추출** (`/api/video/resolve`)
    - 제목, 길이, 썸네일, 스트림 URL
 2. **YouTube/Generic 구간 다운로드** (`/api/download/start`)
@@ -192,6 +200,7 @@ YouTube, Twitch 등 다양한 플랫폼에서 비디오 정보와 스트리밍 U
 ### 번들 방식
 
 **자동 설치(우선):**
+
 - **트리거:** `npm postinstall` → `scripts/setup-deps.mjs`
 - **방식:** 프로젝트 번들 Python(.bin/python, 고정 CPython)으로 venv 생성 후 `pip install yt-dlp`
   (`.bin/yt-dlp-venv`, Git 무시됨). 시스템 Python 미사용 → 환경 간 버전 통일.
@@ -207,18 +216,16 @@ YouTube, Twitch 등 다양한 플랫폼에서 비디오 정보와 스트리밍 U
 ```typescript
 export function selectBestFormat(ytdlpInfo: YtdlpInfo): FormatSelection | null {
   // 1. Muxed 포맷 필터링 (비디오+오디오)
-  const muxedFormats = ytdlpInfo.formats.filter(
-    f => f.vcodec !== 'none' && f.acodec !== 'none'
-  );
+  const muxedFormats = ytdlpInfo.formats.filter((f) => f.vcodec !== "none" && f.acodec !== "none");
 
   // 2. 우선순위: HLS (m3u8) > HTTPS > 기타
-  const hlsFormats = muxedFormats.filter(
-    f => f.protocol === 'm3u8' || f.protocol === 'm3u8_native'
-  ).sort((a, b) => (b.tbr || 0) - (a.tbr || 0));
+  const hlsFormats = muxedFormats
+    .filter((f) => f.protocol === "m3u8" || f.protocol === "m3u8_native")
+    .sort((a, b) => (b.tbr || 0) - (a.tbr || 0));
 
-  const httpsFormats = muxedFormats.filter(
-    f => f.protocol === 'https'
-  ).sort((a, b) => (b.tbr || 0) - (a.tbr || 0));
+  const httpsFormats = muxedFormats
+    .filter((f) => f.protocol === "https")
+    .sort((a, b) => (b.tbr || 0) - (a.tbr || 0));
 
   if (hlsFormats.length > 0) return hlsFormats[0];
   if (httpsFormats.length > 0) return httpsFormats[0];
@@ -227,14 +234,16 @@ export function selectBestFormat(ytdlpInfo: YtdlpInfo): FormatSelection | null {
 ```
 
 **다운로드 포맷 선택** (`buildYtdlpFormatSpec`):
+
 ```typescript
 // 최고 화질, 제한 없음, flexible fallback
-"-f", "bestvideo[height<=?9999]+bestaudio/best"
+("-f", "bestvideo[height<=?9999]+bestaudio/best");
 ```
 
 ### 지원 플랫폼
 
 yt-dlp는 1000+ 사이트를 지원합니다:
+
 - YouTube, Twitch, Vimeo, Twitter/X
 - Naver TV, Afreeca TV
 - Chzzk (Streamlink 권장, yt-dlp도 가능)
@@ -250,6 +259,7 @@ yt-dlp는 1000+ 사이트를 지원합니다:
 라이브 스트리밍 플랫폼에서 HLS/DASH 스트림을 다운로드합니다.
 
 **Video Trimmer에서의 용도:**
+
 1. **Chzzk HLS 스트림 구간 다운로드**
    - `--hls-start-offset`, `--hls-duration`으로 특정 구간만 다운로드
 2. **세그먼트 병합**
@@ -258,17 +268,18 @@ yt-dlp는 1000+ 사이트를 지원합니다:
 ### 번들 방식
 
 **자동 다운로드:**
+
 - **트리거:** `npm postinstall` → `scripts/setup-deps.mjs`
 - **다운로드 위치:** `.bin/streamlink` (Git 무시됨)
 
 **플랫폼별 바이너리:**
 
-| 플랫폼 | 파일 | 소스 |
-|--------|------|------|
-| Windows | streamlink.exe | streamlink/windows-builds (portable .zip) |
-| Linux x64 | streamlink-linux-x64.AppImage | streamlink/streamlink-appimage |
-| Linux ARM64 | streamlink-linux-arm64.AppImage | streamlink/streamlink-appimage |
-| macOS | .bin/streamlink-venv/bin/streamlink | 번들 Python venv (`pip install streamlink`) |
+| 플랫폼      | 파일                                | 소스                                        |
+| ----------- | ----------------------------------- | ------------------------------------------- |
+| Windows     | streamlink.exe                      | streamlink/windows-builds (portable .zip)   |
+| Linux x64   | streamlink-linux-x64.AppImage       | streamlink/streamlink-appimage              |
+| Linux ARM64 | streamlink-linux-arm64.AppImage     | streamlink/streamlink-appimage              |
+| macOS       | .bin/streamlink-venv/bin/streamlink | 번들 Python venv (`pip install streamlink`) |
 
 **macOS 설치 방식:** 공식 portable binary 미제공. 프로젝트 번들 Python(.bin/python, yt-dlp와 동일한 고정 CPython)으로 venv 생성 후 자동 설치 (`npm install` 시). 시스템 Python 불요. 번들 Python 확보 실패 시 graceful fallback (경고만 출력).
 
@@ -288,6 +299,7 @@ streamlink \
 ```
 
 **`--hls-duration` vs `--stream-segmented-duration`:**
+
 - `--hls-duration`: 실제 비디오 길이 기준 (✅ 사용)
 - `--stream-segmented-duration`: 다운로드 시간 제한 (❌ Chzzk에서 무시됨)
 
@@ -297,8 +309,8 @@ streamlink \
 
 ```typescript
 const args = [...streamlinkArgs];
-if (streamlinkBin.endsWith('.AppImage')) {
-  args.unshift('--appimage-extract-and-run');
+if (streamlinkBin.endsWith(".AppImage")) {
+  args.unshift("--appimage-extract-and-run");
 }
 ```
 
@@ -341,8 +353,8 @@ export function getFfmpegPath(): string {
     return ffmpegInstaller.path;
   } catch {
     // 2. 시스템 FFmpeg
-    execSync('which ffmpeg', { stdio: 'ignore' });
-    return 'ffmpeg';
+    execSync("which ffmpeg", { stdio: "ignore" });
+    return "ffmpeg";
   }
 }
 ```
@@ -379,14 +391,14 @@ export function getStreamlinkPath(): string | null {
 
   // 1. 번들 Streamlink (.bin/) — 플랫폼별 경로
   let bundledPath: string | undefined;
-  if (platform === 'win32') {
-    bundledPath = join(projectRoot, '.bin', 'streamlink-win', 'streamlink.exe');
-  } else if (platform === 'linux') {
-    const archSuffix = arch === 'arm64' ? 'arm64' : 'x64';
-    bundledPath = join(projectRoot, '.bin', `streamlink-linux-${archSuffix}.AppImage`);
-  } else if (platform === 'darwin') {
+  if (platform === "win32") {
+    bundledPath = join(projectRoot, ".bin", "streamlink-win", "streamlink.exe");
+  } else if (platform === "linux") {
+    const archSuffix = arch === "arm64" ? "arm64" : "x64";
+    bundledPath = join(projectRoot, ".bin", `streamlink-linux-${archSuffix}.AppImage`);
+  } else if (platform === "darwin") {
     // Python venv 자동 설치 경로 (postinstall)
-    bundledPath = join(projectRoot, '.bin', 'streamlink-venv', 'bin', 'streamlink');
+    bundledPath = join(projectRoot, ".bin", "streamlink-venv", "bin", "streamlink");
   }
 
   if (bundledPath && existsSync(bundledPath)) {
@@ -395,8 +407,8 @@ export function getStreamlinkPath(): string | null {
 
   // 2. 시스템 Streamlink
   try {
-    execFileSync('which', ['streamlink'], { stdio: 'ignore' });
-    return 'streamlink';
+    execFileSync("which", ["streamlink"], { stdio: "ignore" });
+    return "streamlink";
   } catch {
     return null; // 미설치 — hasStreamlink()로 가용성 확인
   }
@@ -413,6 +425,7 @@ export function getStreamlinkPath(): string | null {
 **파일:** `scripts/setup-deps.mjs`
 
 **실행 시점:**
+
 ```json
 {
   "scripts": {
@@ -469,6 +482,7 @@ postinstall 훅 실행
 ```
 
 **출력 예시** (버전 숫자는 예시일 뿐, 실제 값은 플랫폼·시점에 따라 다름):
+
 ```
 Video Trimmer - Dependencies
 
@@ -484,17 +498,18 @@ Video Trimmer - Dependencies
 **바이너리 타입:** Portable `.zip`
 
 ```javascript
-if (platform === 'win32') {
+if (platform === "win32") {
   const url = `https://github.com/streamlink/windows-builds/releases/download/${version}/streamlink-${version}-py314-x86_64.zip`;
-  await downloadAndExtract(url, join(binDir, 'streamlink-win'));
+  await downloadAndExtract(url, join(binDir, "streamlink-win"));
 }
 ```
 
 **압축 해제:** `adm-zip` 패키지 사용
+
 ```javascript
 async function downloadAndExtract(url, destDir) {
-  const AdmZip = (await import('adm-zip')).default;
-  const tmpZip = join(binDir, 'temp-streamlink.zip');
+  const AdmZip = (await import("adm-zip")).default;
+  const tmpZip = join(binDir, "temp-streamlink.zip");
   try {
     await downloadFile(url, tmpZip);
     const zip = new AdmZip(tmpZip);
@@ -520,6 +535,7 @@ else if (platform === 'linux') {
 ```
 
 **저장 위치:**
+
 - x64: `.bin/streamlink-linux-x64.AppImage`
 - ARM64: `.bin/streamlink-linux-arm64.AppImage`
 
@@ -544,33 +560,40 @@ else if (platform === 'darwin') {
 ```javascript
 async function downloadFile(url, dest) {
   return new Promise((resolve, reject) => {
-    https.get(url, {
-      headers: { 'User-Agent': 'Video-Trimmer' },
-    }, (res) => {
-      // 301/302 리다이렉트 자동 따라가기
-      if (res.statusCode === 301 || res.statusCode === 302) {
-        return downloadFile(res.headers.location, dest).then(resolve).catch(reject);
-      }
-      if (res.statusCode !== 200) {
-        reject(new Error(`HTTP ${res.statusCode}`));
-        return;
-      }
-      const fileStream = createWriteStream(dest);
-      pipeline(res, fileStream).then(resolve).catch(reject);
-    }).on('error', reject);
+    https
+      .get(
+        url,
+        {
+          headers: { "User-Agent": "Video-Trimmer" },
+        },
+        (res) => {
+          // 301/302 리다이렉트 자동 따라가기
+          if (res.statusCode === 301 || res.statusCode === 302) {
+            return downloadFile(res.headers.location, dest).then(resolve).catch(reject);
+          }
+          if (res.statusCode !== 200) {
+            reject(new Error(`HTTP ${res.statusCode}`));
+            return;
+          }
+          const fileStream = createWriteStream(dest);
+          pipeline(res, fileStream).then(resolve).catch(reject);
+        },
+      )
+      .on("error", reject);
   });
 }
 ```
 
 **다운로드 실패 처리:**
+
 ```javascript
 try {
   await downloadStreamlink();
-  console.log('  streamlink: downloaded successfully');
+  console.log("  streamlink: downloaded successfully");
 } catch (error) {
   console.warn(`  streamlink: download failed - ${error.message}`);
-  console.warn('          HLS trimming will be unavailable');
-  console.warn('          Install manually: https://streamlink.github.io/install.html');
+  console.warn("          HLS trimming will be unavailable");
+  console.warn("          Install manually: https://streamlink.github.io/install.html");
 }
 ```
 
@@ -583,17 +606,20 @@ try {
 ### Linux
 
 **자동 설치:**
+
 ```bash
 npm install  # postinstall이 자동 실행
 ```
 
 **설치되는 것:**
+
 - FFmpeg: 번들 (node_modules)
 - yt-dlp: `.bin/yt-dlp-venv` (venv, onefile은 폴백)
 - Streamlink: `.bin/streamlink-linux-x64.AppImage` (또는 arm64)
 - aria2c: `.bin/aria2/aria2c` (시스템에 있으면 그것 사용)
 
 **시스템 의존성 (선택):**
+
 ```bash
 # FUSE (AppImage 실행용 - 자동 처리되므로 불필요)
 sudo apt-get install fuse libfuse2
@@ -604,11 +630,13 @@ Docker 등 FUSE 없는 환경: `--appimage-extract-and-run` 자동 사용.
 ### macOS
 
 **자동 설치:**
+
 ```bash
 npm install
 ```
 
 **설치되는 것:**
+
 - FFmpeg: 번들 (`@ffmpeg-installer/ffmpeg`)
 - FFmpeg.wasm: `public/ffmpeg/` (자체 호스팅)
 - yt-dlp: `.bin/yt-dlp-venv` (번들 Python venv, onefile은 폴백)
@@ -619,6 +647,7 @@ npm install
 수동 대안: `brew install streamlink`
 
 **확인:**
+
 ```bash
 npm test -- binPaths.test.ts
 ```
@@ -626,11 +655,13 @@ npm test -- binPaths.test.ts
 ### Windows
 
 **자동 설치:**
+
 ```powershell
 npm install
 ```
 
 **설치되는 것:**
+
 - FFmpeg: 번들
 - yt-dlp: `.bin/yt-dlp-venv` (번들 Python venv, `.bin/yt-dlp.exe` onefile은 폴백)
 - Streamlink: `.bin/streamlink-win/streamlink.exe` (portable)
@@ -645,6 +676,7 @@ npm install
 **문제:** `ffmpeg: command not found`
 
 **해결:**
+
 1. 번들 FFmpeg 확인:
    ```bash
    node -e "console.log(require('@ffmpeg-installer/ffmpeg').path)"
@@ -670,6 +702,7 @@ npm install
 **문제:** `Unsupported URL`
 
 **해결:**
+
 1. yt-dlp 업데이트:
    ```bash
    yt-dlp -U
@@ -688,6 +721,7 @@ npm install
 **문제:** `Streamlink not found` (macOS)
 
 **해결:**
+
 1. `npm install` 재실행 (Python venv 자동 설치 시도)
 2. Python 3 미설치 시:
    ```bash
@@ -706,6 +740,7 @@ npm install
 **문제:** `No playable streams found`
 
 **해결:**
+
 1. URL 확인
 2. 플랫폼 지원 확인:
    ```bash
@@ -726,6 +761,7 @@ npm test -- binPaths.test.ts
 ```
 
 **실패 시 메시지:**
+
 ```
 ❌ FFmpeg not found. Install: brew install ffmpeg
 ❌ yt-dlp not found. Run: npm run postinstall

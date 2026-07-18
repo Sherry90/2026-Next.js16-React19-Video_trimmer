@@ -6,10 +6,10 @@
  */
 
 const HLS_CONTENT_TYPES = [
-  'application/vnd.apple.mpegurl',
-  'application/x-mpegurl',
-  'audio/mpegurl',
-  'audio/x-mpegurl',
+  "application/vnd.apple.mpegurl",
+  "application/x-mpegurl",
+  "audio/mpegurl",
+  "audio/x-mpegurl",
 ];
 
 /**
@@ -29,13 +29,13 @@ export function rewriteM3U8(content: string, baseUrl: string): string {
   const uriAttrRegex = /URI="([^"]+)"/g;
 
   return content
-    .split('\n')
+    .split("\n")
     .map((line) => {
       const trimmed = line.trim();
-      if (trimmed === '') return line;
+      if (trimmed === "") return line;
 
       // 태그 라인: 내부 URI="..." 속성만 재작성 (KEY, MAP 등)
-      if (trimmed.startsWith('#')) {
+      if (trimmed.startsWith("#")) {
         uriAttrRegex.lastIndex = 0;
         if (!uriAttrRegex.test(trimmed)) return line;
         uriAttrRegex.lastIndex = 0;
@@ -45,7 +45,7 @@ export function rewriteM3U8(content: string, baseUrl: string): string {
       // 일반 URI 라인 (세그먼트 또는 중첩 플레이리스트)
       return toProxyUrl(trimmed, baseUrl);
     })
-    .join('\n');
+    .join("\n");
 }
 
 /**
@@ -55,6 +55,6 @@ export function isHlsResponse(streamUrl: string, contentType: string | null): bo
   if (contentType && HLS_CONTENT_TYPES.some((t) => contentType.toLowerCase().includes(t))) {
     return true;
   }
-  const path = streamUrl.split('?')[0].toLowerCase();
-  return path.endsWith('.m3u8');
+  const path = streamUrl.split("?")[0].toLowerCase();
+  return path.endsWith(".m3u8");
 }

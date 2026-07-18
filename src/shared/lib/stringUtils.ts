@@ -8,7 +8,7 @@
  * @returns ANSI code가 제거된 문자열
  */
 export function stripAnsi(input: string): string {
-  return typeof input === 'string' ? input.replace(/\x1B\[[0-9;]*[A-Za-z]/g, '') : '';
+  return typeof input === "string" ? input.replace(/\x1B\[[0-9;]*[A-Za-z]/g, "") : "";
 }
 
 /**
@@ -26,6 +26,6 @@ export function isEmpty(str: string | null | undefined): boolean {
  * @returns 문자열 (null/undefined는 빈 문자열)
  */
 export function safeString(value: unknown): string {
-  if (value === null || value === undefined) return '';
+  if (value === null || value === undefined) return "";
   return String(value);
 }

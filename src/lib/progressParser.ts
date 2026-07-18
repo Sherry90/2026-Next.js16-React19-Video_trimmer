@@ -1,4 +1,4 @@
-import { toPercentage } from '@/shared/lib/mathUtils';
+import { toPercentage } from "@/shared/lib/mathUtils";
 
 function calculateProgress(processedSeconds: number, totalDuration: number): number {
   return toPercentage(processedSeconds, totalDuration);
@@ -12,7 +12,7 @@ function parseClockDuration(value: string): number | null {
 }
 
 function parseUnitDuration(value: string): number | null {
-  const compact = value.toLowerCase().replace(/\s+/g, '');
+  const compact = value.toLowerCase().replace(/\s+/g, "");
   const matches = [...compact.matchAll(/(\d+(?:\.\d+)?)(h|m|s)/g)];
   if (matches.length === 0) return null;
 
@@ -26,7 +26,7 @@ function parseUnitDuration(value: string): number | null {
 }
 
 function parseFlexibleDuration(value: string): number | null {
-  if (typeof value !== 'string') return null;
+  if (typeof value !== "string") return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
 
@@ -44,7 +44,7 @@ class FFmpegProgressTracker {
   totalDuration: number;
   progress = 0;
   processedSeconds = 0;
-  buffer = '';
+  buffer = "";
 
   constructor(totalDuration: number) {
     this.totalDuration = totalDuration;
@@ -53,27 +53,30 @@ class FFmpegProgressTracker {
   private updateProcessedSeconds(seconds: number): void {
     if (!Number.isFinite(seconds) || seconds < 0) return;
     this.processedSeconds = Math.max(this.processedSeconds, seconds);
-    this.progress = Math.max(this.progress, calculateProgress(this.processedSeconds, this.totalDuration));
+    this.progress = Math.max(
+      this.progress,
+      calculateProgress(this.processedSeconds, this.totalDuration),
+    );
   }
 
   pushChunk(chunk: Buffer | string): number {
     if (chunk == null) return this.progress;
 
-    this.buffer += typeof chunk === 'string' ? chunk : chunk.toString();
+    this.buffer += typeof chunk === "string" ? chunk : chunk.toString();
     const lines = this.buffer.split(/[\r\n]+/);
-    this.buffer = lines.pop() || '';
+    this.buffer = lines.pop() || "";
 
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed) continue;
 
-      if (trimmed.startsWith('out_time_ms=')) {
+      if (trimmed.startsWith("out_time_ms=")) {
         const value = parseInt(trimmed.slice(12), 10);
         if (!Number.isNaN(value)) this.updateProcessedSeconds(value / 1000000);
-      } else if (trimmed.startsWith('out_time=')) {
+      } else if (trimmed.startsWith("out_time=")) {
         const parsed = parseFlexibleDuration(trimmed.slice(9));
         if (parsed != null) this.updateProcessedSeconds(parsed);
-      } else if (trimmed === 'progress=end') {
+      } else if (trimmed === "progress=end") {
         this.progress = 100;
         this.processedSeconds = Math.max(this.processedSeconds, this.totalDuration);
       } else {
@@ -85,8 +88,12 @@ class FFmpegProgressTracker {
     return this.progress;
   }
 
-  getProgress(): number { return this.progress; }
-  getProcessedSeconds(): number { return this.processedSeconds; }
+  getProgress(): number {
+    return this.progress;
+  }
+  getProcessedSeconds(): number {
+    return this.processedSeconds;
+  }
 }
 
 function parseFFmpegProgress(stderr: string, totalDuration: number): number {
@@ -149,9 +156,4 @@ class YtdlpProgressParser {
   }
 }
 
-export {
-  parseFlexibleDuration,
-  FFmpegProgressTracker,
-  parseFFmpegProgress,
-  YtdlpProgressParser,
-};
+export { parseFlexibleDuration, FFmpegProgressTracker, parseFFmpegProgress, YtdlpProgressParser };

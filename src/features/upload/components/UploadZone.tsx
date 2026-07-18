@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useCallback, useState, type ReactNode } from 'react';
-import { useFileUpload } from '@/features/upload/hooks/useFileUpload';
-import { UploadCloudIcon } from '@/shared/ui/icons';
-import { Button } from '@/shared/ui/Button';
+import { useCallback, useState, type ReactNode } from "react";
+import { useFileUpload } from "@/features/upload/hooks/useFileUpload";
+import { UploadCloudIcon } from "@/shared/ui/icons";
+import { Button } from "@/shared/ui/Button";
 
 // URL 입력 등 부가 소스 UI는 상위(랜딩)에서 children으로 합성한다
 // (upload feature가 url-input feature를 직접 참조하지 않도록 결합 제거).
@@ -39,7 +39,7 @@ export function UploadZone({ children }: { children?: ReactNode }) {
         handleFileSelect(files[0]);
       }
     },
-    [handleFileSelect]
+    [handleFileSelect],
   );
 
   const handleFileInputChange = useCallback(
@@ -49,7 +49,7 @@ export function UploadZone({ children }: { children?: ReactNode }) {
         handleFileSelect(files[0]);
       }
     },
-    [handleFileSelect]
+    [handleFileSelect],
   );
 
   return (
@@ -59,21 +59,15 @@ export function UploadZone({ children }: { children?: ReactNode }) {
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       className={`flex flex-col items-center justify-center w-full max-w-[600px] min-h-[400px] p-12 border-2 border-dashed rounded-lg transition-all duration-200 cursor-pointer ${
-        isDragging
-          ? 'border-[#2962ff] bg-[#2962ff]/5'
-          : 'border-white/20 bg-transparent'
+        isDragging ? "border-[#2962ff] bg-[#2962ff]/5" : "border-white/20 bg-transparent"
       }`}
-      onClick={() => document.getElementById('file-upload')?.click()}
+      onClick={() => document.getElementById("file-upload")?.click()}
     >
       <UploadCloudIcon className="w-16 h-16 mb-6 opacity-50" stroke="#74808c" />
 
-      <h3 className="mb-3 text-[18px] font-medium text-[#d9dce3]">
-        Drop video file here
-      </h3>
+      <h3 className="mb-3 text-[18px] font-medium text-[#d9dce3]">Drop video file here</h3>
 
-      <p className="mb-6 text-[13px] text-[#74808c] font-light">
-        or click to browse
-      </p>
+      <p className="mb-6 text-[13px] text-[#74808c] font-light">or click to browse</p>
 
       <input
         type="file"
@@ -88,7 +82,7 @@ export function UploadZone({ children }: { children?: ReactNode }) {
         className="px-[30px] py-[7px]"
         onClick={(e) => {
           e.stopPropagation();
-          document.getElementById('file-upload')?.click();
+          document.getElementById("file-upload")?.click();
         }}
       >
         Choose File

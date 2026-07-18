@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { FullscreenEnterIcon, FullscreenExitIcon } from '@/shared/ui/icons';
-import { IconButton } from '@/shared/ui/IconButton';
+import { FullscreenEnterIcon, FullscreenExitIcon } from "@/shared/ui/icons";
+import { IconButton } from "@/shared/ui/IconButton";
 
 interface FullscreenButtonProps {
   isFullscreen: boolean;
@@ -17,7 +17,7 @@ export function FullscreenButton({ isFullscreen, onToggle, className }: Fullscre
   return (
     <IconButton
       onClick={onToggle}
-      aria-label={isFullscreen ? '전체화면 종료' : '전체화면'}
+      aria-label={isFullscreen ? "전체화면 종료" : "전체화면"}
       className={className}
     >
       {isFullscreen ? (

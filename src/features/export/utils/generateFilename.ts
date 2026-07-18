@@ -7,10 +7,10 @@ function formatTime(seconds: number): string {
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
 
-  const mm = String(m).padStart(2, '0');
-  const ss = String(s).padStart(2, '0');
+  const mm = String(m).padStart(2, "0");
+  const ss = String(s).padStart(2, "0");
   if (h > 0) {
-    return `${String(h).padStart(2, '0')}h${mm}m${ss}s`;
+    return `${String(h).padStart(2, "0")}h${mm}m${ss}s`;
   }
   return `${mm}m${ss}s`;
 }
@@ -22,10 +22,10 @@ function formatTime(seconds: number): string {
 export function generateTrimFilename(
   originalFilename: string,
   startTime: number,
-  endTime: number
+  endTime: number,
 ): string {
   const suffix = `(${formatTime(startTime)}-${formatTime(endTime)})`;
-  const lastDot = originalFilename.lastIndexOf('.');
+  const lastDot = originalFilename.lastIndexOf(".");
   if (lastDot === -1) return `${originalFilename}${suffix}`;
   return `${originalFilename.slice(0, lastDot)}${suffix}${originalFilename.slice(lastDot)}`;
 }

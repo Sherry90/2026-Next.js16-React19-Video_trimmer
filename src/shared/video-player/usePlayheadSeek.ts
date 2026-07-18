@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef } from 'react';
-import type Player from 'video.js/dist/types/player';
-import { TIMELINE } from '@/constants/appConfig';
+import { useCallback, useEffect, useRef } from "react";
+import type Player from "video.js/dist/types/player";
+import { TIMELINE } from "@/constants/appConfig";
 
 /**
  * Playhead seek 검증 훅
@@ -63,22 +63,22 @@ export function usePlayheadSeek(player: Player | null) {
 
           // Only release if we're at the target position (within 0.1s)
           if (diff < 0.1) {
-            player.off('seeked', handleSeeked);
+            player.off("seeked", handleSeeked);
             cleanup();
           }
           // Otherwise, this is a stale seek - ignore it
         }
       };
 
-      player.on('seeked', handleSeeked);
+      player.on("seeked", handleSeeked);
 
       // Safety fallback timeout - always release after seek verification timeout
       timeoutRef.current = setTimeout(() => {
-        player.off('seeked', handleSeeked);
+        player.off("seeked", handleSeeked);
         cleanup();
       }, TIMELINE.SEEK_VERIFICATION_TIMEOUT_MS);
     },
-    [player]
+    [player],
   );
 
   // Cleanup on unmount

@@ -1,18 +1,18 @@
-'use client';
+"use client";
 
-import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
-import videojs from 'video.js';
+import { useRef, useEffect, useCallback, useState, useMemo } from "react";
+import videojs from "video.js";
 // 주의: `import 'videojs-contrib-quality-levels'` 금지. video.js 8.x 코어가 VHS와 함께
 // qualityLevels 플러그인을 이미 등록한다 → 중복 import 시 "plugin already exists" 경고.
 // player.qualityLevels()는 코어 제공분으로 동작(useQualityLevels 훅 참조).
-import type Player from 'video.js/dist/types/player';
-import { useVideoUrl, useVideoFile, usePlayerActions } from '@/stores/hooks';
-import { PLAYBACK } from '@/constants/appConfig';
-import { bindPlayerStoreSync } from '../utils/playerStoreSync';
-import { VideoPlayerProvider } from '@/shared/video-player/VideoPlayerContext';
-import { VideoScreen } from './VideoScreen';
-import { PlayerControls } from './PlayerControls';
-import { PlayIcon, PauseIcon } from '@/shared/ui/icons';
+import type Player from "video.js/dist/types/player";
+import { useVideoUrl, useVideoFile, usePlayerActions } from "@/stores/hooks";
+import { PLAYBACK } from "@/constants/appConfig";
+import { bindPlayerStoreSync } from "../utils/playerStoreSync";
+import { VideoPlayerProvider } from "@/shared/video-player/VideoPlayerContext";
+import { VideoScreen } from "./VideoScreen";
+import { PlayerControls } from "./PlayerControls";
+import { PlayIcon, PauseIcon } from "@/shared/ui/icons";
 
 interface VideoPlayerViewProps {
   children?: React.ReactNode;
@@ -32,58 +32,64 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
   const { setIsScrubbing } = usePlayerActions();
 
   // Capture MIME type in a ref so it doesn't trigger player re-creation
-  const mimeTypeRef = useRef(videoFile?.type || 'video/mp4');
+  const mimeTypeRef = useRef(videoFile?.type || "video/mp4");
   useEffect(() => {
-    mimeTypeRef.current = videoFile?.type || 'video/mp4';
+    mimeTypeRef.current = videoFile?.type || "video/mp4";
   }, [videoFile?.type]);
 
   useEffect(() => {
     if (!videoRef.current || !videoUrl) return;
 
-    const videoElement = document.createElement('video-js');
-    videoElement.classList.add('vjs-big-play-centered');
+    const videoElement = document.createElement("video-js");
+    videoElement.classList.add("vjs-big-play-centered");
     videoRef.current.appendChild(videoElement);
 
-    const playerInstance = (playerRef.current = videojs(videoElement, {
-      // 네이티브 컨트롤바 제거 — 커스텀 React 컨트롤(PlayerControlBar)로 대체
-      controls: false,
-      autoplay: false,
-      preload: 'auto',
-      // 주의: `volume`은 video.js 생성자 옵션이 아니라 무시된다(→ player 기본 1.0).
-      // 실제 적용은 ready 콜백에서 player.volume()으로 한다.
-      sources: [{
-        src: videoUrl,
-        type: mimeTypeRef.current,
-      }],
-      // fill = player가 컨테이너(아래 aspect-video 박스)를 100%×100% 채움 → 영상 높이가
-      // 가용 높이로 결정된다. fluid(너비→높이)는 가용 높이를 무시해 세로 넘침을 유발했음.
-      fill: true,
-      // 후방 버퍼 30초만 유지 → 긴/고화질 영상을 길게 재생해도 MSE SourceBuffer(브라우저 탭
-      // media 메모리)가 재생분 전체만큼 무한히 커지지 않게 상한. (측정상 미설정 시 range start가
-      // 0에 고정돼 재생분 전체를 보유.)
-      backBufferLength: 30,
-      html5: {
-        vhs: {
-          // 기본 true면 작은 플레이어 박스(max-w-1200)에 맞춰 저화질로 고정된다.
-          // 고화질/수동 화질 선택을 위해 해제.
-          limitRenditionByPlayerDimensions: false,
+    const playerInstance = (playerRef.current = videojs(
+      videoElement,
+      {
+        // 네이티브 컨트롤바 제거 — 커스텀 React 컨트롤(PlayerControlBar)로 대체
+        controls: false,
+        autoplay: false,
+        preload: "auto",
+        // 주의: `volume`은 video.js 생성자 옵션이 아니라 무시된다(→ player 기본 1.0).
+        // 실제 적용은 ready 콜백에서 player.volume()으로 한다.
+        sources: [
+          {
+            src: videoUrl,
+            type: mimeTypeRef.current,
+          },
+        ],
+        // fill = player가 컨테이너(아래 aspect-video 박스)를 100%×100% 채움 → 영상 높이가
+        // 가용 높이로 결정된다. fluid(너비→높이)는 가용 높이를 무시해 세로 넘침을 유발했음.
+        fill: true,
+        // 후방 버퍼 30초만 유지 → 긴/고화질 영상을 길게 재생해도 MSE SourceBuffer(브라우저 탭
+        // media 메모리)가 재생분 전체만큼 무한히 커지지 않게 상한. (측정상 미설정 시 range start가
+        // 0에 고정돼 재생분 전체를 보유.)
+        backBufferLength: 30,
+        html5: {
+          vhs: {
+            // 기본 true면 작은 플레이어 박스(max-w-1200)에 맞춰 저화질로 고정된다.
+            // 고화질/수동 화질 선택을 위해 해제.
+            limitRenditionByPlayerDimensions: false,
+          },
         },
       },
-    }, () => {
-      videojs.log('player is ready');
+      () => {
+        videojs.log("player is ready");
 
-      // 기본 볼륨 적용 — 유효 경로는 옵션이 아닌 player.volume(). PlayerControlBar의
-      // readback(player.volume() → store)이 이 값을 그대로 읽도록 setPlayer 이전에 설정.
-      playerInstance.volume(PLAYBACK.DEFAULT_VOLUME);
+        // 기본 볼륨 적용 — 유효 경로는 옵션이 아닌 player.volume(). PlayerControlBar의
+        // readback(player.volume() → store)이 이 값을 그대로 읽도록 setPlayer 이전에 설정.
+        playerInstance.volume(PLAYBACK.DEFAULT_VOLUME);
 
-      // context.player가 실제 인스턴스를 받도록 state 갱신 (consumer 재렌더 유발)
-      // 화질 선택은 PlayerControlBar의 useQualityLevels 훅이 담당(setSelectedQuality 동기화 유지).
-      setPlayer(playerInstance);
+        // context.player가 실제 인스턴스를 받도록 state 갱신 (consumer 재렌더 유발)
+        // 화질 선택은 PlayerControlBar의 useQualityLevels 훅이 담당(setSelectedQuality 동기화 유지).
+        setPlayer(playerInstance);
 
-      // player 이벤트 → store 결선(duration backfill, timeupdate race guard,
-      // auto-pause-at-out, isPlaying 동기화). 로직은 스토어 계층(snapshot 경유)이 담당.
-      bindPlayerStoreSync(playerInstance);
-    }));
+        // player 이벤트 → store 결선(duration backfill, timeupdate race guard,
+        // auto-pause-at-out, isPlaying 동기화). 로직은 스토어 계층(snapshot 경유)이 담당.
+        bindPlayerStoreSync(playerInstance);
+      },
+    ));
 
     return () => {
       setPlayer(null);
@@ -135,7 +141,7 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
   // player를 deps에 포함해야 인스턴스 생성 시 consumer가 갱신됨(누락 시 null-player 버그 재발).
   const contextValue = useMemo(
     () => ({ player, play, pause, seek, togglePlay, setIsScrubbing }),
-    [player, play, pause, seek, togglePlay, setIsScrubbing]
+    [player, play, pause, seek, togglePlay, setIsScrubbing],
   );
 
   return (
@@ -147,8 +153,15 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
               (h-full)로 잡고 aspect-video가 너비를 유도 → 가용 높이에 맞춰 정확한 16:9로 축소.
               (w-full을 definite로 쓰면 높이만 찌부되므로 금지.) max-w-[1200px]로 대형 화면 상한. */}
           <div className="h-full max-w-[1200px] aspect-video mx-auto">
-            <div ref={wrapperRef} className="relative w-full h-full bg-black rounded overflow-hidden">
-              <VideoScreen videoRef={videoRef} hasVideo={!!videoUrl} onScreenClick={handleScreenClick} />
+            <div
+              ref={wrapperRef}
+              className="relative w-full h-full bg-black rounded overflow-hidden"
+            >
+              <VideoScreen
+                videoRef={videoRef}
+                hasVideo={!!videoUrl}
+                onScreenClick={handleScreenClick}
+              />
               {flash && (
                 <div
                   key={flash.id}

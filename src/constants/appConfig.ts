@@ -130,7 +130,7 @@ export const APP_CONFIG = {
     /** aria2c 분할 수 */
     ARIA2C_SPLIT_COUNT: 16,
     /** aria2c 청크 크기 */
-    ARIA2C_CHUNK_SIZE: '1M',
+    ARIA2C_CHUNK_SIZE: "1M",
     /** 유효 파일 최소 크기 (bytes) - MP4 헤더(4-8KB) + 실제 데이터 여유 */
     MIN_VALID_FILE_SIZE: 32 * 1024,
     /** 고아 잡 정리 유예 시간 (ms) - 재연결 허용 시간 */
@@ -192,11 +192,11 @@ export const APP_CONFIG = {
    */
   WAVEFORM_VIEW: {
     /** 파형 막대 색 — 스펙트럴 위에 겹치므로 대비 높은 색(흰색 권장). */
-    WAVE_COLOR: '#ffffff',
+    WAVE_COLOR: "#ffffff",
     /** 파형 오버레이 투명도 (0~1). 스펙트럴이 비치도록 반투명. */
     WAVE_OPACITY: 0.25,
     /** 파형 블렌드 모드. 'screen'은 어두운 스펙트럴 위에 막대만 떠보이게 한다. */
-    WAVE_BLEND_MODE: 'screen' as const,
+    WAVE_BLEND_MODE: "screen" as const,
     /** 줌 > 4 일 때 막대 폭(px). */
     BAR_WIDTH_ZOOMED: 1,
     /** 기본 막대 폭(px). */
@@ -218,7 +218,7 @@ export const APP_CONFIG = {
     /** 프레임 상한. 초과 시 stride 로 솎아 페이로드/연산 보호. */
     SPECTRAL_MAX_FRAMES: 2400,
     /** 스펙트럴 캔버스 배경 채움색(데이터 없는 영역). */
-    SPECTRAL_BG: '#101114',
+    SPECTRAL_BG: "#101114",
     /**
      * 스펙트럴 intensity 로그 스케일 계수. log10(1 + mag * SCALE) 로 압축.
      * 키우면 약한 신호가 더 밝게(대비↓), 줄이면 강한 피크만 부각(대비↑).
@@ -233,7 +233,7 @@ export const APP_CONFIG = {
     LIGHT_RANGE: 54,
 
     /** 스펙트럴 그리드 가로선 색. */
-    GRID_STROKE: 'rgba(255, 255, 255, 0.12)',
+    GRID_STROKE: "rgba(255, 255, 255, 0.12)",
     /** 스펙트럴 그리드 분할 수(가로선은 분할-1개). */
     GRID_DIVISIONS: 4,
   },

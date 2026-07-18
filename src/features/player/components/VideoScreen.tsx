@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { type RefObject } from 'react';
+import { type RefObject } from "react";
 
 interface VideoScreenProps {
   /** video.js가 마운트되는 컨테이너 ref (플레이어 lifecycle은 VideoPlayerView가 소유) */

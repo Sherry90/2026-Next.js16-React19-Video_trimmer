@@ -1,12 +1,17 @@
-'use client';
+"use client";
 
-import { useCallback } from 'react';
-import { usePlayerCurrentTime, useVideoDuration, useTrimPoints, useTrimPointActions } from '@/stores/hooks';
-import { useVideoPlayerContext } from '@/shared/video-player/VideoPlayerContext';
-import { useKeyboardShortcuts } from './useKeyboardShortcuts';
-import { usePreviewPlaybackContext } from '../context/PreviewPlaybackContext';
-import { stepClamped } from '@/features/timeline/utils/timelineCoords';
-import { FRAME_STEP, SECOND_STEP } from '@/constants/keyboardShortcuts';
+import { useCallback } from "react";
+import {
+  usePlayerCurrentTime,
+  useVideoDuration,
+  useTrimPoints,
+  useTrimPointActions,
+} from "@/stores/hooks";
+import { useVideoPlayerContext } from "@/shared/video-player/VideoPlayerContext";
+import { useKeyboardShortcuts } from "./useKeyboardShortcuts";
+import { usePreviewPlaybackContext } from "../context/PreviewPlaybackContext";
+import { stepClamped } from "@/features/timeline/utils/timelineCoords";
+import { FRAME_STEP, SECOND_STEP } from "@/constants/keyboardShortcuts";
 
 /**
  * 편집 화면 키보드 단축키 스마트 hook.
@@ -26,10 +31,22 @@ export function useEditingShortcuts(): void {
   // 단일 인스턴스(PreviewPlaybackProvider)를 공유 — 같은 player에 리스너 이중 부착 방지.
   const { handlePreview } = usePreviewPlaybackContext();
 
-  const handleFrameForward = useCallback(() => seek(stepClamped(currentTime, FRAME_STEP, 0, duration)), [currentTime, duration, seek]);
-  const handleFrameBackward = useCallback(() => seek(stepClamped(currentTime, -FRAME_STEP, 0, duration)), [currentTime, duration, seek]);
-  const handleSecondForward = useCallback(() => seek(stepClamped(currentTime, SECOND_STEP, 0, duration)), [currentTime, duration, seek]);
-  const handleSecondBackward = useCallback(() => seek(stepClamped(currentTime, -SECOND_STEP, 0, duration)), [currentTime, duration, seek]);
+  const handleFrameForward = useCallback(
+    () => seek(stepClamped(currentTime, FRAME_STEP, 0, duration)),
+    [currentTime, duration, seek],
+  );
+  const handleFrameBackward = useCallback(
+    () => seek(stepClamped(currentTime, -FRAME_STEP, 0, duration)),
+    [currentTime, duration, seek],
+  );
+  const handleSecondForward = useCallback(
+    () => seek(stepClamped(currentTime, SECOND_STEP, 0, duration)),
+    [currentTime, duration, seek],
+  );
+  const handleSecondBackward = useCallback(
+    () => seek(stepClamped(currentTime, -SECOND_STEP, 0, duration)),
+    [currentTime, duration, seek],
+  );
   const handleSetInPoint = useCallback(() => setInPoint(currentTime), [currentTime, setInPoint]);
   const handleSetOutPoint = useCallback(() => setOutPoint(currentTime), [currentTime, setOutPoint]);
   const handleJumpToInPoint = useCallback(() => seek(inPoint), [inPoint, seek]);

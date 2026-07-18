@@ -1,6 +1,14 @@
-import { createFile } from 'mp4box';
-import type { ISOFile, Track, Sample, MP4BoxBuffer, Box, SampleEntryFourCC } from 'mp4box';
-import { filterSamplesByTimeRange, createCompletionDetector } from './mp4boxHelpers';
+import { createFile } from "mp4box";
+import type {
+  Track,
+  Sample,
+  MP4BoxBuffer,
+  Box,
+  BoxKind,
+  SampleEntryFourCC,
+  IsoFileOptions,
+} from "mp4box";
+import { filterSamplesByTimeRange, createCompletionDetector } from "./mp4boxHelpers";
 
 // Movie type from mp4box
 interface Movie {
@@ -15,8 +23,8 @@ interface Movie {
 
 export interface TrimOptions {
   inputFile: File;
-  startTime: number;  // seconds
-  endTime: number;    // seconds
+  startTime: number; // seconds
+  endTime: number; // seconds
   onProgress?: (progress: number) => void; // 0-100
 }
 
@@ -25,8 +33,8 @@ interface SampleData {
   trackId: number;
   info: Track;
   completed: boolean;
-  sampleEntryType?: SampleEntryFourCC;  // 실제 fourcc: 'avc1' | 'hvc1' | 'mp4a' ...
-  descriptionBoxes?: Box[];              // 소스 sample entry의 avcC/hvcC/esds/pasp
+  sampleEntryType?: SampleEntryFourCC; // 실제 fourcc: 'avc1' | 'hvc1' | 'mp4a' ...
+  descriptionBoxes?: Box[]; // 소스 sample entry의 avcC/hvcC/esds/pasp
 }
 
 export async function trimVideoMP4Box(options: TrimOptions): Promise<Blob> {
@@ -49,7 +57,7 @@ export async function trimVideoMP4Box(options: TrimOptions): Promise<Blob> {
 
     return blob;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     throw new Error(`Video trimming failed: ${errorMessage}`);
   }
 }
@@ -57,7 +65,7 @@ export async function trimVideoMP4Box(options: TrimOptions): Promise<Blob> {
 async function parseAndExtractSamples(
   arrayBuffer: ArrayBuffer,
   startTime: number,
-  endTime: number
+  endTime: number,
 ): Promise<{ info: Movie; tracksData: Map<number, SampleData> }> {
   return new Promise((resolve, reject) => {
     const mp4boxfile = createFile();
@@ -79,18 +87,18 @@ async function parseAndExtractSamples(
 
       if (info && tracksData.size > 0) {
         // Filter samples by time range using helper
-        tracksData.forEach(trackData => {
+        tracksData.forEach((trackData) => {
           trackData.samples = filterSamplesByTimeRange(
             trackData.samples,
             trackData.info,
             startTime,
-            endTime
+            endTime,
           );
         });
 
         resolve({ info, tracksData });
       } else {
-        reject(new Error('Failed to parse MP4 or no tracks found'));
+        reject(new Error("Failed to parse MP4 or no tracks found"));
       }
     };
 
@@ -98,7 +106,7 @@ async function parseAndExtractSamples(
       info = parsedInfo;
 
       // Set extraction options for all tracks
-      [...parsedInfo.videoTracks, ...parsedInfo.audioTracks].forEach(track => {
+      [...parsedInfo.videoTracks, ...parsedInfo.audioTracks].forEach((track) => {
         // 파싱된 ISOFile이 살아있는 동안 소스 sample entry(코덱 설정 포함)를 캡처.
         // entries[0]의 type(실제 fourcc)과 child boxes(avcC/hvcC/esds/pasp)를 보존해
         // 재구성 시 디코더 설정을 복원한다.
@@ -124,7 +132,7 @@ async function parseAndExtractSamples(
       completionDetector.start();
     };
 
-    mp4boxfile.onSamples = (trackId: number, user: any, samples: Sample[]) => {
+    mp4boxfile.onSamples = (trackId: number, user: unknown, samples: Sample[]) => {
       const trackData = tracksData.get(trackId);
       if (trackData) {
         trackData.samples.push(...samples);
@@ -155,7 +163,7 @@ async function createTrimmedMP4(
   info: Movie,
   tracksData: Map<number, SampleData>,
   startTime: number,
-  endTime: number
+  endTime: number,
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const mp4boxfile = createFile();
@@ -168,30 +176,30 @@ async function createTrimmedMP4(
         if (trackData.samples.length === 0) return;
 
         const track = trackData.info;
-        const isVideo = info.videoTracks.some(t => t.id === oldTrackId);
+        const isVideo = info.videoTracks.some((t) => t.id === oldTrackId);
 
         // 레지스트리에 등록된 실제 sample entry가 없으면 addTrack이 undefined를 반환하며
         // 트랙이 조용히 사라진다. 명시적 실패로 전환해 출력에 트랙 누락을 막는다.
         if (!trackData.sampleEntryType) {
           throw new Error(
-            `Missing sample entry for track ${oldTrackId}; cannot rebuild codec config`
+            `Missing sample entry for track ${oldTrackId}; cannot rebuild codec config`,
           );
         }
 
-        const trackOptions: any = {
-          type: trackData.sampleEntryType,               // 실제 fourcc (avc1/hvc1/mp4a ...)
-          description_boxes: trackData.descriptionBoxes, // avcC/hvcC/esds/pasp 복원
+        const trackOptions: IsoFileOptions = {
+          type: trackData.sampleEntryType, // 실제 fourcc (avc1/hvc1/mp4a ...)
+          description_boxes: trackData.descriptionBoxes as BoxKind[] | undefined, // avcC/hvcC/esds/pasp 복원
           timescale: track.timescale,
           duration: Math.floor((endTime - startTime) * track.timescale),
-          language: track.language || 'und',
+          language: track.language || "und",
           width: track.track_width || 0,
           height: track.track_height || 0,
         };
 
         if (!isVideo) {
-          trackOptions.samplerate = (track as any).audio?.sample_rate || 48000;
-          trackOptions.channel_count = (track as any).audio?.channel_count || 2;
-          trackOptions.samplesize = (track as any).audio?.sample_size || 16;
+          trackOptions.samplerate = track.audio?.sample_rate || 48000;
+          trackOptions.channel_count = track.audio?.channel_count || 2;
+          trackOptions.samplesize = track.audio?.sample_size || 16;
         }
 
         const newTrackId = mp4boxfile.addTrack(trackOptions);
@@ -205,7 +213,7 @@ async function createTrimmedMP4(
 
         const firstDts = trackData.samples[0].dts;
 
-        trackData.samples.forEach((sample, index) => {
+        trackData.samples.forEach((sample) => {
           if (!sample.data) return; // Skip samples without data
 
           const sampleOptions = {
@@ -222,7 +230,7 @@ async function createTrimmedMP4(
       // getBuffer()는 save()가 blob화하는 동일한 트림 ArrayBuffer를
       // <a download> 자동 다운로드 부작용 없이 반환한다.
       const stream = mp4boxfile.getBuffer();
-      const blob = new Blob([stream.buffer], { type: 'video/mp4' });
+      const blob = new Blob([stream.buffer], { type: "video/mp4" });
       resolve(blob);
     } catch (error) {
       reject(error);
