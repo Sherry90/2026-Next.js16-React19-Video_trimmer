@@ -6,12 +6,16 @@ import { TIMELINE } from "@/constants/appConfig";
 import { formatSimpleTime } from "@/shared/lib/timeFormatter";
 import { WaveformBackground } from "./WaveformBackground";
 import { useTimelineZoom } from "../hooks/useTimelineZoom";
+import { useRulerScrub } from "../hooks/useRulerScrub";
 
 interface TimelineBarProps {
+  /** 트랙 본체 오버레이 — trim 핸들. */
   children?: React.ReactNode;
+  /** 룰러+트랙을 관통하는 playhead 오버레이. */
+  playhead?: React.ReactNode;
 }
 
-export function TimelineBar({ children }: TimelineBarProps) {
+export function TimelineBar({ children, playhead }: TimelineBarProps) {
   const duration = useVideoDuration();
   const { inPoint, outPoint } = useTrimPoints();
   const zoom = useTimelineZoomValue();
@@ -20,7 +24,11 @@ export function TimelineBar({ children }: TimelineBarProps) {
   // const { setWaveformDisplayMode } = useTimelineActions();
 
   const viewportRef = useRef<HTMLDivElement>(null);
+  const rulerRef = useRef<HTMLDivElement>(null);
   const [viewportWidth, setViewportWidth] = useState<number>(0);
+
+  // 룰러 클릭/스크럽 → playhead 절대 seek (트랙 본체 클릭은 seek 안 함 → trim 오조작 방지)
+  const { handleMouseDown: handleRulerMouseDown } = useRulerScrub(rulerRef);
 
   // 휠 줌(커서 기준) + Shift+휠 가로 패닝 — scroll viewport 요소에 부착
   useTimelineZoom(viewportRef);
@@ -60,6 +68,14 @@ export function TimelineBar({ children }: TimelineBarProps) {
             className="relative"
             style={{ width: contentWidth > 0 ? `${contentWidth}px` : "100%" }}
           >
+            {/* Ruler strip — 클릭/스크럽 seek 전용 영역(playhead grip 은 오버레이가 담당) */}
+            <div
+              ref={rulerRef}
+              data-testid="timeline-ruler"
+              onMouseDown={handleRulerMouseDown}
+              className="relative w-full h-[20px] mb-1 rounded-t bg-[#16171a] border-b border-[#2a2c31] cursor-pointer select-none"
+            />
+
             {/* Timeline main area */}
             <div className="relative w-full h-[80px] bg-[#1c1d20] rounded overflow-hidden">
               {/* Waveform background */}
@@ -85,8 +101,13 @@ export function TimelineBar({ children }: TimelineBarProps) {
                 />
               </div>
 
-              {/* Handles and playhead */}
+              {/* Trim 핸들 — 트랙 본체에만(grab Y존 = 트랙) */}
               <div className="absolute inset-0">{children}</div>
+            </div>
+
+            {/* Playhead 오버레이 — 룰러(20)+mb(4)+트랙(80)=104px 관통. pe-none, grip만 pe-auto */}
+            <div className="absolute top-0 left-0 right-0 h-[104px] pointer-events-none">
+              {playhead}
             </div>
 
             {/* Time ruler — content 와 동일 폭, 함께 스크롤 */}
