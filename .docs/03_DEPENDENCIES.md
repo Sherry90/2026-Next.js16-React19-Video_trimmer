@@ -1,6 +1,8 @@
 # 외부 의존성 관리
 
-Video Trimmer에서 사용하는 외부 바이너리 의존성과 자동 설치 시스템에 대한 상세 문서입니다.
+이 앱은 영상을 다루려고 **외부 프로그램 4개**를 빌려 쓴다: `ffmpeg`(영상 자르기·변환), `yt-dlp`(온라인 영상 정보·다운로드), `streamlink`(치지직 같은 라이브 구간 받기), `aria2c`(빠른 병렬 다운로드). 사용자가 이걸 직접 설치할 필요는 없다 — `npm install` 할 때 설치 스크립트(`scripts/setup-deps.mjs`)가 알아서 받아 `.bin/`에 넣어 준다.
+
+이 문서는 그 프로그램들이 **어떻게 준비되고, 어디서 찾아지고, 문제가 생기면 어떻게 고치는지**를 설명한다.
 
 ## 목차
 
@@ -30,9 +32,12 @@ Video Trimmer
 ├── yt-dlp (필수)
 │   ├── 번들: 번들 Python venv(.bin/yt-dlp-venv)에 pip 설치 (onefile은 fallback)
 │   └── 용도: URL 메타데이터 추출, YouTube/Generic 구간 다운로드
-└── Streamlink (필수)
-    ├── 번들: .bin/streamlink (auto-download)
-    └── 용도: Chzzk HLS 스트림 구간 다운로드
+├── Streamlink (필수)
+│   ├── 번들: .bin/streamlink (auto-download)
+│   └── 용도: Chzzk HLS 스트림 구간 다운로드
+└── aria2c (다운로드 가속)
+    ├── 번들: .bin/aria2/aria2c (플랫폼 prebuilt auto-download)
+    └── 용도: YouTube 전체 다운로드 폴백 시 다중연결 병렬 수신(스로틀 우회)
 ```
 
 ### 우선순위 전략
@@ -44,6 +49,7 @@ Video Trimmer
 | FFmpeg | 번들 (`@ffmpeg-installer`) → 시스템 (`ffmpeg`) |
 | yt-dlp | venv (`.bin/yt-dlp-venv`) → 시스템 (`yt-dlp`) → 번들 onefile (`.bin/yt-dlp`) |
 | Streamlink | 번들 (`.bin/streamlink*`) → 시스템 (`streamlink`) |
+| aria2c | 번들 (`.bin/aria2/aria2c`) → 시스템 (`aria2c`) → `null`(미설치, 폴백 시 aria2c 없이 진행) |
 
 ### Next.js 빌드 설정
 
@@ -72,9 +78,9 @@ const nextConfig = {
 1. **타임스탬프 리셋** (메인 용도)
    - Streamlink로 다운로드한 HLS 세그먼트의 타임스탬프를 0부터 시작하도록 리셋
    - `-avoid_negative_ts make_zero` 플래그 사용
-2. **yt-dlp 내부 의존성**
-   - yt-dlp가 muxing (비디오+오디오 병합)에 사용
-   - YouTube 1-phase 다운로드에서 postprocessor로 FFmpeg 호출
+2. **yt-dlp 내부 의존성 + 로컬 구간 컷**
+   - yt-dlp가 muxing (비디오+오디오 병합)에 사용 (`--ffmpeg-location`으로 번들 ffmpeg 지정)
+   - YouTube 다운로드 후, 받은 파일을 로컬 ffmpeg로 잘라내고 타임스탬프를 리셋(스트림 카피)
 3. **브라우저 내 처리** (FFmpeg.wasm, 비-ISO 형식용)
    - `trimVideoDispatcher.ts`가 형식에 따라 선택: ISO(mp4/mov/m4v)는 MP4Box, 그 외는 FFmpeg.wasm
    - **자체 호스팅**: `@ffmpeg/core` npm 패키지에서 `public/ffmpeg/`로 복사 (CDN 미사용)
@@ -114,18 +120,26 @@ ffmpeg -y -i input.mp4 \
 - 예: 10초~30초 구간 다운로드 → 타임스탬프가 10초부터 시작
 - 비디오 플레이어가 0초부터 시작하도록 리셋 필요
 
-#### YouTube postprocessor 통합 (1-phase)
+#### YouTube 전체 다운로드 후 로컬 컷
 
-**파일:** `src/lib/ytdlpDownloader.ts`
+**파일:** `src/lib/ytdlpDownloader.ts` (`buildFfmpegCutArgs`)
+
+`--download-sections`(yt-dlp 내부 구간 추출)는 쓰지 않는다. 대신 선택 포맷을 받은 뒤,
+로컬에서 ffmpeg로 구간을 잘라내며 타임스탬프를 리셋한다(재인코딩 없는 스트림 카피).
 
 ```bash
-yt-dlp --postprocessor-args \
-  "ffmpeg:-avoid_negative_ts make_zero -fflags +genpts -movflags +faststart" \
-  --ffmpeg-location /path/to/bundled/ffmpeg \
-  <url>
+# 구간 컷: -ss를 -i 앞에 둬서 키프레임까지 빠르게 seek (±1-2초)
+ffmpeg -y -ss <start> -i full.mp4 -t <duration> \
+  -c copy \                      # 재인코딩 없음
+  -avoid_negative_ts make_zero \ # 타임스탬프 0부터 시작
+  -fflags +genpts \              # PTS 재생성
+  -movflags +faststart \         # 스트리밍 최적화
+  clip.mp4
 ```
 
-yt-dlp가 내부적으로 FFmpeg를 호출하여 muxing + 타임스탬프 리셋을 한 번에 처리.
+> byte-range 경로(`byteRangeDownloader.ts`)가 성공하면 이 전체-다운로드 단계 없이,
+> 받은 구간 바이트를 바로 ffmpeg로 mux+cut 한다. 자세한 다운로드 전략은
+> [01_OVERVIEW.md](./01_OVERVIEW.md#url-영상-통째로-안-받고-필요한-부분만) 참조.
 
 #### FFmpeg 진행률 파싱
 
@@ -439,7 +453,14 @@ postinstall 훅 실행
 └─────────────────────────────────────┘
   ↓
 ┌─────────────────────────────────────┐
-│ 4. copyWasmFiles()                  │
+│ 4. setupAria2c()                    │
+│    - 시스템 aria2c 확인 (있으면 사용)│
+│    - 없으면 플랫폼 prebuilt 다운로드  │
+│      → .bin/aria2/aria2c            │
+└─────────────────────────────────────┘
+  ↓
+┌─────────────────────────────────────┐
+│ 5. copyWasmFiles()                  │
 │    - @ffmpeg/core → public/ffmpeg/  │
 │    - ffmpeg-core.js, .wasm 복사     │
 └─────────────────────────────────────┘
@@ -447,13 +468,13 @@ postinstall 훅 실행
 의존성 설치 완료
 ```
 
-**출력 예시:**
+**출력 예시** (버전 숫자는 예시일 뿐, 실제 값은 플랫폼·시점에 따라 다름):
 ```
 Video Trimmer - Dependencies
 
-  ffmpeg: v4.4.1 (bundled)
-  yt-dlp: v2024.12.06 (system)
-  streamlink: 8.2.0 (system)
+  ffmpeg: <version> (bundled)
+  yt-dlp: <version> (venv)
+  streamlink: <version> (bundled)
 ```
 
 ### 플랫폼별 처리
@@ -568,8 +589,9 @@ npm install  # postinstall이 자동 실행
 
 **설치되는 것:**
 - FFmpeg: 번들 (node_modules)
-- yt-dlp: `.bin/yt-dlp`
+- yt-dlp: `.bin/yt-dlp-venv` (venv, onefile은 폴백)
 - Streamlink: `.bin/streamlink-linux-x64.AppImage` (또는 arm64)
+- aria2c: `.bin/aria2/aria2c` (시스템에 있으면 그것 사용)
 
 **시스템 의존성 (선택):**
 ```bash
@@ -589,10 +611,11 @@ npm install
 **설치되는 것:**
 - FFmpeg: 번들 (`@ffmpeg-installer/ffmpeg`)
 - FFmpeg.wasm: `public/ffmpeg/` (자체 호스팅)
-- yt-dlp: `.bin/yt-dlp`
-- Streamlink: `.bin/streamlink-venv/bin/streamlink` (Python venv)
+- yt-dlp: `.bin/yt-dlp-venv` (번들 Python venv, onefile은 폴백)
+- Streamlink: `.bin/streamlink-venv/bin/streamlink` (번들 Python venv)
+- aria2c: `.bin/aria2/aria2c` (시스템에 있으면 그것 사용)
 
-**Python 3 필요:** macOS 12.3+ 기본 내장. 없을 경우 경고 출력 후 계속 진행.
+**시스템 Python 불요:** 프로젝트가 번들 CPython(`.bin/python`, python-build-standalone)을 받아 venv를 만든다. 번들 Python 확보 실패 시에만 경고 출력 후 계속.
 수동 대안: `brew install streamlink`
 
 **확인:**
@@ -609,8 +632,9 @@ npm install
 
 **설치되는 것:**
 - FFmpeg: 번들
-- yt-dlp: `.bin/yt-dlp.exe`
+- yt-dlp: `.bin/yt-dlp-venv` (번들 Python venv, `.bin/yt-dlp.exe` onefile은 폴백)
 - Streamlink: `.bin/streamlink-win/streamlink.exe` (portable)
+- aria2c: `.bin/aria2/aria2c.exe` (시스템에 있으면 그것 사용)
 
 ---
 

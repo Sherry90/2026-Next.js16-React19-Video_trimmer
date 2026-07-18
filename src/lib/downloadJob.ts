@@ -3,7 +3,7 @@
  *
  * 플랫폼 감지 후 적절한 다운로드 전략 선택:
  * - Chzzk → Streamlink
- * - YouTube/기타 → yt-dlp (향후 구현)
+ * - YouTube/기타 → yt-dlp
  */
 
 import { detectPlatform, selectDownloadStrategy } from './platformDetector';
