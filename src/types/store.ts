@@ -33,6 +33,7 @@ export interface TimelineState {
   isOutPointLocked: boolean; // Phase 4
   zoom: number; // Phase 4 (1 = 100%)
   waveformDisplayMode: WaveformDisplayMode;
+  draggingBoundary: "in" | "out" | null; // 트림 핸들 드래그 중인 경계(playhead 추종용)
 }
 
 export type WaveformDisplayMode = "waveform" | "spectrogram";

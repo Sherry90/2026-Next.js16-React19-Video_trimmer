@@ -35,7 +35,7 @@ export function useTrimHandleControl(type: "in" | "out"): TrimHandleControl {
   const { inPoint, outPoint } = useTrimPoints();
   const duration = useVideoDuration();
   const { isInPointLocked, isOutPointLocked } = useTrimLocks();
-  const { setInPoint, setOutPoint } = useTrimPointActions();
+  const { setInPoint, setOutPoint, setDraggingBoundary } = useTrimPointActions();
   const { setCurrentTime } = usePlayerActions();
   const { seek, player } = useVideoPlayerContext();
 
@@ -51,21 +51,30 @@ export function useTrimHandleControl(type: "in" | "out"): TrimHandleControl {
   const handleDragStart = useCallback(() => {
     startTimeRef.current = point;
     lastSeekTimeRef.current = 0;
-  }, [point]);
+    // in-drag 동안 playhead는 inPoint를 직접 렌더(동일 store 값 → lockstep sync).
+    setDraggingBoundary(type);
+  }, [point, type, setDraggingBoundary]);
 
   // Playhead를 경계로 이동 + 실제 seek.
-  //  - in: 드래그 내내 inPoint로 snap → 시작 프레임 실시간 미리보기.
-  //  - out: 제약 위반(playhead가 outPoint 뒤=구간 밖)일 때만 outPoint로 당김.
-  const snapPlayheadToBoundary = useCallback(() => {
-    const { inPoint: liveIn, outPoint: liveOut } = getTimelineSnapshot();
-    if (type === "out") {
-      const realTime = player?.currentTime?.() ?? getPlayerSnapshot().currentTime;
-      if (realTime <= liveOut) return;
-    }
-    const boundary = type === "in" ? liveIn : liveOut;
-    setCurrentTime(boundary);
-    seek(boundary);
-  }, [type, player, seek, setCurrentTime]);
+  //  - in: 드래그 중 playhead 렌더는 inPoint(draggingBoundary) 경로가 담당 → 여기선 throttle seek만.
+  //        (currentTime store 갱신은 드래그 종료 시 1회 커밋 → per-frame 렌더 부하 제거.)
+  //  - out: 제약 위반(playhead가 outPoint 뒤=구간 밖)일 때만 currentTime/seek로 outPoint로 당김.
+  // doSeek=false면 store 상태만, true면 실제 비디오 seek(네트워크 바운드)까지 수행.
+  const snapPlayheadToBoundary = useCallback(
+    (doSeek: boolean) => {
+      const { inPoint: liveIn, outPoint: liveOut } = getTimelineSnapshot();
+      if (type === "out") {
+        const realTime = player?.currentTime?.() ?? getPlayerSnapshot().currentTime;
+        if (realTime <= liveOut) return;
+        setCurrentTime(liveOut);
+        if (doSeek) seek(liveOut);
+        return;
+      }
+      // in: playhead 렌더는 inPoint 경로. 여기선 throttle seek만(비디오 프레임 프리뷰).
+      if (doSeek) seek(liveIn);
+    },
+    [type, player, seek, setCurrentTime],
+  );
 
   const handleDrag = useCallback(
     (_handleType: string, deltaX: number) => {
@@ -75,21 +84,31 @@ export function useTrimHandleControl(type: "in" | "out"): TrimHandleControl {
       const newTime = startTimeRef.current + deltaXToTime(deltaX, containerWidth, duration);
       setPoint(newTime);
 
-      // 드래그 중 throttle seek → Playhead가 경계를 실시간 추종.
+      // seek(비디오 프레임)만 throttle. playhead UI 추종은 inPoint 갱신으로 매 프레임 즉시.
       const now = Date.now();
-      if (now - lastSeekTimeRef.current >= TIMELINE.PLAYHEAD_SEEK_THROTTLE_MS) {
-        lastSeekTimeRef.current = now;
-        snapPlayheadToBoundary();
-      }
+      const shouldSeek = now - lastSeekTimeRef.current >= TIMELINE.PLAYHEAD_SEEK_THROTTLE_MS;
+      if (shouldSeek) lastSeekTimeRef.current = now;
+      snapPlayheadToBoundary(shouldSeek);
     },
     [duration, isLocked, setPoint, snapPlayheadToBoundary],
   );
 
+  const handleDragEnd = useCallback(() => {
+    // 최종 확정 — in은 currentTime 커밋(재생 재개 위치) + seek, out은 조건부 snap. 이후 플래그 해제.
+    const { inPoint: liveIn } = getTimelineSnapshot();
+    if (type === "in") {
+      setCurrentTime(liveIn);
+      seek(liveIn);
+    } else {
+      snapPlayheadToBoundary(true);
+    }
+    setDraggingBoundary(null);
+  }, [type, seek, setCurrentTime, snapPlayheadToBoundary, setDraggingBoundary]);
+
   const { handleMouseDown } = useDragHandle(type === "in" ? "inPoint" : "outPoint", {
     onDragStart: handleDragStart,
     onDrag: handleDrag,
-    // 최종 확정 — throttle이 마지막 mousemove를 건너뛰어도 경계로 snap.
-    onDragEnd: snapPlayheadToBoundary,
+    onDragEnd: handleDragEnd,
   });
 
   return { containerRef, position, isLocked, handleMouseDown };

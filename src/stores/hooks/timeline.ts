@@ -10,6 +10,9 @@ export const useTrimPoints = createStateSelector((s) => ({
 /** 타임라인 줌 배율. */
 export const useTimelineZoomValue = createSimpleSelector((s) => s.timeline.zoom);
 
+/** 트림 핸들 드래그 중인 경계('in'|'out'|null) — playhead 추종용. */
+export const useDraggingBoundary = createSimpleSelector((s) => s.timeline.draggingBoundary);
+
 /** 파형/스펙트럼 표시 모드. */
 export const useWaveformDisplayMode = createSimpleSelector(
   (s) => s.timeline.waveformDisplayMode ?? "waveform",
@@ -36,6 +39,7 @@ export const useTimelineActions = createStateSelector((s) => ({
 export const useTrimPointActions = createStateSelector((s) => ({
   setInPoint: s.setInPoint,
   setOutPoint: s.setOutPoint,
+  setDraggingBoundary: s.setDraggingBoundary,
 }));
 
 // ── processing ──
