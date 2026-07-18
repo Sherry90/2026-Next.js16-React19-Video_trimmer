@@ -1,0 +1,2 @@
+# 타입체크는 전체 프로젝트 대상(staged만으론 불가) → 커밋마다 X, push당 1회.
+npm run type-check
