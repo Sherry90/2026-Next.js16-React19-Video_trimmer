@@ -65,6 +65,7 @@ interface StoreActions {
   setOutPointLocked: (locked: boolean) => void;
   setZoom: (zoom: number) => void;
   setWaveformDisplayMode: (mode: WaveformDisplayMode) => void;
+  setDraggingBoundary: (boundary: "in" | "out" | null) => void;
   resetTimeline: () => void;
 
   // 진행률 관련 (type별 단일 setter)
@@ -112,6 +113,7 @@ const initialState: StoreState = {
     isOutPointLocked: false,
     zoom: 1,
     waveformDisplayMode: "waveform",
+    draggingBoundary: null,
   },
   processing: {
     uploadProgress: 0,
@@ -220,6 +222,11 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
       timeline: { ...state.timeline, waveformDisplayMode: mode },
     })),
 
+  setDraggingBoundary: (draggingBoundary) =>
+    set((state) => ({
+      timeline: { ...state.timeline, draggingBoundary },
+    })),
+
   resetTimeline: () => {
     const duration = get().videoFile?.duration ?? 0;
     set({
@@ -231,6 +238,7 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
         isOutPointLocked: false,
         zoom: 1,
         waveformDisplayMode: "waveform",
+        draggingBoundary: null,
       },
     });
   },
