@@ -11,7 +11,7 @@
 export function shouldAutoPauseAtOut(
   currentTime: number,
   outPoint: number,
-  paused: boolean
+  paused: boolean,
 ): boolean {
   return currentTime >= outPoint && outPoint > 0 && !paused;
 }

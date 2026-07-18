@@ -1,10 +1,10 @@
-import type { HTMLAttributes } from 'react';
-import { cn } from '@/shared/lib/cn';
+import type { HTMLAttributes } from "react";
+import { cn } from "@/shared/lib/cn";
 
 /** 화면 중앙 카드 컨테이너 공용 chrome. 팔레트별 차이(dark variant, mt 등)는 className으로 확장. */
 const VARIANTS = {
-  white: 'w-full max-w-2xl mx-auto p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg',
-  red: 'w-full max-w-2xl mx-auto p-6 bg-red-50 border border-red-200 rounded-lg',
+  white: "w-full max-w-2xl mx-auto p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg",
+  red: "w-full max-w-2xl mx-auto p-6 bg-red-50 border border-red-200 rounded-lg",
 } as const;
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {

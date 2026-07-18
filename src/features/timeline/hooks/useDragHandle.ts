@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useCallback, useRef } from 'react';
-import type { HandleType } from '@/types/types';
+import { useCallback, useRef } from "react";
+import type { HandleType } from "@/types/types";
 
 interface UseDragHandleOptions {
   onDragStart?: (handleType: HandleType, startX: number) => void;
@@ -35,19 +35,18 @@ export function useDragHandle(handleType: HandleType, options: UseDragHandleOpti
           isDraggingRef.current = false;
           options.onDragEnd?.(handleType);
 
-          document.removeEventListener('mousemove', handleMouseMove);
-          document.removeEventListener('mouseup', handleMouseUp);
+          document.removeEventListener("mousemove", handleMouseMove);
+          document.removeEventListener("mouseup", handleMouseUp);
         }
       };
 
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
     },
-    [handleType, options]
+    [handleType, options],
   );
 
   return {
     handleMouseDown,
-    isDragging: isDraggingRef.current,
   };
 }

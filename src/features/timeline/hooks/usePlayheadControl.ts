@@ -1,12 +1,21 @@
-'use client';
+"use client";
 
-import { useCallback, useMemo, useRef, useState, useEffect, type RefObject } from 'react';
-import { usePlayerCurrentTime, useVideoDuration, useTrimPoints, usePlayerActions } from '@/stores/hooks';
-import { useVideoPlayerContext } from '@/shared/video-player/VideoPlayerContext';
-import { useDragHandle } from './useDragHandle';
-import { usePlayheadSeek } from '@/shared/video-player/usePlayheadSeek';
-import { timeToPercent, percentToTime, clampPercentToTrim } from '@/features/timeline/utils/timelineCoords';
-import { TIMELINE } from '@/constants/appConfig';
+import { useCallback, useMemo, useRef, useState, useEffect, type RefObject } from "react";
+import {
+  usePlayerCurrentTime,
+  useVideoDuration,
+  useTrimPoints,
+  usePlayerActions,
+} from "@/stores/hooks";
+import { useVideoPlayerContext } from "@/shared/video-player/VideoPlayerContext";
+import { useDragHandle } from "./useDragHandle";
+import { usePlayheadSeek } from "@/shared/video-player/usePlayheadSeek";
+import {
+  timeToPercent,
+  percentToTime,
+  clampPercentToTrim,
+} from "@/features/timeline/utils/timelineCoords";
+import { TIMELINE } from "@/constants/appConfig";
 
 export interface PlayheadControl {
   /** 드래그 컨테이너 ref. */
@@ -57,8 +66,8 @@ export function usePlayheadControl(): PlayheadControl {
     setIsScrubbing(true);
     lastSeekTimeRef.current = 0;
 
-    document.body.style.cursor = 'ew-resize';
-    document.body.style.userSelect = 'none';
+    document.body.style.cursor = "ew-resize";
+    document.body.style.userSelect = "none";
   }, [currentTime, duration, setIsScrubbing]);
 
   const handleDrag = useCallback(
@@ -73,7 +82,7 @@ export function usePlayheadControl(): PlayheadControl {
         startPositionRef.current + deltaPercent,
         inPoint,
         outPoint,
-        duration
+        duration,
       );
 
       draggingPositionRef.current = newPosition;
@@ -88,13 +97,13 @@ export function usePlayheadControl(): PlayheadControl {
         seek(seekTime);
       }
     },
-    [duration, inPoint, outPoint, seek, setCurrentTime, seekThrottleDelay]
+    [duration, inPoint, outPoint, seek, setCurrentTime, seekThrottleDelay],
   );
 
   const handleDragEnd = useCallback(() => {
     isDraggingRef.current = false;
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
 
     const finalPosition = draggingPositionRef.current;
     if (finalPosition !== null) {
@@ -114,12 +123,12 @@ export function usePlayheadControl(): PlayheadControl {
 
   useEffect(() => {
     return () => {
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
     };
   }, []);
 
-  const { handleMouseDown } = useDragHandle('playhead', {
+  const { handleMouseDown } = useDragHandle("playhead", {
     onDragStart: handleDragStart,
     onDrag: handleDrag,
     onDragEnd: handleDragEnd,

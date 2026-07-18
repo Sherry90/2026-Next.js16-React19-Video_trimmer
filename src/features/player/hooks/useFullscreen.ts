@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useState, type RefObject } from "react";
 
 /**
  * 전체화면 훅. 영상과 커스텀 컨트롤바를 함께 감싸는 wrapper 요소를 전체화면 타깃으로 한다
@@ -31,11 +31,11 @@ export function useFullscreen(containerRef: RefObject<HTMLElement | null>): UseF
       const fsEl = doc.fullscreenElement ?? doc.webkitFullscreenElement ?? null;
       setIsFullscreen(!!fsEl && fsEl === containerRef.current);
     };
-    document.addEventListener('fullscreenchange', onChange);
-    document.addEventListener('webkitfullscreenchange', onChange);
+    document.addEventListener("fullscreenchange", onChange);
+    document.addEventListener("webkitfullscreenchange", onChange);
     return () => {
-      document.removeEventListener('fullscreenchange', onChange);
-      document.removeEventListener('webkitfullscreenchange', onChange);
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("webkitfullscreenchange", onChange);
     };
   }, [containerRef]);
 

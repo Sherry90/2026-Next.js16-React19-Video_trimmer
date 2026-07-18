@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useVideoFile, useTrimPoints, usePhase } from '@/stores/hooks';
-import { Button } from '@/shared/ui/Button';
-import { useExportState } from '../hooks/useExportState';
+import { useVideoFile, useTrimPoints, usePhase } from "@/stores/hooks";
+import { Button } from "@/shared/ui/Button";
+import { useExportState } from "../hooks/useExportState";
 
 export function ExportButton() {
   const videoFile = useVideoFile();
@@ -12,10 +12,10 @@ export function ExportButton() {
   const { buttonText, buttonTitle, isDisabled, handleExport } = useExportState(
     videoFile,
     inPoint,
-    outPoint
+    outPoint,
   );
 
-  if (phase !== 'editing') {
+  if (phase !== "editing") {
     return null;
   }
 

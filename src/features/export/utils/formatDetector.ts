@@ -8,9 +8,9 @@
  * These formats use the ISO Base Media File Format (ISOBMFF)
  */
 const ISO_FORMATS = [
-  'video/mp4',
-  'video/quicktime', // .mov
-  'video/x-m4v', // .m4v
+  "video/mp4",
+  "video/quicktime", // .mov
+  "video/x-m4v", // .m4v
 ];
 
 /**
@@ -30,8 +30,8 @@ export function isISOFormat(file: File): boolean {
  * @param file - The video file to process
  * @returns 'mp4box' for ISO formats, 'ffmpeg' for other formats
  */
-export function getTrimmerType(file: File): 'mp4box' | 'ffmpeg' {
-  return isISOFormat(file) ? 'mp4box' : 'ffmpeg';
+export function getTrimmerType(file: File): "mp4box" | "ffmpeg" {
+  return isISOFormat(file) ? "mp4box" : "ffmpeg";
 }
 
 /**
@@ -42,7 +42,7 @@ export function getTrimmerType(file: File): 'mp4box' | 'ffmpeg' {
  * @returns true if FFmpeg download is required, false if MP4Box can handle it
  */
 export function requiresFFmpegDownload(file: File): boolean {
-  return getTrimmerType(file) === 'ffmpeg';
+  return getTrimmerType(file) === "ffmpeg";
 }
 
 /**
@@ -51,6 +51,6 @@ export function requiresFFmpegDownload(file: File): boolean {
  * @param trimmerType - The trimmer type
  * @returns Human-readable trimmer name
  */
-export function getTrimmerName(trimmerType: 'mp4box' | 'ffmpeg'): string {
-  return trimmerType === 'mp4box' ? 'MP4Box' : 'FFmpeg';
+export function getTrimmerName(trimmerType: "mp4box" | "ffmpeg"): string {
+  return trimmerType === "mp4box" ? "MP4Box" : "FFmpeg";
 }

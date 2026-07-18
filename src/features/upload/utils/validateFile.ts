@@ -2,11 +2,8 @@ import {
   VIDEO_CONSTRAINTS,
   FILE_CONSTRAINT_MESSAGES,
   FILE_SIZE,
-} from '@/constants/fileConstraints';
-import {
-  checkMemoryAvailability,
-  getMemoryStatusMessage,
-} from '@/shared/lib/memoryMonitor';
+} from "@/constants/fileConstraints";
+import { checkMemoryAvailability, getMemoryStatusMessage } from "@/shared/lib/memoryMonitor";
 
 export interface FileValidationResult {
   isValid: boolean;
@@ -34,7 +31,7 @@ export function validateFileSize(file: File): FileValidationResult {
         isValid: false,
         error:
           memoryWarning ||
-          '파일이 너무 커서 브라우저 메모리가 부족할 수 있습니다. 더 작은 파일을 사용해주세요.',
+          "파일이 너무 커서 브라우저 메모리가 부족할 수 있습니다. 더 작은 파일을 사용해주세요.",
       };
     }
     return {

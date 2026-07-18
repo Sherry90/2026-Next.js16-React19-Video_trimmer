@@ -1,24 +1,24 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState, type RefObject } from 'react';
-import { useVideoPlayerContext } from '@/shared/video-player/VideoPlayerContext';
-import { usePlayheadSeek } from '@/shared/video-player/usePlayheadSeek';
-import { useQualityLevels } from '../hooks/useQualityLevels';
-import { useFullscreen } from '../hooks/useFullscreen';
+import { useEffect, useRef, useState, type RefObject } from "react";
+import { useVideoPlayerContext } from "@/shared/video-player/VideoPlayerContext";
+import { usePlayheadSeek } from "@/shared/video-player/usePlayheadSeek";
+import { useQualityLevels } from "../hooks/useQualityLevels";
+import { useFullscreen } from "../hooks/useFullscreen";
 import {
   usePlayerCurrentTime,
   usePlayerIsPlaying,
   usePlayerVolume,
   usePlayerActions,
   useVideoDuration,
-} from '@/stores/hooks';
-import { cn } from '@/shared/lib/cn';
-import { PlayButton } from './PlayButton';
-import { Scrubber } from './Scrubber';
-import { TimeDisplay } from './TimeDisplay';
-import { VolumeControl } from './VolumeControl';
-import { QualitySelector } from './QualitySelector';
-import { FullscreenButton } from './FullscreenButton';
+} from "@/stores/hooks";
+import { cn } from "@/shared/lib/cn";
+import { PlayButton } from "./PlayButton";
+import { Scrubber } from "./Scrubber";
+import { TimeDisplay } from "./TimeDisplay";
+import { VolumeControl } from "./VolumeControl";
+import { QualitySelector } from "./QualitySelector";
+import { FullscreenButton } from "./FullscreenButton";
 
 interface PlayerControlsProps {
   /** 전체화면 타깃(영상+컨트롤을 감싸는 wrapper). DOM ref라 부모(VideoPlayerView)만 제공 가능. */
@@ -35,7 +35,7 @@ interface PlayerControlsProps {
  * - 볼륨/뮤트: 스토어 + 실제 player.volume()/muted() 결선.
  * - 화질: useQualityLevels. 전체화면: useFullscreen.
  */
-export function PlayerControls({ wrapperRef, className = '' }: PlayerControlsProps) {
+export function PlayerControls({ wrapperRef, className = "" }: PlayerControlsProps) {
   const { player, seek, togglePlay, setIsScrubbing } = useVideoPlayerContext();
 
   const currentTime = usePlayerCurrentTime();
@@ -91,7 +91,12 @@ export function PlayerControls({ wrapperRef, className = '' }: PlayerControlsPro
   const displayTime = scrubTime ?? currentTime;
 
   return (
-    <div className={cn('flex flex-col gap-1 px-3 py-2 pt-6 bg-gradient-to-t from-black/85 via-black/55 to-transparent', className)}>
+    <div
+      className={cn(
+        "flex flex-col gap-1 px-3 py-2 pt-6 bg-gradient-to-t from-black/85 via-black/55 to-transparent",
+        className,
+      )}
+    >
       {/* 진행바 — 전체 폭 */}
       <Scrubber
         currentTime={displayTime}

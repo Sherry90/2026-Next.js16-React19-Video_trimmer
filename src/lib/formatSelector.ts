@@ -29,7 +29,7 @@ interface YtdlpInfo {
 
 export interface FormatSelection {
   url: string;
-  streamType: 'hls' | 'mp4';
+  streamType: "hls" | "mp4";
   tbr: number | null; // Total bitrate (kbps)
 }
 
@@ -58,7 +58,7 @@ export interface DashSelection {
 }
 
 function num(v: unknown, fallback = 0): number {
-  return typeof v === 'number' && !isNaN(v) ? v : fallback;
+  return typeof v === "number" && !isNaN(v) ? v : fallback;
 }
 
 /**
@@ -78,14 +78,14 @@ export function selectDashFormats(ytdlpInfo: YtdlpInfo, maxHeight = 1080): DashS
   const formats = ytdlpInfo.formats;
   if (!formats || formats.length === 0) return null;
 
-  const isHttps = (f: YtdlpFormat) => f.protocol === 'https' && !!f.url;
+  const isHttps = (f: YtdlpFormat) => f.protocol === "https" && !!f.url;
 
   // height별 최고 bitrate avc1 video-only 표현
   const byHeight = new Map<number, DashVideoPick>();
   for (const f of formats) {
-    const vcodec = typeof f.vcodec === 'string' ? f.vcodec : '';
+    const vcodec = typeof f.vcodec === "string" ? f.vcodec : "";
     const height = num(f.height);
-    if (!isHttps(f) || !vcodec.startsWith('avc1') || f.acodec !== 'none' || height <= 0) continue;
+    if (!isHttps(f) || !vcodec.startsWith("avc1") || f.acodec !== "none" || height <= 0) continue;
     if (height > maxHeight) continue;
 
     const bandwidth = Math.round(num(f.vbr, num(f.tbr)) * 1000);
@@ -108,8 +108,8 @@ export function selectDashFormats(ytdlpInfo: YtdlpInfo, maxHeight = 1080): DashS
   // 최고 abr mp4a audio-only
   let audio: DashAudioPick | null = null;
   for (const f of formats) {
-    const acodec = typeof f.acodec === 'string' ? f.acodec : '';
-    if (!isHttps(f) || !acodec.startsWith('mp4a') || f.vcodec !== 'none') continue;
+    const acodec = typeof f.acodec === "string" ? f.acodec : "";
+    if (!isHttps(f) || !acodec.startsWith("mp4a") || f.vcodec !== "none") continue;
 
     const bandwidth = Math.round(num(f.abr, num(f.tbr)) * 1000);
     if (!audio || bandwidth > audio.bandwidth) {
@@ -158,41 +158,35 @@ export const DEFAULT_QUALITY: QualityConfig = {
  */
 export function selectBestFormat(ytdlpInfo: YtdlpInfo): FormatSelection | null {
   let streamUrl: string | null = null;
-  let streamType: 'hls' | 'mp4' = 'mp4';
+  let streamType: "hls" | "mp4" = "mp4";
 
   // Step 1: Try to find muxed formats (video+audio)
   if (ytdlpInfo.formats && ytdlpInfo.formats.length > 0) {
     const muxedFormats = ytdlpInfo.formats.filter(
       (f: YtdlpFormat) =>
-        f.vcodec &&
-        f.vcodec !== 'none' &&
-        f.acodec &&
-        f.acodec !== 'none' &&
-        f.url
+        f.vcodec && f.vcodec !== "none" && f.acodec && f.acodec !== "none" && f.url,
     );
 
     if (muxedFormats.length > 0) {
       // Prefer HLS (small segments, better for proxy streaming)
       const hlsFormats = muxedFormats
-        .filter(
-          (f: YtdlpFormat) => f.protocol === 'm3u8' || f.protocol === 'm3u8_native'
-        )
+        .filter((f: YtdlpFormat) => f.protocol === "m3u8" || f.protocol === "m3u8_native")
         .sort((a: YtdlpFormat, b: YtdlpFormat) => (b.tbr || 0) - (a.tbr || 0));
 
       // Then HTTPS formats
       const httpsFormats = muxedFormats
-        .filter((f: YtdlpFormat) => f.protocol === 'https')
+        .filter((f: YtdlpFormat) => f.protocol === "https")
         .sort((a: YtdlpFormat, b: YtdlpFormat) => (b.tbr || 0) - (a.tbr || 0));
 
       let selectedFormat: YtdlpFormat | null = null;
       if (hlsFormats.length > 0) {
         selectedFormat = hlsFormats[0];
         streamUrl = selectedFormat.url ?? null;
-        streamType = 'hls';
+        streamType = "hls";
       } else if (httpsFormats.length > 0) {
         selectedFormat = httpsFormats[0];
         streamUrl = selectedFormat.url ?? null;
-        streamType = 'mp4';
+        streamType = "mp4";
       } else {
         // Fallback to any muxed format
         selectedFormat = muxedFormats[muxedFormats.length - 1];
@@ -214,7 +208,7 @@ export function selectBestFormat(ytdlpInfo: YtdlpInfo): FormatSelection | null {
   if (ytdlpInfo.url) {
     return {
       url: ytdlpInfo.url,
-      streamType: 'mp4',
+      streamType: "mp4",
       tbr: ytdlpInfo.tbr || null,
     };
   }
@@ -242,9 +236,7 @@ export function selectBestFormat(ytdlpInfo: YtdlpInfo): FormatSelection | null {
  * buildYtdlpFormatSpec({ maxHeight: 1080, strictMode: true })
  * // => "bestvideo[height<=1080]+bestaudio"
  */
-export function buildYtdlpFormatSpec(
-  config: QualityConfig = DEFAULT_QUALITY
-): string {
+export function buildYtdlpFormatSpec(config: QualityConfig = DEFAULT_QUALITY): string {
   const { maxHeight, strictMode } = config;
 
   if (strictMode) {

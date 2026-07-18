@@ -9,6 +9,7 @@
 **실행**: `npm install` 시 `postinstall` 훅으로 자동 실행
 
 **기능**:
+
 - **번들 Python** (`.bin/python`): 시스템 Python에 의존하지 않도록 astral-sh/python-build-standalone의 고정 버전 하나를 받아 둔다. yt-dlp·streamlink venv가 이 Python을 공용으로 쓴다(버전 통일).
 - **yt-dlp**: 우선순위대로 준비 — ① 시스템에 이미 있으면 그대로 사용(예: Docker의 `pip install yt-dlp`) → ② 번들 Python으로 만든 venv(`.bin/yt-dlp-venv`)에 `pip install` → ③ 실패 시 GitHub 릴리스의 고정 onefile 바이너리를 `.bin/`에 다운로드(startup 느림, venv 불가 환경용).
 - **streamlink**: 플랫폼별로 `.bin/`에 준비

@@ -2,18 +2,18 @@
  * SSE (Server-Sent Events) 타입 정의
  */
 
-import type { ErrorCode } from '@/types/types';
+import type { ErrorCode } from "@/types/types";
 
 /**
  * 다운로드 단계 타입
  */
-export type DownloadPhase = 'downloading' | 'processing' | 'completed';
+export type DownloadPhase = "downloading" | "processing" | "completed";
 
 /**
  * SSE 진행 상태 이벤트
  */
 export interface SSEProgressEvent {
-  type: 'progress';
+  type: "progress";
   phase: DownloadPhase;
   progress: number; // 0-100
   processedSeconds?: number;
@@ -24,14 +24,14 @@ export interface SSEProgressEvent {
  * SSE 완료 이벤트
  */
 export interface SSECompleteEvent {
-  type: 'complete';
+  type: "complete";
 }
 
 /**
  * SSE 에러 이벤트
  */
 export interface SSEErrorEvent {
-  type: 'error';
+  type: "error";
   message: string; // 사용자 친화적 메시지
   code?: ErrorCode; // 분류 코드
   technicalDetails?: string; // 기술적 원인 (stderr 등, 접이식 노출용)

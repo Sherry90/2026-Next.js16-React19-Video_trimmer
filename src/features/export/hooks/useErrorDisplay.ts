@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useErrorState, useErrorActions, useReset } from '@/stores/hooks';
-import type { AppError } from '@/types/types';
-import { getErrorDefinition, isErrorCode, formatErrorReport } from '@/shared/lib/errorHandler';
+import { useState } from "react";
+import { useErrorState, useErrorActions, useReset } from "@/stores/hooks";
+import type { AppError } from "@/types/types";
+import { getErrorDefinition, isErrorCode, formatErrorReport } from "@/shared/lib/errorHandler";
 
 interface UseErrorDisplayArgs {
   error?: AppError | null;
@@ -15,7 +15,11 @@ interface UseErrorDisplayArgs {
  * ErrorDisplay의 표시 결정·복사·재시도/닫기 로직 캡슐화.
  * props가 있으면 props를, 없으면 store 에러를 표시(이중 모드). 컴포넌트는 표시만 담당.
  */
-export function useErrorDisplay({ error: propError, onRetry: propOnRetry, onDismiss: propOnDismiss }: UseErrorDisplayArgs) {
+export function useErrorDisplay({
+  error: propError,
+  onRetry: propOnRetry,
+  onDismiss: propOnDismiss,
+}: UseErrorDisplayArgs) {
   const [showDetails, setShowDetails] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -27,9 +31,9 @@ export function useErrorDisplay({ error: propError, onRetry: propOnRetry, onDism
   let displayError: AppError | null = null;
   if (propError) {
     displayError = propError;
-  } else if (storeError.hasError && storeError.errorCode !== 'VALIDATION_ERROR') {
+  } else if (storeError.hasError && storeError.errorCode !== "VALIDATION_ERROR") {
     // store의 free-string code를 ErrorCode로 검증, 정의(해결책)는 단일 소스에서 조회.
-    const code = isErrorCode(storeError.errorCode) ? storeError.errorCode : 'UNKNOWN';
+    const code = isErrorCode(storeError.errorCode) ? storeError.errorCode : "UNKNOWN";
     const def = getErrorDefinition(code);
 
     displayError = {
@@ -72,11 +76,17 @@ export function useErrorDisplay({ error: propError, onRetry: propOnRetry, onDism
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // 클립보드 권한 불가 환경: 선택 가능한 textarea로 폴백
-      const ta = document.createElement('textarea');
+      const ta = document.createElement("textarea");
       ta.value = report;
       document.body.appendChild(ta);
       ta.select();
-      try { document.execCommand('copy'); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* noop */ }
+      try {
+        document.execCommand("copy");
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        /* noop */
+      }
       document.body.removeChild(ta);
     }
   };

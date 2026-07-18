@@ -15,13 +15,11 @@ export function UrlPreview({ thumbnail, title }: UrlPreviewProps) {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={thumbnail}
-        alt={title ?? 'preview'}
+        alt={title ?? "preview"}
         className="w-24 aspect-video object-cover rounded-sm bg-black shrink-0"
       />
       <p className="text-[12px] text-[#d9dce3] line-clamp-2">
-        {title ?? (
-          <span className="text-[#74808c] animate-pulse">제목 불러오는 중…</span>
-        )}
+        {title ?? <span className="text-[#74808c] animate-pulse">제목 불러오는 중…</span>}
       </p>
     </div>
   );

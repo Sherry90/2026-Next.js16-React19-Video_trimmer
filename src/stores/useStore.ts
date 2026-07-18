@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { create } from "zustand";
 import type {
   AppPhase,
   VideoFile,
@@ -8,15 +8,15 @@ import type {
   PlayerState,
   ErrorState,
   ExportState,
-} from '@/types/store';
-import { runAllCleanups } from '@/lib/cleanup';
-import { PLAYBACK } from '@/constants/appConfig';
+} from "@/types/store";
+import { runAllCleanups } from "@/lib/cleanup";
+import { PLAYBACK } from "@/constants/appConfig";
 import {
   constrainInPoint,
   constrainOutPoint,
   constrainPlayhead,
   constrainZoom,
-} from './constraintUtils';
+} from "./constraintUtils";
 
 // ==================== 스토어 상태 ====================
 
@@ -68,8 +68,11 @@ interface StoreActions {
   resetTimeline: () => void;
 
   // 진행률 관련 (type별 단일 setter)
-  setProgress: (type: 'upload' | 'trim' | 'waveform', progress: number) => void;
-  setDownloadPhase: (phase: 'downloading' | 'processing' | 'completed' | null, message?: string) => void;
+  setProgress: (type: "upload" | "trim" | "waveform", progress: number) => void;
+  setDownloadPhase: (
+    phase: "downloading" | "processing" | "completed" | null,
+    message?: string,
+  ) => void;
   setActiveDownloadJobId: (jobId: string | null) => void;
 
   // 플레이어 관련
@@ -98,7 +101,7 @@ interface StoreActions {
 // ==================== 초기 상태 ====================
 
 const initialState: StoreState = {
-  phase: 'idle',
+  phase: "idle",
   videoFile: null,
   selectedQuality: null,
   timeline: {
@@ -108,7 +111,7 @@ const initialState: StoreState = {
     isInPointLocked: false,
     isOutPointLocked: false,
     zoom: 1,
-    waveformDisplayMode: 'waveform',
+    waveformDisplayMode: "waveform",
   },
   processing: {
     uploadProgress: 0,
@@ -227,7 +230,7 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
         isInPointLocked: false,
         isOutPointLocked: false,
         zoom: 1,
-        waveformDisplayMode: 'waveform',
+        waveformDisplayMode: "waveform",
       },
     });
   },
@@ -253,19 +256,16 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
     })),
 
   // 플레이어 관련
-  setIsPlaying: (playing) =>
-    set((state) => ({ player: { ...state.player, isPlaying: playing } })),
+  setIsPlaying: (playing) => set((state) => ({ player: { ...state.player, isPlaying: playing } })),
 
-  setCurrentTime: (time) =>
-    set((state) => ({ player: { ...state.player, currentTime: time } })),
+  setCurrentTime: (time) => set((state) => ({ player: { ...state.player, currentTime: time } })),
 
   setVolume: (volume) =>
     set((state) => ({
       player: { ...state.player, volume: Math.max(0, Math.min(volume, 1)) },
     })),
 
-  setIsMuted: (muted) =>
-    set((state) => ({ player: { ...state.player, isMuted: muted } })),
+  setIsMuted: (muted) => set((state) => ({ player: { ...state.player, isMuted: muted } })),
 
   setIsScrubbing: (scrubbing) =>
     set((state) => ({ player: { ...state.player, isScrubbing: scrubbing } })),
@@ -273,7 +273,12 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
   // 에러 관련
   setError: (message, code, technicalDetails) =>
     set({
-      error: { hasError: true, errorMessage: message, errorCode: code ?? null, technicalDetails: technicalDetails ?? null },
+      error: {
+        hasError: true,
+        errorMessage: message,
+        errorCode: code ?? null,
+        technicalDetails: technicalDetails ?? null,
+      },
     }),
 
   clearError: () =>
@@ -305,7 +310,7 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
       // URL 소스 직행 다운로드: 서버 /tmp 파일 즉시 정리 (DELETE)
       const match = exportState.outputUrl.match(/^\/api\/download\/([^/?]+)/);
       if (match) {
-        fetch(`/api/download/${match[1]}`, { method: 'DELETE' }).catch(() => {});
+        fetch(`/api/download/${match[1]}`, { method: "DELETE" }).catch(() => {});
       } else {
         // 파일 소스: 클라이언트 blob URL 해제 (비-blob 문자열엔 no-op)
         URL.revokeObjectURL(exportState.outputUrl);
@@ -319,15 +324,20 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
   // 복합 액션 (상태 + 페이즈 전환)
   setErrorAndTransition: (message, code, technicalDetails) => {
     set({
-      error: { hasError: true, errorMessage: message, errorCode: code ?? null, technicalDetails: technicalDetails ?? null },
-      phase: 'error',
+      error: {
+        hasError: true,
+        errorMessage: message,
+        errorCode: code ?? null,
+        technicalDetails: technicalDetails ?? null,
+      },
+      phase: "error",
     });
   },
 
   setExportResultAndComplete: (url, filename) => {
     set({
       export: { outputUrl: url, outputFilename: filename },
-      phase: 'completed',
+      phase: "completed",
     });
   },
 }));

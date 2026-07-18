@@ -28,11 +28,11 @@ export function toProcessError(error: unknown): ProcessError {
   }
 
   const err = new Error(String(error)) as ProcessError;
-  if (typeof error === 'object' && error !== null) {
+  if (typeof error === "object" && error !== null) {
     const obj = error as Record<string, unknown>;
-    if (typeof obj.code === 'string') err.code = obj.code;
-    if (typeof obj.stderr === 'string') err.stderr = obj.stderr;
-    if (typeof obj.exitCode === 'number') err.exitCode = obj.exitCode;
+    if (typeof obj.code === "string") err.code = obj.code;
+    if (typeof obj.stderr === "string") err.stderr = obj.stderr;
+    if (typeof obj.exitCode === "number") err.exitCode = obj.exitCode;
   }
 
   return err;

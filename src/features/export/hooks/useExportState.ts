@@ -1,23 +1,25 @@
-import { useCallback } from 'react';
-import { usePhaseActions, useErrorActions, useExportActions, useProgressActions } from '@/stores/hooks';
-import { trimVideo } from '@/features/export/utils/trimVideoDispatcher';
-import { generateTrimFilename } from '@/features/export/utils/generateFilename';
-import { requiresFFmpegDownload } from '@/features/export/utils/formatDetector';
-import { startStreamDownload } from '@/features/export/utils/streamDownloadController';
-import { useFFmpegLoader } from './useFFmpegLoader';
-import { errorFromRaw } from '@/shared/lib/errorHandler';
-import type { VideoFile } from '@/types/store';
+import { useCallback } from "react";
+import {
+  usePhaseActions,
+  useErrorActions,
+  useExportActions,
+  useProgressActions,
+} from "@/stores/hooks";
+import { trimVideo } from "@/features/export/utils/trimVideoDispatcher";
+import { generateTrimFilename } from "@/features/export/utils/generateFilename";
+import { requiresFFmpegDownload } from "@/features/export/utils/formatDetector";
+import { startStreamDownload } from "@/features/export/utils/streamDownloadController";
+import { useFFmpegLoader } from "./useFFmpegLoader";
+import { errorFromRaw } from "@/shared/lib/errorHandler";
+import type { VideoFile } from "@/types/store";
+import type { AppError } from "@/types/types";
 
 /**
  * Export 버튼 상태 관리 훅
  *
  * Export 로직, 버튼 텍스트/타이틀 관리
  */
-export function useExportState(
-  videoFile: VideoFile | null,
-  inPoint: number,
-  outPoint: number
-) {
+export function useExportState(videoFile: VideoFile | null, inPoint: number, outPoint: number) {
   const { setPhase } = usePhaseActions();
   const { setErrorAndTransition } = useErrorActions();
   const { setExportResultAndComplete } = useExportActions();
@@ -28,17 +30,17 @@ export function useExportState(
 
   const handleExport = useCallback(async () => {
     if (!videoFile) {
-      setErrorAndTransition('Video file not available', 'EXPORT_ERROR');
+      setErrorAndTransition("Video file not available", "EXPORT_ERROR");
       return;
     }
 
     try {
-      setPhase('processing');
-      setProgress('trim', 0);
+      setPhase("processing");
+      setProgress("trim", 0);
 
       // URL source: 확정된 구간을 서버에서 실제 다운로드 (SSE).
       // 컨트롤러가 진행률/완료/에러(completed 합류)를 직접 처리한다.
-      if (videoFile.source === 'url') {
+      if (videoFile.source === "url") {
         await startStreamDownload();
         return;
       }
@@ -52,7 +54,7 @@ export function useExportState(
         startTime: inPoint,
         endTime: outPoint,
         onProgress: (progress) => {
-          setProgress('trim', progress);
+          setProgress("trim", progress);
         },
         ...ffmpegLoader.handlers,
       });
@@ -65,8 +67,8 @@ export function useExportState(
     } catch (error) {
       // Check if error has AppError attached (from parseFFmpegError)
       const appError =
-        error instanceof Error && (error as any).appError
-          ? (error as any).appError
+        error instanceof Error
+          ? ((error as Error & { appError?: AppError }).appError ?? null)
           : null;
 
       if (appError) {
@@ -78,9 +80,8 @@ export function useExportState(
         );
       } else {
         // Fallback: 실제 원인을 분류해 친화 메시지 + 기술 상세로 전달 (원인 삼키지 않음)
-        const rawMessage =
-          error instanceof Error ? error.message : 'Export failed';
-        const parsed = errorFromRaw(rawMessage, 'EXPORT_ERROR');
+        const rawMessage = error instanceof Error ? error.message : "Export failed";
+        const parsed = errorFromRaw(rawMessage, "EXPORT_ERROR");
         setErrorAndTransition(parsed.userMessage, parsed.code, rawMessage);
       }
     }
@@ -92,25 +93,24 @@ export function useExportState(
     setProgress,
     setExportResultAndComplete,
     setErrorAndTransition,
+    ffmpegLoader.handlers,
   ]);
 
   // Check if this video will require FFmpeg download
   const willDownloadFFmpeg =
-    videoFile?.source === 'file' &&
-    videoFile.file &&
-    requiresFFmpegDownload(videoFile.file);
+    videoFile?.source === "file" && videoFile.file && requiresFFmpegDownload(videoFile.file);
 
   // Button text based on loading state
   const buttonText = ffmpegLoader.isLoading
     ? `Loading FFmpeg... ${ffmpegLoader.progress}%`
-    : 'Export';
+    : "Export";
 
   // Button title (tooltip) based on state
   const buttonTitle = ffmpegLoader.isLoading
     ? `Downloading FFmpeg (20MB)... ${ffmpegLoader.progress}%`
     : willDownloadFFmpeg
-    ? 'This format requires downloading FFmpeg (20MB, one-time)'
-    : undefined;
+      ? "This format requires downloading FFmpeg (20MB, one-time)"
+      : undefined;
 
   const isDisabled = !videoFile || ffmpegLoader.isLoading;
 

@@ -25,7 +25,7 @@ export function clampPercentToTrim(
   percent: number,
   inPoint: number,
   outPoint: number,
-  duration: number
+  duration: number,
 ): number {
   const inPercent = timeToPercent(inPoint, duration);
   const outPercent = duration > 0 ? timeToPercent(outPoint, duration) : 100;

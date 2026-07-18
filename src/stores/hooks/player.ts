@@ -1,4 +1,4 @@
-import { createSimpleSelector, createStateSelector } from '../selectorFactory';
+import { createSimpleSelector, createStateSelector } from "../selectorFactory";
 
 // ── player ──
 // timeupdate는 초당 ~4회 발생 → 컨트롤마다 필요한 필드만 좁게 구독해

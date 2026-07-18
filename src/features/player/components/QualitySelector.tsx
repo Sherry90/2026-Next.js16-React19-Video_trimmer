@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { SettingsIcon } from '@/shared/ui/icons';
-import { IconButton } from '@/shared/ui/IconButton';
+import { useState } from "react";
+import { SettingsIcon } from "@/shared/ui/icons";
+import { IconButton } from "@/shared/ui/IconButton";
 
 interface QualitySelectorProps {
   heights: number[]; // sorted desc, e.g. [1080, 720, 480]
@@ -16,12 +16,17 @@ interface QualitySelectorProps {
  * 톱니 버튼 + 드롭다운(Auto + `${h}p`). 화질이 1개 이하면 숨김(null 반환).
  * (예전 React QualitySelector를 video.js로 포팅했던 것을 React로 복원.)
  */
-export function QualitySelector({ heights, selected, onSelect, className = '' }: QualitySelectorProps) {
+export function QualitySelector({
+  heights,
+  selected,
+  onSelect,
+  className = "",
+}: QualitySelectorProps) {
   const [open, setOpen] = useState(false);
 
   if (heights.length <= 1) return null;
 
-  const label = (h: number | null) => (h === null ? 'Auto' : `${h}p`);
+  const label = (h: number | null) => (h === null ? "Auto" : `${h}p`);
   const pick = (h: number | null) => {
     onSelect(h);
     setOpen(false);
@@ -29,11 +34,7 @@ export function QualitySelector({ heights, selected, onSelect, className = '' }:
 
   return (
     <div className={`relative ${className}`}>
-      <IconButton
-        onClick={() => setOpen((o) => !o)}
-        aria-label="화질"
-        aria-expanded={open}
-      >
+      <IconButton onClick={() => setOpen((o) => !o)} aria-label="화질" aria-expanded={open}>
         <SettingsIcon className="w-5 h-5" />
       </IconButton>
       {open && (
@@ -44,17 +45,19 @@ export function QualitySelector({ heights, selected, onSelect, className = '' }:
           {[null, ...heights].map((h) => {
             const active = selected === h;
             return (
-              <li key={h ?? 'auto'}>
+              <li key={h ?? "auto"}>
                 <button
                   type="button"
                   role="option"
                   aria-selected={active}
                   onClick={() => pick(h)}
                   className={`flex items-center gap-2 w-full px-3 py-1.5 text-left text-sm transition-colors ${
-                    active ? 'text-[var(--accent-yellow,#ffee65)]' : 'text-white/80 hover:bg-white/10'
+                    active
+                      ? "text-[var(--accent-yellow,#ffee65)]"
+                      : "text-white/80 hover:bg-white/10"
                   }`}
                 >
-                  <span className="w-3">{active ? '✓' : ''}</span>
+                  <span className="w-3">{active ? "✓" : ""}</span>
                   {label(h)}
                 </button>
               </li>

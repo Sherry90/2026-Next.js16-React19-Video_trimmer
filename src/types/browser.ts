@@ -22,11 +22,11 @@ export interface PerformanceWithMemory extends Performance {
  * Performance 객체가 memory API를 지원하는지 확인하는 타입 가드
  */
 export function hasMemoryAPI(
-  perf: Performance
+  perf: Performance,
 ): perf is PerformanceWithMemory & { memory: PerformanceMemory } {
   return (
-    'memory' in perf &&
+    "memory" in perf &&
     perf.memory !== undefined &&
-    typeof (perf.memory as PerformanceMemory).usedJSHeapSize === 'number'
+    typeof (perf.memory as PerformanceMemory).usedJSHeapSize === "number"
   );
 }

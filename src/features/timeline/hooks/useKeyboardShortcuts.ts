@@ -1,5 +1,5 @@
-import { useEffect, useCallback } from 'react';
-import { usePhase } from '@/stores/hooks';
+import { useEffect, useCallback } from "react";
+import { usePhase } from "@/stores/hooks";
 
 export interface KeyboardShortcutsConfig {
   onPlayPause?: () => void;
@@ -20,29 +20,25 @@ export function useKeyboardShortcuts(config: KeyboardShortcutsConfig) {
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       // editing 상태에서만 작동
-      if (phase !== 'editing') {
+      if (phase !== "editing") {
         return;
       }
 
       // 입력 요소에 포커스가 있으면 무시
       const target = event.target as HTMLElement;
-      if (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable
-      ) {
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
         return;
       }
 
       const { key, shiftKey } = event;
 
       switch (key) {
-        case ' ': // Space
+        case " ": // Space
           event.preventDefault();
           config.onPlayPause?.();
           break;
 
-        case 'ArrowLeft':
+        case "ArrowLeft":
           event.preventDefault();
           if (shiftKey) {
             config.onSecondBackward?.();
@@ -51,7 +47,7 @@ export function useKeyboardShortcuts(config: KeyboardShortcutsConfig) {
           }
           break;
 
-        case 'ArrowRight':
+        case "ArrowRight":
           event.preventDefault();
           if (shiftKey) {
             config.onSecondForward?.();
@@ -60,30 +56,30 @@ export function useKeyboardShortcuts(config: KeyboardShortcutsConfig) {
           }
           break;
 
-        case 'i':
-        case 'I':
+        case "i":
+        case "I":
           event.preventDefault();
           config.onSetInPoint?.();
           break;
 
-        case 'o':
-        case 'O':
+        case "o":
+        case "O":
           event.preventDefault();
           config.onSetOutPoint?.();
           break;
 
-        case 'Home':
+        case "Home":
           event.preventDefault();
           config.onJumpToInPoint?.();
           break;
 
-        case 'End':
+        case "End":
           event.preventDefault();
           config.onJumpToOutPoint?.();
           break;
 
-        case 'a':
-        case 'A':
+        case "a":
+        case "A":
           event.preventDefault();
           config.onPreviewMode?.();
           break;
@@ -92,13 +88,13 @@ export function useKeyboardShortcuts(config: KeyboardShortcutsConfig) {
           break;
       }
     },
-    [phase, config]
+    [phase, config],
   );
 
   useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener("keydown", handleKeyDown);
     };
   }, [handleKeyDown]);
 }

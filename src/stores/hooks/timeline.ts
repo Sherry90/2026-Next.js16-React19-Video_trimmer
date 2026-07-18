@@ -1,4 +1,4 @@
-import { createSimpleSelector, createStateSelector } from '../selectorFactory';
+import { createSimpleSelector, createStateSelector } from "../selectorFactory";
 
 // ── timeline ──
 /** 트림 구간(in/out)만 — 자주 쓰는 좁은 구독. */
@@ -12,7 +12,7 @@ export const useTimelineZoomValue = createSimpleSelector((s) => s.timeline.zoom)
 
 /** 파형/스펙트럼 표시 모드. */
 export const useWaveformDisplayMode = createSimpleSelector(
-  (s) => s.timeline.waveformDisplayMode ?? 'waveform'
+  (s) => s.timeline.waveformDisplayMode ?? "waveform",
 );
 
 /** in/out lock 상태만. */

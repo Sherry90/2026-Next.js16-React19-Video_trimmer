@@ -5,12 +5,14 @@
 > **프로젝트가 "어떤 구조로, 왜" 만들어졌는지**가 궁금하다면 먼저 [01_OVERVIEW.md](./01_OVERVIEW.md)(아키텍처 & 설계)를 읽자. 이 문서는 그 위에서 실습을 얹는다.
 
 **이런 사람에게 좋아요**:
+
 - React를 조금 아는 사람 (컴포넌트, useState 정도)
 - Next.js·TypeScript를 배우고 싶은 사람
 - 영상 처리(자르기·스트리밍) 원리가 궁금한 사람
 - 실제 서비스 수준의 코드 패턴을 익히고 싶은 사람
 
 **학습 목표**:
+
 - Next.js 16 App Router와 Turbopack 이해
 - Zustand 상태 관리 패턴 마스터
 - 비디오 처리 기술 (MP4Box, FFmpeg, HLS) 이해
@@ -43,7 +45,9 @@
 **목표**: 프로젝트 구조와 기본 흐름 파악
 
 **학습 순서**:
+
 1. **환경 설정**
+
    ```bash
    git clone <repository>
    cd Video_Trimmer
@@ -66,6 +70,7 @@
    - `CLAUDE.md` - 작업 지침·제약
 
 **확인 과제**:
+
 - [ ] 로컬에서 프로젝트 실행 성공
 - [ ] 5개 feature 폴더의 역할 설명 가능
 - [ ] Phase-based workflow (5단계) 설명 가능
@@ -78,6 +83,7 @@
 **목표**: Zustand 패턴과 React 최적화 이해
 
 **학습 순서**:
+
 1. **Zustand 기초**
    - `src/stores/useStore.ts` 전체 읽기
    - Phase, Timeline, Processing 슬라이스 이해
@@ -94,6 +100,7 @@
    - `Playhead.tsx` 드래그 로직 분석
 
 **실습 과제**:
+
 ```typescript
 // 1. 새 selector 추가
 export const useExportState = () =>
@@ -101,8 +108,8 @@ export const useExportState = () =>
     useShallow((state) => ({
       phase: state.phase,
       trimProgress: state.processing.trimProgress,
-      canExport: state.phase === 'editing',
-    }))
+      canExport: state.phase === "editing",
+    })),
   );
 
 // 2. 커스텀 액션 추가
@@ -117,6 +124,7 @@ const useStore = create<StoreState>((set, get) => ({
 ```
 
 **확인 과제**:
+
 - [ ] 새 selector 만들어보기
 - [ ] `useShallow` 있을 때와 없을 때 리렌더 차이 설명
 - [ ] Race condition이 발생하는 시나리오 3가지 설명
@@ -129,6 +137,7 @@ const useStore = create<StoreState>((set, get) => ({
 **목표**: MP4Box, FFmpeg, HLS 트리밍 이해
 
 **학습 순서**:
+
 1. **MP4Box.js 트리밍**
    - `src/features/export/utils/trimVideoMP4Box.ts` 분석
    - MP4 파일 구조 (moov, mdat, samples) 이해
@@ -152,27 +161,29 @@ const useStore = create<StoreState>((set, get) => ({
    - SSE로 실시간 진행률 전송 흐름
 
 **실습 과제**:
+
 ```typescript
 // 1. MP4Box에서 샘플 필터링 로직 구현
-function filterSamples(
-  samples: Sample[],
-  startTime: number,
-  endTime: number
-): Sample[] {
+function filterSamples(samples: Sample[], startTime: number, endTime: number): Sample[] {
   // TODO: 구현
 }
 
 // 2. FFmpeg 명령어 생성 로직 이해
 const ffmpegArgs = [
-  '-i', inputFile,
-  '-ss', startTime.toString(),
-  '-to', endTime.toString(),
-  '-c', 'copy',  // 왜 copy를 사용하는가?
+  "-i",
+  inputFile,
+  "-ss",
+  startTime.toString(),
+  "-to",
+  endTime.toString(),
+  "-c",
+  "copy", // 왜 copy를 사용하는가?
   outputFile,
 ];
 ```
 
 **확인 과제**:
+
 - [ ] MP4Box와 FFmpeg의 장단점 5가지씩 설명
 - [ ] 키프레임이 무엇이고 왜 1-2초마다 있는지 설명
 - [ ] `trimVideoDispatcher`의 조건문 설명
@@ -185,6 +196,7 @@ const ffmpegArgs = [
 **목표**: Next.js API Routes와 SSE 이해
 
 **학습 순서**:
+
 1. **API Routes 구조**
    - `src/app/api/video/preview/route.ts` - 즉시 프리뷰(oembed/Chzzk API)
    - `src/app/api/video/resolve/route.ts` - yt-dlp 메타데이터 + DASH MPD 생성
@@ -210,6 +222,7 @@ const ffmpegArgs = [
    - `src/features/export/utils/sseProgressUtils.ts` - 클라이언트 가중치 계산
 
 **실습 과제**:
+
 ```typescript
 // 1. SSE 클라이언트 구현
 const eventSource = new EventSource(`/api/download/stream/${jobId}`);
@@ -217,11 +230,11 @@ const eventSource = new EventSource(`/api/download/stream/${jobId}`);
 eventSource.onmessage = (event) => {
   const data = JSON.parse(event.data);
 
-  if (data.type === 'progress') {
+  if (data.type === "progress") {
     // TODO: 진행률 UI 업데이트
-  } else if (data.type === 'complete') {
+  } else if (data.type === "complete") {
     // TODO: 다운로드 시작
-  } else if (data.type === 'error') {
+  } else if (data.type === "error") {
     // TODO: 에러 처리
   }
 };
@@ -234,6 +247,7 @@ function calculateOverallProgress(phase: string, progress: number): number {
 ```
 
 **확인 과제**:
+
 - [ ] SSE와 WebSocket 차이 설명
 - [ ] EventSource 사용법 설명
 - [ ] Chzzk에서만 `processing` phase가 있는 이유 설명
@@ -246,6 +260,7 @@ function calculateOverallProgress(phase: string, progress: number): number {
 **목표**: 실무 수준의 패턴과 최적화 기법
 
 **학습 순서**:
+
 1. **메모리 관리**
    - `URL.createObjectURL()` / `URL.revokeObjectURL()` 패턴
    - Cleanup 레지스트리 (`src/lib/cleanup.ts`)
@@ -267,6 +282,7 @@ function calculateOverallProgress(phase: string, progress: number): number {
    - Mock 객체 사용법
 
 **실습 과제**:
+
 ```typescript
 // 1. Cleanup 레지스트리 사용
 // src/features/export/utils/trimVideoDispatcher.ts
@@ -279,7 +295,7 @@ registerCleanup(() => {
 
 // 2. Type Guard 작성
 export function isSSEProgressEvent(event: SSEEvent): event is SSEProgressEvent {
-  return event.type === 'progress';
+  return event.type === "progress";
 }
 
 // 3. 메모리 해제
@@ -291,6 +307,7 @@ const cleanup = () => {
 ```
 
 **확인 과제**:
+
 - [ ] Cleanup 레지스트리 패턴의 장점 3가지 설명
 - [ ] Discriminated Union이 무엇이고 왜 유용한지 설명
 - [ ] Object URL을 revoke하지 않으면 어떻게 되는지 설명
@@ -303,15 +320,18 @@ const cleanup = () => {
 ### 핵심 가치
 
 **1. 개인정보 보호**
+
 - 로컬 파일: 서버 업로드 없음 (브라우저에서만 처리)
 - URL 파일: 서버 처리하지만 임시 파일 즉시 삭제
 
 **2. 사용자 경험**
+
 - 10-20배 빠른 트리밍 (MP4Box.js)
 - 직관적인 타임라인 UI (드래그 앤 드롭)
 - 키보드 단축키 지원 (Space, I/O, 화살표)
 
 **3. 기술적 우수성**
+
 - 계층 아키텍처 (features / widgets / shared) — 자세히는 [01_OVERVIEW.md](./01_OVERVIEW.md)
 - 자동 의존성 관리 (postinstall)
 - 유닛 테스트로 핵심 로직 검증 (안정성)
@@ -406,7 +426,7 @@ const trackId = file.addTrack({
 samples.forEach((sample) => {
   file.addSample(trackId, sample.data, {
     duration: sample.duration,
-    is_sync: sample.is_sync,  // 키프레임 여부
+    is_sync: sample.is_sync, // 키프레임 여부
   });
 });
 
@@ -419,13 +439,16 @@ const newArrayBuffer = file.getArrayBuffer();
 - **중간 프레임 (P/B-Frame)**: 이전 프레임과의 차이만 저장
 
 **잘못된 자르기**:
+
 ```
 [I] [P] [P] [P] [I] [P] [P]
         ↑ 여기서 자르면?
 ```
+
 → 이전 I-Frame이 없어서 재생 불가!
 
 **올바른 자르기**:
+
 ```
 [I] [P] [P] [P] [I] [P] [P]
                 ↑ 키프레임에서만 자르기
@@ -443,8 +466,8 @@ const newArrayBuffer = file.getArrayBuffer();
 // FFmpeg.wasm은 멀티스레드 사용
 const ffmpeg = new FFmpeg();
 await ffmpeg.load({
-  coreURL: '/ffmpeg-core.js',
-  wasmURL: '/ffmpeg-core.wasm',
+  coreURL: "/ffmpeg-core.js",
+  wasmURL: "/ffmpeg-core.wasm",
   // SharedArrayBuffer로 메인 스레드와 Worker 간 메모리 공유
 });
 ```
@@ -468,12 +491,17 @@ headers: [
 
 ```typescript
 await ffmpeg.exec([
-  '-i', 'input.mp4',
-  '-ss', startTime.toString(),   // output seeking (-i 뒤) → 정확도 ↑
-  '-t', duration.toString(),
-  '-c', 'copy',                  // 스트림 카피 (재인코딩 없음)
-  '-progress', 'pipe:1',         // 진행률 파싱용
-  'output.mp4',
+  "-i",
+  "input.mp4",
+  "-ss",
+  startTime.toString(), // output seeking (-i 뒤) → 정확도 ↑
+  "-t",
+  duration.toString(),
+  "-c",
+  "copy", // 스트림 카피 (재인코딩 없음)
+  "-progress",
+  "pipe:1", // 진행률 파싱용
+  "output.mp4",
 ]);
 ```
 
@@ -517,6 +545,7 @@ Phase 2: FFmpeg 타임스탬프 리셋
 ```
 
 **필요성**:
+
 - 플레이어는 타임스탬프 00:00:00부터 시작 기대
 - 타임스탬프 리셋 없으면 플레이어 오작동 가능
 
@@ -538,13 +567,13 @@ byte-range 우선:  sidx 파싱 → 구간 바이트만 Range 수신 → 로컬 
 
 **SSE vs WebSocket**:
 
-| 특징 | SSE | WebSocket |
-|------|-----|-----------|
-| 방향 | 서버 → 클라이언트 (단방향) | 양방향 |
-| 프로토콜 | HTTP | TCP (Upgrade) |
-| 재연결 | 자동 | 수동 |
-| 복잡도 | 낮음 | 높음 |
-| 사용 사례 | 진행률, 알림 | 채팅, 게임 |
+| 특징      | SSE                        | WebSocket     |
+| --------- | -------------------------- | ------------- |
+| 방향      | 서버 → 클라이언트 (단방향) | 양방향        |
+| 프로토콜  | HTTP                       | TCP (Upgrade) |
+| 재연결    | 자동                       | 수동          |
+| 복잡도    | 낮음                       | 높음          |
+| 사용 사례 | 진행률, 알림               | 채팅, 게임    |
 
 **SSE 서버 구현**:
 
@@ -567,9 +596,9 @@ export async function GET(request: Request) {
 
   return new Response(readableStream, {
     headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
     },
   });
 }
@@ -585,18 +614,18 @@ eventSource.onmessage = (event) => {
   const data: SSEEvent = JSON.parse(event.data);
 
   switch (data.type) {
-    case 'progress':
+    case "progress":
       const overall = calculateOverallProgress(data.phase, data.progress);
       setDownloadProgress(overall);
       setDownloadPhase(data.phase);
       break;
 
-    case 'complete':
-      eventSource.close();  // CRITICAL: 먼저 닫기
+    case "complete":
+      eventSource.close(); // CRITICAL: 먼저 닫기
       window.location.href = `/api/download/${jobId}`;
       break;
 
-    case 'error':
+    case "error":
       eventSource.close();
       setErrorMessage(data.message);
       break;
@@ -608,12 +637,12 @@ eventSource.onmessage = (event) => {
 
 ```typescript
 // 잘못된 순서
-window.location.href = '/download';  // 페이지 이동
-eventSource.close();  // 실행 안 됨!
+window.location.href = "/download"; // 페이지 이동
+eventSource.close(); // 실행 안 됨!
 
 // 올바른 순서
-eventSource.close();  // 먼저 닫기
-window.location.href = '/download';  // 페이지 이동
+eventSource.close(); // 먼저 닫기
+window.location.href = "/download"; // 페이지 이동
 ```
 
 ---
@@ -675,7 +704,7 @@ export function RotateButton() {
 ```typescript
 // src/stores/useStore.ts
 export interface StoreState {
-  rotation: number;  // 0, 90, 180, 270
+  rotation: number; // 0, 90, 180, 270
   rotateVideo: (degrees: number) => void;
 }
 ```
@@ -684,8 +713,8 @@ export interface StoreState {
 
 ```typescript
 // src/__tests__/unit/rotate.test.ts
-describe('Rotate', () => {
-  it('should rotate video by 90 degrees', () => {
+describe("Rotate", () => {
+  it("should rotate video by 90 degrees", () => {
     const { result } = renderHook(() => useStore());
 
     act(() => {
@@ -707,12 +736,12 @@ describe('Rotate', () => {
 
 ```typescript
 // BAD: Store가 trimVideoDispatcher 직접 의존
-import { cleanupFFmpeg } from '@/features/export/utils/trimVideoDispatcher';
+import { cleanupFFmpeg } from "@/features/export/utils/trimVideoDispatcher";
 
 reset: () => {
-  cleanupFFmpeg();  // 직접 호출
+  cleanupFFmpeg(); // 직접 호출
   set(initialState);
-}
+};
 ```
 
 **해결**: Cleanup 레지스트리로 의존성 역전
@@ -733,7 +762,7 @@ export function runAllCleanups(): void {
     try {
       fn();
     } catch (error) {
-      console.error('Cleanup error:', error);
+      console.error("Cleanup error:", error);
     }
   });
 }
@@ -747,15 +776,16 @@ registerCleanup(() => FFmpegSingleton.cleanup());
 
 ```typescript
 // src/stores/useStore.ts
-import { runAllCleanups } from '@/lib/cleanup';
+import { runAllCleanups } from "@/lib/cleanup";
 
 reset: () => {
-  runAllCleanups();  // 레지스트리만 의존
+  runAllCleanups(); // 레지스트리만 의존
   set(initialState);
-}
+};
 ```
 
 **장점**:
+
 1. Store가 Features를 직접 의존하지 않음
 2. 새 cleanup 추가 시 Store 수정 불필요
 3. 테스트 시 cleanup 모킹 쉬움
@@ -769,7 +799,7 @@ reset: () => {
 ```typescript
 // BAD
 function handleError(error: any) {
-  console.error(error.message);  // error가 Error인지 모름
+  console.error(error.message); // error가 Error인지 모름
 }
 ```
 
@@ -792,11 +822,11 @@ export function toProcessError(error: unknown): ProcessError {
   if (isProcessError(error)) return error;
 
   const err = new Error(String(error)) as ProcessError;
-  if (typeof error === 'object' && error !== null) {
+  if (typeof error === "object" && error !== null) {
     const obj = error as Record<string, unknown>;
-    if (typeof obj.code === 'string') err.code = obj.code;
-    if (typeof obj.killed === 'boolean') err.killed = obj.killed;
-    if (typeof obj.stderr === 'string') err.stderr = obj.stderr;
+    if (typeof obj.code === "string") err.code = obj.code;
+    if (typeof obj.killed === "boolean") err.killed = obj.killed;
+    if (typeof obj.stderr === "string") err.stderr = obj.stderr;
   }
   return err;
 }
@@ -823,45 +853,42 @@ interface SSEEvent {
 ```typescript
 // src/types/sse.ts
 export interface SSEProgressEvent {
-  type: 'progress';
-  phase: 'downloading' | 'processing' | 'completed';
+  type: "progress";
+  phase: "downloading" | "processing" | "completed";
   progress: number;
-  processedSeconds?: number;   // optional
-  totalSeconds?: number;       // optional
+  processedSeconds?: number; // optional
+  totalSeconds?: number; // optional
 }
 
 export interface SSECompleteEvent {
-  type: 'complete';   // 배선 계층(downloadTypes.ts)이 jobId+filename을 덧붙여 발행
+  type: "complete"; // 배선 계층(downloadTypes.ts)이 jobId+filename을 덧붙여 발행
 }
 
 export interface SSEErrorEvent {
-  type: 'error';
+  type: "error";
   message: string;
   code?: ErrorCode;
   technicalDetails?: string;
 }
 
-export type SSEEvent =
-  | SSEProgressEvent
-  | SSECompleteEvent
-  | SSEErrorEvent;
+export type SSEEvent = SSEProgressEvent | SSECompleteEvent | SSEErrorEvent;
 ```
 
 ```typescript
 // 사용
 function handleEvent(event: SSEEvent) {
   switch (event.type) {
-    case 'progress':
-      console.log(event.progress);  // 타입 안전!
+    case "progress":
+      console.log(event.progress); // 타입 안전!
       console.log(event.phase);
       break;
 
-    case 'complete':
-      window.location.href = `/api/download/${jobId}`;  // 페이로드 없음, jobId로 파일 받음
+    case "complete":
+      window.location.href = `/api/download/${jobId}`; // 페이로드 없음, jobId로 파일 받음
       break;
 
-    case 'error':
-      console.error(event.message);  // 타입 안전!
+    case "error":
+      console.error(event.message); // 타입 안전!
       break;
   }
 }
@@ -888,16 +915,16 @@ function handleEvent(event: SSEEvent) {
 
 ```typescript
 // 1. 콘솔 로그 추가
-player.on('timeupdate', () => {
-  console.log('[timeupdate] isScrubbing:', state.player.isScrubbing);
-  console.log('[timeupdate] seeking:', player.seeking());
+player.on("timeupdate", () => {
+  console.log("[timeupdate] isScrubbing:", state.player.isScrubbing);
+  console.log("[timeupdate] seeking:", player.seeking());
 
   if (state.player.isScrubbing || player.seeking()) {
-    console.log('[timeupdate] IGNORED');
+    console.log("[timeupdate] IGNORED");
     return;
   }
 
-  console.log('[timeupdate] UPDATE currentTime:', currentTime);
+  console.log("[timeupdate] UPDATE currentTime:", currentTime);
   state.setCurrentTime(currentTime || 0);
 });
 ```
@@ -907,12 +934,12 @@ player.on('timeupdate', () => {
 ```typescript
 // Playhead.tsx
 const handleMouseDown = () => {
-  console.log('[Playhead] mousedown - set isScrubbing=true');
+  console.log("[Playhead] mousedown - set isScrubbing=true");
   setIsScrubbing(true);
 };
 
 const handleMouseUp = () => {
-  console.log('[Playhead] mouseup - set isScrubbing=false');
+  console.log("[Playhead] mouseup - set isScrubbing=false");
   setIsScrubbing(false);
 };
 ```
@@ -938,7 +965,7 @@ const handleMouseUp = () => {
 // GOOD
 const cleanup = () => {
   if (videoUrl) {
-    console.log('[cleanup] Revoking Object URL:', videoUrl);
+    console.log("[cleanup] Revoking Object URL:", videoUrl);
     URL.revokeObjectURL(videoUrl);
   }
 };
@@ -952,7 +979,7 @@ reset: () => {
   if (trimmedUrl) URL.revokeObjectURL(trimmedUrl);
 
   set(initialState);
-}
+};
 ```
 
 ---
@@ -968,16 +995,17 @@ reset: () => {
 ```typescript
 // GOOD
 eventSource.onmessage = (event) => {
-  if (data.type === 'complete') {
-    eventSource.close();  // 먼저 닫기
+  if (data.type === "complete") {
+    eventSource.close(); // 먼저 닫기
     eventSourceRef.current = null;
-    window.location.href = '/download';
+    window.location.href = "/download";
   }
 };
 
 eventSource.onerror = (error) => {
-  if (eventSourceRef.current) {  // 아직 열려있으면 에러
-    console.error('Connection error:', error);
+  if (eventSourceRef.current) {
+    // 아직 열려있으면 에러
+    console.error("Connection error:", error);
   }
   // null이면 정상 완료 후 닫힌 것 (무시)
 };
@@ -992,12 +1020,14 @@ eventSource.onerror = (error) => {
 **원칙**: 복잡한 로직, 고위험 코드, 모니터링이 필요한 핵심 동작만 테스트
 
 **테스트가 필요한 코드**:
+
 1. ✅ 비즈니스 로직 (trimming, progress calculation)
 2. ✅ 상태 관리 (Store actions)
 3. ✅ 바이너리 의존성 검증
 4. ✅ 복잡한 계산 (시간 변환, 제약 조건)
 
 **테스트가 불필요한 코드**:
+
 1. ❌ 간단한 유틸리티 (이미 검증됨)
 2. ❌ 상수 객체 (타입스크립트로 충분)
 3. ❌ UI 컴포넌트 (E2E 테스트로 대체)
@@ -1008,18 +1038,18 @@ eventSource.onerror = (error) => {
 
 ```typescript
 // src/__tests__/unit/useStore.test.ts
-describe('Store - Timeline', () => {
-  it('should set in point within valid range', () => {
+describe("Store - Timeline", () => {
+  it("should set in point within valid range", () => {
     const { result } = renderHook(() => useStore());
 
     act(() => {
       result.current.setVideoFile({
-        file: new File(['test'], 'test.mp4'),
-        source: 'file',
-        name: 'test.mp4',
+        file: new File(["test"], "test.mp4"),
+        source: "file",
+        name: "test.mp4",
         size: 1024,
-        type: 'video/mp4',
-        url: 'blob:test',
+        type: "video/mp4",
+        url: "blob:test",
         duration: 100,
       });
       result.current.setInPoint(30);
@@ -1034,8 +1064,8 @@ describe('Store - Timeline', () => {
 
 ```typescript
 // src/__tests__/unit/binPaths.test.ts
-describe('Binary Dependencies', () => {
-  it('should have ffmpeg available', () => {
+describe("Binary Dependencies", () => {
+  it("should have ffmpeg available", () => {
     const ffmpegPath = getFfmpegPath();
     expect(ffmpegPath).toBeTruthy();
     expect(existsSync(ffmpegPath)).toBe(true);
@@ -1047,17 +1077,17 @@ describe('Binary Dependencies', () => {
 
 ```typescript
 // src/__tests__/unit/sseProgressUtils.test.ts
-describe('SSE Progress Utils', () => {
-  it('should calculate overall progress with phase weights', () => {
+describe("SSE Progress Utils", () => {
+  it("should calculate overall progress with phase weights", () => {
     // downloading: 0-90%
-    expect(calculateOverallProgress('downloading', 0)).toBe(0);
-    expect(calculateOverallProgress('downloading', 50)).toBe(45);
-    expect(calculateOverallProgress('downloading', 100)).toBe(90);
+    expect(calculateOverallProgress("downloading", 0)).toBe(0);
+    expect(calculateOverallProgress("downloading", 50)).toBe(45);
+    expect(calculateOverallProgress("downloading", 100)).toBe(90);
 
     // processing: 90-100%
-    expect(calculateOverallProgress('processing', 0)).toBe(90);
-    expect(calculateOverallProgress('processing', 50)).toBe(95);
-    expect(calculateOverallProgress('processing', 100)).toBe(100);
+    expect(calculateOverallProgress("processing", 0)).toBe(90);
+    expect(calculateOverallProgress("processing", 50)).toBe(95);
+    expect(calculateOverallProgress("processing", 100)).toBe(100);
   });
 });
 ```
@@ -1118,18 +1148,23 @@ export function usePreviewPlayback() {
 async function trimToWebM(
   inputFile: string,
   startTime: number,
-  endTime: number
+  endTime: number,
 ): Promise<Uint8Array> {
   await ffmpeg.exec([
-    '-i', inputFile,
-    '-ss', startTime.toString(),
-    '-to', endTime.toString(),
-    '-c:v', 'libvpx-vp9',    // WebM 비디오 코덱
-    '-c:a', 'libopus',       // WebM 오디오 코덱
-    'output.webm',
+    "-i",
+    inputFile,
+    "-ss",
+    startTime.toString(),
+    "-to",
+    endTime.toString(),
+    "-c:v",
+    "libvpx-vp9", // WebM 비디오 코덱
+    "-c:a",
+    "libopus", // WebM 오디오 코덱
+    "output.webm",
   ]);
 
-  const data = await ffmpeg.readFile('output.webm');
+  const data = await ffmpeg.readFile("output.webm");
   return data as Uint8Array;
 }
 ```
@@ -1141,7 +1176,7 @@ async function trimToWebM(
 export async function trimVideo(): Promise<string> {
   const { format } = useStore.getState().export;
 
-  if (format === 'webm') {
+  if (format === "webm") {
     return await trimToWebM(file, startTime, endTime);
   } else {
     return await trimToMP4(file, startTime, endTime);
@@ -1156,6 +1191,7 @@ export async function trimVideo(): Promise<string> {
 ### 문제 1: FFmpeg 빌드 실패
 
 **증상**:
+
 ```
 Error: Cannot find module '@ffmpeg-installer/ffmpeg'
 ```
@@ -1163,6 +1199,7 @@ Error: Cannot find module '@ffmpeg-installer/ffmpeg'
 **원인**: `serverExternalPackages` 설정 누락
 
 **해결**:
+
 ```typescript
 // next.config.ts
 serverExternalPackages: ['@ffmpeg-installer/ffmpeg'],
@@ -1173,6 +1210,7 @@ serverExternalPackages: ['@ffmpeg-installer/ffmpeg'],
 ### 문제 2: SharedArrayBuffer 사용 불가
 
 **증상**:
+
 ```
 ReferenceError: SharedArrayBuffer is not defined
 ```
@@ -1180,6 +1218,7 @@ ReferenceError: SharedArrayBuffer is not defined
 **원인**: COEP 헤더 없음
 
 **해결**:
+
 ```typescript
 // next.config.ts
 headers: [
@@ -1198,6 +1237,7 @@ headers: [
 ### 문제 3: Streamlink 다운로드 실패
 
 **증상**:
+
 ```
 streamlink: not found
 ```
@@ -1255,6 +1295,7 @@ streamlink: not found
 이 문서는 Video Trimmer 프로젝트를 통해 현대 웹 개발의 핵심 패턴을 학습할 수 있도록 작성되었습니다. 단순히 코드를 읽는 것을 넘어, **왜 이렇게 설계되었는지**, **어떤 문제를 해결하는지**를 이해하는 것이 중요합니다.
 
 **핵심 교훈**:
+
 1. **Phase-based workflow**로 복잡한 상태 관리 단순화
 2. **Feature-based 아키텍처**로 확장 가능한 코드베이스
 3. **Race condition 제어**로 안정적인 비동기 처리

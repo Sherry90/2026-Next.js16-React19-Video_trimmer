@@ -12,7 +12,10 @@
     "build:turbopack": "next build && npm run build:server",
     "build:server": "esbuild server.ts --bundle --platform=node --target=node24 --packages=external --outfile=server.cjs",
     "start": "cross-env NODE_ENV=production node server.cjs",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "type-check": "tsc --noEmit",
     "test": "vitest",
     "test:ui": "vitest --ui",
@@ -37,7 +40,7 @@
     "@ffmpeg/ffmpeg": "^0.12.10",
     "@ffmpeg/util": "^0.12.2",
     "@tailwindcss/postcss": "^4.1.18",
-    "adm-zip": "^0.5.16",
+    "adm-zip": "^0.6.0",
     "mp4box": "^2.3.0",
     "next": "^16.2.9",
     "react": "^19.2.3",
@@ -62,12 +65,27 @@
     "esbuild": "^0.28.1",
     "eslint": "^9.39.2",
     "eslint-config-next": "^16.2.9",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
     "happy-dom": "^20.3.9",
-    "postcss": "^8.5.6",
+    "postcss": "^8.5.10",
+    "prettier": "^3.6.2",
     "tailwindcss": "^4.1.18",
     "tsx": "^4.21.0",
     "ttsc": "^0.16.7",
     "typescript": "^6.0.3",
     "vitest": "^4.0.18"
+  },
+  "overrides": {
+    "postcss": "^8.5.10"
+  },
+  "allowScripts": {
+    "@ffmpeg-installer/darwin-arm64@4.1.5": true,
+    "esbuild@0.28.1": true,
+    "esbuild@0.25.12": true,
+    "fsevents@2.3.2": true,
+    "fsevents@2.3.3": true,
+    "sharp@0.34.5": true,
+    "unrs-resolver@1.12.2": true
   }
 }

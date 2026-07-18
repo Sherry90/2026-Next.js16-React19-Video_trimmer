@@ -1,4 +1,4 @@
-import type { Sample, Track } from 'mp4box';
+import type { Sample, Track } from "mp4box";
 
 /**
  * 키프레임 범위 찾기
@@ -15,7 +15,7 @@ import type { Sample, Track } from 'mp4box';
 export function findKeyframeRange(
   samples: Sample[],
   startDts: number,
-  endDts: number
+  endDts: number,
 ): { firstIndex: number; lastIndex: number } {
   let firstKeyframeIndex = -1;
   let lastSampleIndex = -1;
@@ -68,24 +68,16 @@ export function filterSamplesByTimeRange(
   samples: Sample[],
   trackInfo: Track,
   startTime: number,
-  endTime: number
+  endTime: number,
 ): Sample[] {
   const timescale = trackInfo.timescale;
   const startDts = Math.floor(startTime * timescale);
   const endDts = Math.floor(endTime * timescale);
 
-  const { firstIndex, lastIndex } = findKeyframeRange(
-    samples,
-    startDts,
-    endDts
-  );
+  const { firstIndex, lastIndex } = findKeyframeRange(samples, startDts, endDts);
 
   // Extract trimmed samples
-  if (
-    firstIndex !== -1 &&
-    lastIndex !== -1 &&
-    firstIndex <= lastIndex
-  ) {
+  if (firstIndex !== -1 && lastIndex !== -1 && firstIndex <= lastIndex) {
     return samples.slice(firstIndex, lastIndex + 1);
   }
 
@@ -102,9 +94,7 @@ export function filterSamplesByTimeRange(
  * @param onComplete - 완료 시 호출될 콜백
  * @returns start, cleanup 함수
  */
-export function createCompletionDetector(
-  onComplete: () => void
-): {
+export function createCompletionDetector(onComplete: () => void): {
   start: () => void;
   notifySample: () => void;
   cleanup: () => void;

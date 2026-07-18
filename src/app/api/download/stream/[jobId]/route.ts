@@ -1,7 +1,7 @@
-import { NextRequest } from 'next/server';
-import { getJob, getJobStream } from '@/lib/downloadJob';
+import { NextRequest } from "next/server";
+import { getJob, getJobStream } from "@/lib/downloadJob";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * GET /api/download/stream/[jobId]
@@ -9,7 +9,10 @@ export const dynamic = 'force-dynamic';
  * Server-Sent Events (SSE) endpoint
  * - 다운로드 진행 상황을 실시간 스트리밍
  */
-export async function GET(request: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ jobId: string }> },
+) {
   const { jobId } = await params;
 
   // ReadableStream 생성
@@ -22,26 +25,33 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       const currentJob = getJob(jobId);
 
       if (!currentJob) {
-        controller.enqueue(encode({ type: 'error', message: '다운로드 정보가 만료되었습니다' }));
+        controller.enqueue(encode({ type: "error", message: "다운로드 정보가 만료되었습니다" }));
         controller.close();
         return;
       }
 
-      if (currentJob.status === 'completed') {
-        controller.enqueue(encode({ type: 'complete' }));
+      if (currentJob.status === "completed") {
+        controller.enqueue(encode({ type: "complete" }));
         controller.close();
         return;
       }
 
-      if (currentJob.status === 'failed') {
-        controller.enqueue(encode({ type: 'error', message: currentJob.errorMessage ?? '다운로드에 실패했습니다', code: currentJob.errorCode, technicalDetails: currentJob.errorDetails }));
+      if (currentJob.status === "failed") {
+        controller.enqueue(
+          encode({
+            type: "error",
+            message: currentJob.errorMessage ?? "다운로드에 실패했습니다",
+            code: currentJob.errorCode,
+            technicalDetails: currentJob.errorDetails,
+          }),
+        );
         controller.close();
         return;
       }
 
       // status === 'running' → 기존 로직대로 listeners에 등록
       // 즉시 초기 이벤트 전송 (Next.js 버퍼링 방지)
-      controller.enqueue(encoder.encode(': connected\n\n'));
+      controller.enqueue(encoder.encode(": connected\n\n"));
 
       // JobStream 구독
       const unsubscribe = getJobStream(jobId, (event) => {
@@ -49,7 +59,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           controller.enqueue(encode(event));
 
           // 완료/에러 시 스트림 종료
-          if (event.type === 'complete' || event.type === 'error') {
+          if (event.type === "complete" || event.type === "error") {
             controller.close();
             unsubscribe();
           }
@@ -61,7 +71,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       });
 
       // 클라이언트 연결 끊김 처리
-      request.signal.addEventListener('abort', () => {
+      request.signal.addEventListener("abort", () => {
         controller.close();
         unsubscribe();
       });
@@ -71,10 +81,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   // SSE 헤더와 함께 응답
   return new Response(stream, {
     headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
-      'Connection': 'keep-alive',
-      'X-Accel-Buffering': 'no', // Nginx 버퍼링 비활성화
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no", // Nginx 버퍼링 비활성화
     },
   });
 }

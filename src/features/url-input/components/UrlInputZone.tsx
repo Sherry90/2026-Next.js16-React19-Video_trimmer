@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import { useState, useCallback, useRef } from 'react';
-import { useUrlInput } from '@/features/url-input/hooks/useUrlInput';
-import { URL_INPUT } from '@/constants/appConfig';
-import { Button } from '@/shared/ui/Button';
-import { TextInput } from '@/shared/ui/TextInput';
-import { UrlDivider } from './UrlDivider';
-import { UrlPreview } from './UrlPreview';
-import { UrlStatus } from './UrlStatus';
+import { useState, useCallback, useRef } from "react";
+import { useUrlInput } from "@/features/url-input/hooks/useUrlInput";
+import { URL_INPUT } from "@/constants/appConfig";
+import { Button } from "@/shared/ui/Button";
+import { TextInput } from "@/shared/ui/TextInput";
+import { UrlDivider } from "./UrlDivider";
+import { UrlPreview } from "./UrlPreview";
+import { UrlStatus } from "./UrlStatus";
 
 export function UrlInputZone() {
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const { isLoading, error, preview, handleUrlSubmit, clearError, clearPreview } = useUrlInput();
 
@@ -22,17 +22,17 @@ export function UrlInputZone() {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') {
+      if (e.key === "Enter") {
         e.preventDefault();
         handleSubmit();
       }
     },
-    [handleSubmit]
+    [handleSubmit],
   );
 
   const handlePaste = useCallback(
     (e: React.ClipboardEvent) => {
-      const pastedText = e.clipboardData.getData('text');
+      const pastedText = e.clipboardData.getData("text");
       if (pastedText) {
         // URL auto-detection on paste
         try {
@@ -46,14 +46,11 @@ export function UrlInputZone() {
         }
       }
     },
-    [handleUrlSubmit]
+    [handleUrlSubmit],
   );
 
   return (
-    <div
-      className="w-full mt-4"
-      onClick={(e) => e.stopPropagation()}
-    >
+    <div className="w-full mt-4" onClick={(e) => e.stopPropagation()}>
       <UrlDivider />
 
       {/* URL Input */}
@@ -80,7 +77,7 @@ export function UrlInputZone() {
           data-testid="url-load-button"
           className="px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
         >
-          {isLoading ? 'Loading...' : 'Load'}
+          {isLoading ? "Loading..." : "Load"}
         </Button>
       </div>
 

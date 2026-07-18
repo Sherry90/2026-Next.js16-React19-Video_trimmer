@@ -8,17 +8,18 @@ export interface SpectrogramData {
 }
 
 export function isValidSpectrogramData(value: unknown): value is SpectrogramData {
-  if (!value || typeof value !== 'object') return false;
+  if (!value || typeof value !== "object") return false;
 
   const data = value as Partial<SpectrogramData>;
   if (data.skipped) return true;
-  if (typeof data.duration !== 'number') return false;
-  if (typeof data.sampleRate !== 'number') return false;
-  if (typeof data.fftSize !== 'number') return false;
+  if (typeof data.duration !== "number") return false;
+  if (typeof data.sampleRate !== "number") return false;
+  if (typeof data.fftSize !== "number") return false;
   if (!Array.isArray(data.frames)) return false;
 
-  return data.frames.every((frame) =>
-    Array.isArray(frame) && frame.every((bin) => typeof bin === 'number' && Number.isFinite(bin))
+  return data.frames.every(
+    (frame) =>
+      Array.isArray(frame) && frame.every((bin) => typeof bin === "number" && Number.isFinite(bin)),
   );
 }
 
@@ -32,7 +33,7 @@ export function spectrogramFrameWidth(
   audioDuration: number,
   videoDuration: number,
   frameCount: number,
-  width: number
+  width: number,
 ): number {
   if (frameCount <= 0 || width <= 0) return 0;
   const ref = videoDuration > 0 ? videoDuration : audioDuration;

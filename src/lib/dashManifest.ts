@@ -35,7 +35,7 @@ export function parseInitIndexRange(head: Buffer): InitIndexRange {
 
   while (offset + 8 <= head.length) {
     let size = head.readUInt32BE(offset);
-    const type = head.toString('latin1', offset + 4, offset + 8);
+    const type = head.toString("latin1", offset + 4, offset + 8);
 
     if (size === 1) {
       // 64-bit largesize
@@ -49,9 +49,9 @@ export function parseInitIndexRange(head: Buffer): InitIndexRange {
 
     const boxEnd = offset + size;
 
-    if (type === 'moov') {
+    if (type === "moov") {
       moovEnd = boxEnd - 1;
-    } else if (type === 'sidx') {
+    } else if (type === "sidx") {
       sidxStart = offset;
       sidxEnd = boxEnd - 1;
       break; // 첫 sidx면 충분
@@ -61,10 +61,10 @@ export function parseInitIndexRange(head: Buffer): InitIndexRange {
   }
 
   if (moovEnd < 0) {
-    throw new Error('DASH 박스 파싱 실패: moov 미발견 (머리 버퍼 부족 가능)');
+    throw new Error("DASH 박스 파싱 실패: moov 미발견 (머리 버퍼 부족 가능)");
   }
   if (sidxStart < 0) {
-    throw new Error('DASH 박스 파싱 실패: sidx 미발견 (머리 버퍼 부족 가능)');
+    throw new Error("DASH 박스 파싱 실패: sidx 미발견 (머리 버퍼 부족 가능)");
   }
 
   return { init: [0, moovEnd], index: [sidxStart, sidxEnd] };
@@ -104,32 +104,41 @@ export interface ClipByteRange {
  */
 export function parseSidx(head: Buffer, sidxStart: number, sidxEnd: number): SidxInfo {
   let p = sidxStart;
-  const type = head.toString('latin1', p + 4, p + 8);
-  if (type !== 'sidx') throw new Error(`sidx 박스 아님: ${type}`);
+  const type = head.toString("latin1", p + 4, p + 8);
+  if (type !== "sidx") throw new Error(`sidx 박스 아님: ${type}`);
   p += 8;
-  const version = head.readUInt8(p); p += 1;
+  const version = head.readUInt8(p);
+  p += 1;
   p += 3; // flags
   p += 4; // reference_ID
-  const timescale = head.readUInt32BE(p); p += 4;
+  const timescale = head.readUInt32BE(p);
+  p += 4;
   let earliest: number, firstOffset: number;
   if (version === 0) {
-    earliest = head.readUInt32BE(p); p += 4;
-    firstOffset = head.readUInt32BE(p); p += 4;
+    earliest = head.readUInt32BE(p);
+    p += 4;
+    firstOffset = head.readUInt32BE(p);
+    p += 4;
   } else {
-    earliest = Number(head.readBigUInt64BE(p)); p += 8;
-    firstOffset = Number(head.readBigUInt64BE(p)); p += 8;
+    earliest = Number(head.readBigUInt64BE(p));
+    p += 8;
+    firstOffset = Number(head.readBigUInt64BE(p));
+    p += 8;
   }
   p += 2; // reserved
-  const refCount = head.readUInt16BE(p); p += 2;
+  const refCount = head.readUInt16BE(p);
+  p += 2;
 
   const segments: SidxSegment[] = [];
   for (let i = 0; i < refCount; i++) {
-    const w0 = head.readUInt32BE(p); p += 4;
+    const w0 = head.readUInt32BE(p);
+    p += 4;
     const refType = (w0 >>> 31) & 1;
     const size = w0 & 0x7fffffff;
-    const dur = head.readUInt32BE(p); p += 4;
+    const dur = head.readUInt32BE(p);
+    p += 4;
     p += 4; // SAP 정보
-    if (refType !== 0) throw new Error('계층 sidx(reference_type=1) 미지원');
+    if (refType !== 0) throw new Error("계층 sidx(reference_type=1) 미지원");
     segments.push({ size, dur });
   }
 
@@ -144,12 +153,14 @@ export function computeClipByteRange(
   sidx: SidxInfo,
   init: [number, number],
   startSec: number,
-  endSec: number
+  endSec: number,
 ): ClipByteRange {
   const { timescale, earliest, mediaStart, segments } = sidx;
   let t = earliest / timescale; // 현재 subseg 시작 시각(초)
-  let b = mediaStart;           // 현재 subseg 시작 바이트
-  let byteStart = -1, byteEnd = -1, clipStartTime = earliest / timescale;
+  let b = mediaStart; // 현재 subseg 시작 바이트
+  let byteStart = -1,
+    byteEnd = -1,
+    clipStartTime = earliest / timescale;
 
   for (const s of segments) {
     const segEndT = t + s.dur / timescale;
@@ -203,7 +214,11 @@ export interface DashAudioRep {
 }
 
 function xmlEscape(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function videoRepXml(rep: DashVideoRep): string {
@@ -231,7 +246,7 @@ function audioRepXml(rep: DashAudioRep): string {
 
 /** PT{n}S ISO-8601 duration (소수 3자리). */
 function isoDuration(sec: number): string {
-  return `PT${(Math.max(0, sec)).toFixed(3)}S`;
+  return `PT${Math.max(0, sec).toFixed(3)}S`;
 }
 
 /**
@@ -244,7 +259,7 @@ export function buildMpd(params: {
   durationSec: number;
 }): string {
   const { video, audio, durationSec } = params;
-  const videoReps = video.map(videoRepXml).join('\n');
+  const videoReps = video.map(videoRepXml).join("\n");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static" minBufferTime="PT1.5S" mediaPresentationDuration="${isoDuration(durationSec)}" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011">

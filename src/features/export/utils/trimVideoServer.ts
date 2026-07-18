@@ -18,9 +18,9 @@ export async function trimVideoServer(options: TrimVideoServerOptions): Promise<
 
   onProgress?.(0);
 
-  const response = await fetch('/api/video/trim', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+  const response = await fetch("/api/video/trim", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ originalUrl, startTime, endTime, filename }),
   });
 
@@ -30,11 +30,11 @@ export async function trimVideoServer(options: TrimVideoServerOptions): Promise<
   }
 
   if (!response.body) {
-    throw new Error('No response body');
+    throw new Error("No response body");
   }
 
   // Read the stream and track progress
-  const contentLength = response.headers.get('content-length');
+  const contentLength = response.headers.get("content-length");
   const totalBytes = contentLength ? parseInt(contentLength, 10) : 0;
 
   const reader = response.body.getReader();
@@ -65,7 +65,7 @@ export async function trimVideoServer(options: TrimVideoServerOptions): Promise<
 
   onProgress?.(100);
 
-  const blob = new Blob(chunks, { type: 'video/mp4' });
+  const blob = new Blob(chunks, { type: "video/mp4" });
 
   return blob;
 }
