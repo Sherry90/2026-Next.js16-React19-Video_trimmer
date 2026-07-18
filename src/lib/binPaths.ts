@@ -7,9 +7,9 @@
  * - streamlink: auto-downloaded to .bin/ (postinstall), system fallback
  */
 
-import { execFileSync } from 'child_process';
-import { existsSync } from 'fs';
-import { join } from 'path';
+import { execFileSync } from "child_process";
+import { existsSync } from "fs";
+import { join } from "path";
 
 let _ffmpegPath: string | null = null;
 let _ytdlpPath: string | null = null;
@@ -23,8 +23,8 @@ let _aria2cPath: string | null | undefined = undefined; // undefined=미탐색, 
  */
 function commandExists(cmd: string): boolean {
   try {
-    const probe = process.platform === 'win32' ? 'where' : 'which';
-    execFileSync(probe, [cmd], { stdio: 'ignore' });
+    const probe = process.platform === "win32" ? "where" : "which";
+    execFileSync(probe, [cmd], { stdio: "ignore" });
     return true;
   } catch {
     return false;
@@ -37,8 +37,8 @@ function commandExists(cmd: string): boolean {
  */
 function resolveCommandPath(cmd: string): string | null {
   try {
-    const probe = process.platform === 'win32' ? 'where' : 'which';
-    const out = execFileSync(probe, [cmd], { encoding: 'utf-8' }).trim();
+    const probe = process.platform === "win32" ? "where" : "which";
+    const out = execFileSync(probe, [cmd], { encoding: "utf-8" }).trim();
     const first = out.split(/\r?\n/)[0]?.trim();
     return first || null;
   } catch {
@@ -55,14 +55,14 @@ export function getFfmpegPath(): string {
 
   try {
     // Try bundled ffmpeg first
-    const installer = require('@ffmpeg-installer/ffmpeg');
+    const installer = require("@ffmpeg-installer/ffmpeg");
     const path: string = installer.path;
     _ffmpegPath = path;
     return path;
   } catch {
     // Fallback to system ffmpeg. 절대 경로로 해석한다 — yt-dlp `--ffmpeg-location`은
     // PATH 탐색이 아닌 실제 경로를 요구하므로 bare 'ffmpeg'는 "does not exist"로 실패한다.
-    _ffmpegPath = resolveCommandPath('ffmpeg') || 'ffmpeg';
+    _ffmpegPath = resolveCommandPath("ffmpeg") || "ffmpeg";
     return _ffmpegPath;
   }
 }
@@ -78,35 +78,35 @@ export function getFfmpegPath(): string {
 export function getYtdlpPath(): string {
   if (_ytdlpPath) return _ytdlpPath;
 
-  const isWin = process.platform === 'win32';
+  const isWin = process.platform === "win32";
   const root = process.cwd();
 
   // 1. venv-installed yt-dlp (fast startup, setup-deps가 생성)
   const venvBin = isWin
-    ? join(root, '.bin', 'yt-dlp-venv', 'Scripts', 'yt-dlp.exe')
-    : join(root, '.bin', 'yt-dlp-venv', 'bin', 'yt-dlp');
+    ? join(root, ".bin", "yt-dlp-venv", "Scripts", "yt-dlp.exe")
+    : join(root, ".bin", "yt-dlp-venv", "bin", "yt-dlp");
   if (existsSync(venvBin)) {
     _ytdlpPath = venvBin;
     return venvBin;
   }
 
   // 2. System yt-dlp (예: Docker `pip install yt-dlp`) — 역시 모듈이라 빠름
-  if (commandExists('yt-dlp')) {
-    _ytdlpPath = 'yt-dlp';
-    return 'yt-dlp';
+  if (commandExists("yt-dlp")) {
+    _ytdlpPath = "yt-dlp";
+    return "yt-dlp";
   }
 
   // 3. Bundled onefile 바이너리 (startup 느림, 최후 fallback)
-  const binName = isWin ? 'yt-dlp.exe' : 'yt-dlp';
-  const bundled = join(root, '.bin', binName);
+  const binName = isWin ? "yt-dlp.exe" : "yt-dlp";
+  const bundled = join(root, ".bin", binName);
   if (existsSync(bundled)) {
     _ytdlpPath = bundled;
     return bundled;
   }
 
   // 4. Not found — return literal so ENOENT triggers the user-facing error
-  _ytdlpPath = 'yt-dlp';
-  return 'yt-dlp';
+  _ytdlpPath = "yt-dlp";
+  return "yt-dlp";
 }
 
 /**
@@ -123,13 +123,13 @@ export function getStreamlinkPath(): string | null {
   // 1. Check bundled binary
   let bundledPath: string | undefined;
 
-  if (platform === 'win32') {
-    bundledPath = join(projectRoot, '.bin', 'streamlink-win', 'streamlink.exe');
-  } else if (platform === 'linux') {
-    const archSuffix = arch === 'arm64' ? 'arm64' : 'x64';
-    bundledPath = join(projectRoot, '.bin', `streamlink-linux-${archSuffix}.AppImage`);
-  } else if (platform === 'darwin') {
-    bundledPath = join(projectRoot, '.bin', 'streamlink-venv', 'bin', 'streamlink');
+  if (platform === "win32") {
+    bundledPath = join(projectRoot, ".bin", "streamlink-win", "streamlink.exe");
+  } else if (platform === "linux") {
+    const archSuffix = arch === "arm64" ? "arm64" : "x64";
+    bundledPath = join(projectRoot, ".bin", `streamlink-linux-${archSuffix}.AppImage`);
+  } else if (platform === "darwin") {
+    bundledPath = join(projectRoot, ".bin", "streamlink-venv", "bin", "streamlink");
   }
 
   if (bundledPath && existsSync(bundledPath)) {
@@ -138,9 +138,9 @@ export function getStreamlinkPath(): string | null {
   }
 
   // 2. Check system binary
-  if (commandExists('streamlink')) {
-    _streamlinkPath = 'streamlink';
-    return 'streamlink';
+  if (commandExists("streamlink")) {
+    _streamlinkPath = "streamlink";
+    return "streamlink";
   }
 
   return null;
@@ -163,21 +163,16 @@ export function hasStreamlink(): boolean {
 export function getAria2cPath(): string | null {
   if (_aria2cPath !== undefined) return _aria2cPath;
 
-  const isWin = process.platform === 'win32';
-  const bundled = join(
-    process.cwd(),
-    '.bin',
-    'aria2',
-    isWin ? 'aria2c.exe' : 'aria2c',
-  );
+  const isWin = process.platform === "win32";
+  const bundled = join(process.cwd(), ".bin", "aria2", isWin ? "aria2c.exe" : "aria2c");
   if (existsSync(bundled)) {
     _aria2cPath = bundled;
     return bundled;
   }
 
-  if (commandExists('aria2c')) {
-    _aria2cPath = 'aria2c';
-    return 'aria2c';
+  if (commandExists("aria2c")) {
+    _aria2cPath = "aria2c";
+    return "aria2c";
   }
 
   _aria2cPath = null;
@@ -204,21 +199,25 @@ export function checkDependencies(): {
   let ffmpegAvailable = false;
   let ffmpegBundled = false;
   try {
-    execFileSync(ffmpegPath, ['-version'], { stdio: 'ignore' });
+    execFileSync(ffmpegPath, ["-version"], { stdio: "ignore" });
     ffmpegAvailable = true;
-    ffmpegBundled = ffmpegPath !== 'ffmpeg';
-  } catch { /* */ }
+    ffmpegBundled = ffmpegPath !== "ffmpeg";
+  } catch {
+    /* */
+  }
 
   const ytdlpPath = getYtdlpPath();
   let ytdlpAvailable = false;
   try {
-    execFileSync(ytdlpPath, ['--version'], { stdio: 'ignore' });
+    execFileSync(ytdlpPath, ["--version"], { stdio: "ignore" });
     ytdlpAvailable = true;
-  } catch { /* */ }
+  } catch {
+    /* */
+  }
 
   const streamlinkPath = getStreamlinkPath();
   const streamlinkAvailable = streamlinkPath !== null;
-  const streamlinkBundled = streamlinkPath?.includes('.bin') || false;
+  const streamlinkBundled = streamlinkPath?.includes(".bin") || false;
 
   const aria2cPath = getAria2cPath();
   // ffmpeg/yt-dlp와 동일하게 실제 실행 가능 여부까지 확인한다 — 파일만 있고 못 도는
@@ -226,16 +225,22 @@ export function checkDependencies(): {
   let aria2cAvailable = false;
   if (aria2cPath) {
     try {
-      execFileSync(aria2cPath, ['--version'], { stdio: 'ignore' });
+      execFileSync(aria2cPath, ["--version"], { stdio: "ignore" });
       aria2cAvailable = true;
-    } catch { /* 파일은 있으나 실행 불가 */ }
+    } catch {
+      /* 파일은 있으나 실행 불가 */
+    }
   }
-  const aria2cBundled = aria2cPath?.includes('.bin') || false;
+  const aria2cBundled = aria2cPath?.includes(".bin") || false;
 
   return {
     ffmpeg: { available: ffmpegAvailable, path: ffmpegPath, bundled: ffmpegBundled },
     ytdlp: { available: ytdlpAvailable, path: ytdlpPath },
-    streamlink: { available: streamlinkAvailable, path: streamlinkPath || 'not found', bundled: streamlinkBundled },
-    aria2c: { available: aria2cAvailable, path: aria2cPath || 'not found', bundled: aria2cBundled },
+    streamlink: {
+      available: streamlinkAvailable,
+      path: streamlinkPath || "not found",
+      bundled: streamlinkBundled,
+    },
+    aria2c: { available: aria2cAvailable, path: aria2cPath || "not found", bundled: aria2cBundled },
   };
 }

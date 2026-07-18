@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { createReadStream, statSync } from 'fs';
+import { NextResponse } from "next/server";
+import { createReadStream, statSync } from "fs";
 
 /**
  * 파일 스트리밍 옵션
@@ -48,24 +48,24 @@ export function streamFile(options: StreamFileOptions): NextResponse {
       // 백프레셔 필수: 'data'에서 무조건 enqueue하면 디스크 read가 네트워크 전송보다
       // 빨라 controller 큐에 파일 전체가 쌓여 힙 OOM(대용량 구간 다운로드 시 GB+)이 난다.
       // desiredSize<=0 이면 disk read를 pause하고, 소비자가 당기면 pull()에서 resume.
-      fileStream.on('data', (chunk: string | Buffer) => {
-        const buf = typeof chunk === 'string' ? Buffer.from(chunk) : chunk;
+      fileStream.on("data", (chunk: string | Buffer) => {
+        const buf = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
         controller.enqueue(new Uint8Array(buf));
         if (controller.desiredSize !== null && controller.desiredSize <= 0) {
           fileStream.pause();
         }
       });
 
-      fileStream.on('end', async () => {
+      fileStream.on("end", async () => {
         controller.close();
         try {
           await onStreamEnd?.();
         } catch (err) {
-          console.error('[streamFile] Cleanup error:', err);
+          console.error("[streamFile] Cleanup error:", err);
         }
       });
 
-      fileStream.on('error', (err) => {
+      fileStream.on("error", (err) => {
         controller.error(err);
         onStreamError?.(err);
       });
@@ -77,16 +77,16 @@ export function streamFile(options: StreamFileOptions): NextResponse {
 
     cancel() {
       fileStream.destroy();
-      onStreamError?.(new Error('Stream cancelled'));
+      onStreamError?.(new Error("Stream cancelled"));
     },
   });
 
   const headers: Record<string, string> = {
-    'Content-Type': contentType,
-    'Content-Length': String(stat.size),
+    "Content-Type": contentType,
+    "Content-Length": String(stat.size),
   };
   if (contentDisposition) {
-    headers['Content-Disposition'] = contentDisposition;
+    headers["Content-Disposition"] = contentDisposition;
   }
 
   return new NextResponse(stream, {

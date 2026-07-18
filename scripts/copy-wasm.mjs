@@ -7,23 +7,20 @@
  * Dest:   public/ffmpeg/
  */
 
-import { existsSync, mkdirSync, copyFileSync } from 'fs';
-import { join } from 'path';
-import { fileURLToPath } from 'url';
+import { existsSync, mkdirSync, copyFileSync } from "fs";
+import { join } from "path";
+import { fileURLToPath } from "url";
 
-const __dirname = fileURLToPath(new URL('.', import.meta.url));
-const projectRoot = join(__dirname, '..');
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
+const projectRoot = join(__dirname, "..");
 
-const srcDir = join(projectRoot, 'node_modules', '@ffmpeg', 'core', 'dist', 'umd');
-const destDir = join(projectRoot, 'public', 'ffmpeg');
+const srcDir = join(projectRoot, "node_modules", "@ffmpeg", "core", "dist", "umd");
+const destDir = join(projectRoot, "public", "ffmpeg");
 
-const files = [
-  'ffmpeg-core.js',
-  'ffmpeg-core.wasm',
-];
+const files = ["ffmpeg-core.js", "ffmpeg-core.wasm"];
 
 if (!existsSync(srcDir)) {
-  console.error('  ffmpeg-wasm: @ffmpeg/core not found in node_modules. Run npm install first.');
+  console.error("  ffmpeg-wasm: @ffmpeg/core not found in node_modules. Run npm install first.");
   process.exit(1);
 }
 

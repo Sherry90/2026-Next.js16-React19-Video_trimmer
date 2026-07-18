@@ -1,5 +1,5 @@
-import { AppHeader } from '@/widgets/AppHeader';
-import { WorkArea } from '@/widgets/WorkArea';
+import { AppHeader } from "@/widgets/AppHeader";
+import { WorkArea } from "@/widgets/WorkArea";
 
 export default function HomePage() {
   return (

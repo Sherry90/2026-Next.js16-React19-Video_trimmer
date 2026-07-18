@@ -25,7 +25,7 @@ export function computeZoomAnchor(
   rectLeft: number,
   scrollLeft: number,
   scrollWidth: number,
-  clientX: number
+  clientX: number,
 ): ZoomAnchor | null {
   if (scrollWidth <= 0) return null;
   const cursorX = clientX - rectLeft;

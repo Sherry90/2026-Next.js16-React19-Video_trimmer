@@ -4,8 +4,8 @@
  * URL 도메인을 분석하여 적절한 다운로드 도구를 선택합니다.
  */
 
-export type Platform = 'chzzk' | 'youtube' | 'generic';
-export type DownloadStrategy = 'streamlink' | 'ytdlp';
+export type Platform = "chzzk" | "youtube" | "generic";
+export type DownloadStrategy = "streamlink" | "ytdlp";
 
 /**
  * URL에서 플랫폼 감지 (도메인 기반)
@@ -14,18 +14,18 @@ export function detectPlatform(url: string): Platform {
   try {
     const domain = new URL(url).hostname.toLowerCase();
 
-    if (domain.includes('chzzk.naver.com')) {
-      return 'chzzk';
+    if (domain.includes("chzzk.naver.com")) {
+      return "chzzk";
     }
 
-    if (domain.includes('youtube.com') || domain.includes('youtu.be')) {
-      return 'youtube';
+    if (domain.includes("youtube.com") || domain.includes("youtu.be")) {
+      return "youtube";
     }
 
-    return 'generic';
+    return "generic";
   } catch {
     // Invalid URL - fallback to generic
-    return 'generic';
+    return "generic";
   }
 }
 
@@ -37,13 +37,13 @@ export function detectPlatform(url: string): Platform {
  */
 export function selectDownloadStrategy(
   platform: Platform,
-  streamType: 'hls' | 'mp4' = 'mp4'
+  streamType: "hls" | "mp4" = "mp4",
 ): DownloadStrategy {
   // 치지직은 HLS 전문가인 streamlink 사용
-  if (platform === 'chzzk') {
-    return 'streamlink';
+  if (platform === "chzzk") {
+    return "streamlink";
   }
 
   // 유튜브 및 기타 플랫폼은 범용 도구인 yt-dlp 사용
-  return 'ytdlp';
+  return "ytdlp";
 }

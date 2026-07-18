@@ -1,4 +1,4 @@
-import { TIMELINE } from '@/constants/appConfig';
+import { TIMELINE } from "@/constants/appConfig";
 
 /**
  * Store 제약 조건 유틸리티
@@ -16,22 +16,14 @@ export function constrainInPoint(time: number, outPoint: number): number {
 /**
  * OutPoint 제약: inPoint와 maxTime 사이로 제한
  */
-export function constrainOutPoint(
-  time: number,
-  inPoint: number,
-  maxTime: number
-): number {
+export function constrainOutPoint(time: number, inPoint: number, maxTime: number): number {
   return Math.max(inPoint, Math.min(time, maxTime));
 }
 
 /**
  * Playhead 제약: inPoint와 outPoint 사이로 제한
  */
-export function constrainPlayhead(
-  time: number,
-  inPoint: number,
-  outPoint: number
-): number {
+export function constrainPlayhead(time: number, inPoint: number, outPoint: number): number {
   return Math.max(inPoint, Math.min(time, outPoint));
 }
 

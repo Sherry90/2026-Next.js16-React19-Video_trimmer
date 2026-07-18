@@ -1,5 +1,5 @@
-import type { HTMLAttributes, ReactNode } from 'react';
-import { cn } from '@/shared/lib/cn';
+import type { HTMLAttributes, ReactNode } from "react";
+import { cn } from "@/shared/lib/cn";
 
 interface OverlayProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
@@ -13,7 +13,12 @@ interface OverlayProps extends HTMLAttributes<HTMLDivElement> {
  */
 export function Overlay({ children, className, ...rest }: OverlayProps) {
   return (
-    <div className={cn('absolute inset-0 flex items-center justify-center bg-[#1c1d20] z-10', className)}>
+    <div
+      className={cn(
+        "absolute inset-0 flex items-center justify-center bg-[#1c1d20] z-10",
+        className,
+      )}
+    >
       <div className="text-xs text-[#74808c]" {...rest}>
         {children}
       </div>

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { memo } from 'react';
-import { usePlayheadControl } from '@/features/timeline/hooks/usePlayheadControl';
+import { memo } from "react";
+import { usePlayheadControl } from "@/features/timeline/hooks/usePlayheadControl";
 
 /**
  * 재생 위치 표시 + 드래그 핸들.

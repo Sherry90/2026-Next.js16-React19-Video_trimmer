@@ -7,8 +7,8 @@
  * 직전 URL 하나만 보관(새 prefetch 시 이전 엔트리 abort+제거)하므로 누수 없음.
  */
 
-import { WAVEFORM } from '@/constants/appConfig';
-import { withRetry } from './retry';
+import { WAVEFORM } from "@/constants/appConfig";
+import { withRetry } from "./retry";
 
 export interface WaveformPeaks {
   peaks: number[][];
@@ -36,7 +36,7 @@ export function shouldSkipWaveform(durationSec: number): boolean {
 export function scalePeaksToDuration(
   peaks: number[][],
   audioDuration: number,
-  videoDuration: number
+  videoDuration: number,
 ): number[][] {
   if (audioDuration <= 0 || videoDuration <= 0 || audioDuration === videoDuration) {
     return peaks;
@@ -62,18 +62,21 @@ let entry: Entry | null = null;
 
 async function fetchWaveform(url: string, signal: AbortSignal): Promise<WaveformPeaks> {
   // 일시 실패 시 최대 3회 재시도(abort는 종료). skipped 응답은 throw 안 하므로 재시도 안 됨.
-  return withRetry(async () => {
-    const res = await fetch(`/api/video/waveform?url=${encodeURIComponent(url)}`, { signal });
-    if (!res.ok) {
-      throw new Error(`파형 추출 실패 (${res.status})`);
-    }
-    const data = (await res.json()) as WaveformPeaks;
-    // 서버가 길이 초과 등으로 생략한 경우: 빈 peaks + skipped 플래그
-    if (data.skipped) {
-      return { peaks: [[]], duration: 0, skipped: true };
-    }
-    return data;
-  }, { signal });
+  return withRetry(
+    async () => {
+      const res = await fetch(`/api/video/waveform?url=${encodeURIComponent(url)}`, { signal });
+      if (!res.ok) {
+        throw new Error(`파형 추출 실패 (${res.status})`);
+      }
+      const data = (await res.json()) as WaveformPeaks;
+      // 서버가 길이 초과 등으로 생략한 경우: 빈 peaks + skipped 플래그
+      if (data.skipped) {
+        return { peaks: [[]], duration: 0, skipped: true };
+      }
+      return data;
+    },
+    { signal },
+  );
 }
 
 /**

@@ -8,8 +8,8 @@
  * 분류·정의는 클라이언트와 동일한 단일 소스(shared/lib/errorHandler)를 재사용한다.
  */
 
-import type { ErrorCode } from '@/types/types';
-import { classifyError, getErrorDefinition } from '@/shared/lib/errorHandler';
+import type { ErrorCode } from "@/types/types";
+import { classifyError, getErrorDefinition } from "@/shared/lib/errorHandler";
 
 export interface ServerErrorReport {
   code: ErrorCode;
@@ -35,9 +35,9 @@ export interface BuildServerErrorContext {
 }
 
 function toCause(raw: unknown): string {
-  if (raw == null) return '';
+  if (raw == null) return "";
   if (raw instanceof Error) return raw.message;
-  if (typeof raw === 'string') return raw;
+  if (typeof raw === "string") return raw;
   try {
     return JSON.stringify(raw);
   } catch {
@@ -55,7 +55,7 @@ function toCause(raw: unknown): string {
 export function buildServerError(
   stage: string,
   rawCause: unknown,
-  ctx: BuildServerErrorContext = {}
+  ctx: BuildServerErrorContext = {},
 ): ServerErrorReport {
   const cause = toCause(rawCause);
   const code = ctx.code ?? classifyError(cause);
@@ -82,7 +82,7 @@ export function logServerError(report: ServerErrorReport): void {
     ...report,
     cause: report.cause.slice(-2000),
   };
-  console.error('[error-report]', JSON.stringify(compact));
+  console.error("[error-report]", JSON.stringify(compact));
 }
 
 /**
@@ -91,7 +91,7 @@ export function logServerError(report: ServerErrorReport): void {
 export function reportServerError(
   stage: string,
   rawCause: unknown,
-  ctx: BuildServerErrorContext = {}
+  ctx: BuildServerErrorContext = {},
 ): ServerErrorReport {
   const report = buildServerError(stage, rawCause, ctx);
   logServerError(report);

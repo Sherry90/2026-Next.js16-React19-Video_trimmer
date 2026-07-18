@@ -1,10 +1,10 @@
-import { WAVEFORM, WAVEFORM_VIEW } from '@/constants/appConfig';
+import { WAVEFORM, WAVEFORM_VIEW } from "@/constants/appConfig";
 import {
   bucketMagnitudes,
   computeMagnitudeSpectrum,
   hannWindow,
   type SpectrogramData,
-} from '@/shared/lib/spectrogram';
+} from "@/shared/lib/spectrogram";
 
 // 분석 해상도는 클라이언트(로컬 파일)와 동일 상수에서 — URL/파일 스펙트럴 일관성.
 // SAMPLE_RATE 는 route.ts 의 ffmpeg -ar 추출 레이트와 짝이라 여기서 별도 고정(분리 시 시간축 깨짐).
@@ -21,7 +21,7 @@ export function computeSpectrogram(pcm: Buffer): SpectrogramData {
   const sampleCount = Math.floor(pcm.length / 2);
   const duration = sampleCount / SAMPLE_RATE;
   if (duration > WAVEFORM.MAX_DURATION_SEC) {
-    throw new SpectrogramTooLongError('오디오가 너무 깁니다');
+    throw new SpectrogramTooLongError("오디오가 너무 깁니다");
   }
   if (sampleCount === 0) {
     return { duration: 0, sampleRate: SAMPLE_RATE, fftSize: FFT_SIZE, frames: [] };
@@ -45,8 +45,9 @@ export function computeSpectrogram(pcm: Buffer): SpectrogramData {
     }
 
     frames.push(
-      bucketMagnitudes(computeMagnitudeSpectrum(windowed), FREQ_BINS)
-        .map((value) => Math.round(Math.min(1, Math.log10(1 + value * LOG_SCALE)) * 1000) / 1000)
+      bucketMagnitudes(computeMagnitudeSpectrum(windowed), FREQ_BINS).map(
+        (value) => Math.round(Math.min(1, Math.log10(1 + value * LOG_SCALE)) * 1000) / 1000,
+      ),
     );
   }
 

@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { execFile } from 'child_process';
-import { promisify } from 'util';
-import { getYtdlpPath, getFfmpegPath } from '@/lib/binPaths';
-import { parseYtdlpError, validateUrlParseable } from '@/lib/apiUtils';
-import { selectBestFormat, selectDashFormats } from '@/lib/formatSelector';
-import { detectPlatform } from '@/lib/platformDetector';
-import { parseInitIndexRange, buildMpd, DASH_HEAD_BYTES } from '@/lib/dashManifest';
-import { setManifest, MANIFEST_TTL_MS } from '@/lib/manifestStore';
-import { toProcessError } from '@/types/process';
+import { NextRequest, NextResponse } from "next/server";
+import { execFile } from "child_process";
+import { promisify } from "util";
+import { getYtdlpPath, getFfmpegPath } from "@/lib/binPaths";
+import { parseYtdlpError, validateUrlParseable } from "@/lib/apiUtils";
+import { selectBestFormat, selectDashFormats } from "@/lib/formatSelector";
+import { detectPlatform } from "@/lib/platformDetector";
+import { parseInitIndexRange, buildMpd, DASH_HEAD_BYTES } from "@/lib/dashManifest";
+import { setManifest, MANIFEST_TTL_MS } from "@/lib/manifestStore";
+import { toProcessError } from "@/types/process";
 
 /**
  * DASH 단일파일 표현의 머리를 Range로 받아 init/index 바이트 범위를 파싱한다.
@@ -34,7 +34,7 @@ async function fetchDashRanges(url: string, signal: AbortSignal) {
  */
 async function tryBuildDash(
   info: Record<string, unknown>,
-  signal: AbortSignal
+  signal: AbortSignal,
 ): Promise<{ mpd: string; qualities: { height: number }[] } | null> {
   const sel = selectDashFormats(info as never);
   if (!sel) return null;
@@ -49,16 +49,24 @@ async function tryBuildDash(
       sel.video.map(async (v) => {
         const ranges = await fetchDashRanges(v.url, signal);
         return ranges
-          ? { url: proxied(v.url), codecs: v.codecs, width: v.width, height: v.height, frameRate: v.fps, bandwidth: v.bandwidth, ranges }
+          ? {
+              url: proxied(v.url),
+              codecs: v.codecs,
+              width: v.width,
+              height: v.height,
+              frameRate: v.fps,
+              bandwidth: v.bandwidth,
+              ranges,
+            }
           : null;
-      })
+      }),
     )
   ).filter((r): r is NonNullable<typeof r> => r !== null);
 
   const audioRanges = await fetchDashRanges(sel.audio.url, signal);
   if (videoReps.length === 0 || !audioRanges) return null;
 
-  const durationSec = typeof info.duration === 'number' ? info.duration : 0;
+  const durationSec = typeof info.duration === "number" ? info.duration : 0;
   const mpd = buildMpd({
     video: videoReps,
     audio: {
@@ -72,7 +80,9 @@ async function tryBuildDash(
     durationSec,
   });
 
-  const qualities = videoReps.map((r) => ({ height: r.height })).sort((a, b) => b.height - a.height);
+  const qualities = videoReps
+    .map((r) => ({ height: r.height }))
+    .sort((a, b) => b.height - a.height);
   return { mpd, qualities };
 }
 
@@ -81,17 +91,17 @@ const execFileAsync = promisify(execFile);
 // 인메모리 resolve 캐시: 같은 URL 재요청을 즉시 응답(yt-dlp 스킵).
 // TTL은 스트림 URL 만료(googlevideo ~6h)보다 충분히 짧게 잡아 stale URL 방지(manifest와 동일).
 const RESOLVE_CACHE_TTL_MS = MANIFEST_TTL_MS;
-const resolveCache = new Map<string, { body: Record<string, unknown>; mpd?: string; expires: number }>();
+const resolveCache = new Map<
+  string,
+  { body: Record<string, unknown>; mpd?: string; expires: number }
+>();
 
 export async function POST(request: NextRequest) {
   try {
     const { url } = await request.json();
 
-    if (!url || typeof url !== 'string') {
-      return NextResponse.json(
-        { error: 'URL이 필요합니다' },
-        { status: 400 }
-      );
+    if (!url || typeof url !== "string") {
+      return NextResponse.json({ error: "URL이 필요합니다" }, { status: 400 });
     }
 
     const urlError = validateUrlParseable(url);
@@ -111,15 +121,14 @@ export async function POST(request: NextRequest) {
     // Step 1: Get metadata with -J
     const ytdlp = getYtdlpPath();
     const ffmpeg = getFfmpegPath();
-    const { stdout: metaJson } = await execFileAsync(ytdlp, [
-      '-J',
-      '--no-playlist',
-      '--ffmpeg-location', ffmpeg,
-      url,
-    ], {
-      timeout: 60000,
-      maxBuffer: 50 * 1024 * 1024, // 50MB - yt-dlp JSON can be large
-    });
+    const { stdout: metaJson } = await execFileAsync(
+      ytdlp,
+      ["-J", "--no-playlist", "--ffmpeg-location", ffmpeg, url],
+      {
+        timeout: 60000,
+        maxBuffer: 50 * 1024 * 1024, // 50MB - yt-dlp JSON can be large
+      },
+    );
 
     const info = JSON.parse(metaJson);
 
@@ -127,16 +136,16 @@ export async function POST(request: NextRequest) {
     // video-only(avc1)+audio(mp4a)를 묶은 정적 MPD를 만들어 VHS가 고화질 재생하게 한다.
     // 실패하면 아래 muxed 경로로 폴백. Chzzk는 HLS라 스킵.
     const platform = detectPlatform(url);
-    if (platform !== 'chzzk') {
+    if (platform !== "chzzk") {
       const dash = await tryBuildDash(info, request.signal);
       if (dash) {
         // MPD는 same-origin 경로로 서빙(blob: 불가 — mpd-parser BaseURL 해석 깨짐).
         setManifest(url, dash.mpd);
         const body = {
-          title: info.title || 'Untitled',
+          title: info.title || "Untitled",
           duration: info.duration || 0,
-          thumbnail: info.thumbnail || '',
-          streamType: 'dash' as const,
+          thumbnail: info.thumbnail || "",
+          streamType: "dash" as const,
           manifestUrl: `/api/video/manifest?u=${encodeURIComponent(url)}`,
           qualities: dash.qualities,
         };
@@ -148,37 +157,32 @@ export async function POST(request: NextRequest) {
     // Step 2b: Select best format using format selector (muxed / HLS)
     const formatSelection = selectBestFormat(info);
     let streamUrl = formatSelection?.url || null;
-    let streamType = formatSelection?.streamType || 'mp4';
+    let streamType = formatSelection?.streamType || "mp4";
 
     // Last resort: use --get-url to let yt-dlp choose the best format
     if (!streamUrl) {
       try {
-        const { stdout: urlOut } = await execFileAsync(ytdlp, [
-          '--get-url',
-          '-f', 'b',
-          '--no-playlist',
-          '--ffmpeg-location', ffmpeg,
-          url,
-        ], { timeout: 30000 });
-        streamUrl = urlOut.trim().split('\n')[0];
+        const { stdout: urlOut } = await execFileAsync(
+          ytdlp,
+          ["--get-url", "-f", "b", "--no-playlist", "--ffmpeg-location", ffmpeg, url],
+          { timeout: 30000 },
+        );
+        streamUrl = urlOut.trim().split("\n")[0];
       } catch {
         // ignore
       }
     }
 
     if (!streamUrl) {
-      return NextResponse.json(
-        { error: '스트림 URL을 추출할 수 없습니다' },
-        { status: 422 }
-      );
+      return NextResponse.json({ error: "스트림 URL을 추출할 수 없습니다" }, { status: 422 });
     }
 
     const body = {
-      title: info.title || 'Untitled',
+      title: info.title || "Untitled",
       duration: info.duration || 0,
-      thumbnail: info.thumbnail || '',
+      thumbnail: info.thumbnail || "",
       url: streamUrl,
-      ext: 'mp4',
+      ext: "mp4",
       streamType,
       tbr: formatSelection?.tbr || null, // Total bitrate (kbps)
     };
@@ -188,7 +192,7 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     const processError = toProcessError(error);
     const { message, status } = parseYtdlpError(processError);
-    console.error('[resolve] Error:', processError.message);
+    console.error("[resolve] Error:", processError.message);
     return NextResponse.json({ error: message }, { status });
   }
 }

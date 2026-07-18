@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type Player from 'video.js/dist/types/player';
-import { getStoreActions } from '@/stores/snapshot';
+import { useCallback, useEffect, useRef, useState } from "react";
+import type Player from "video.js/dist/types/player";
+import { getStoreActions } from "@/stores/snapshot";
 
 /**
  * 화질 레벨 훅 — 기존 qualityMenuButton.ts(video.js MenuButton)의 로직을 React로 포팅.
@@ -55,8 +55,8 @@ export function useQualityLevels(player: Player | null): UseQualityLevels {
       [
         ...new Set(
           Array.from({ length: ql.length }, (_, i) => ql[i].height).filter(
-            (h): h is number => typeof h === 'number' && h > 0
-          )
+            (h): h is number => typeof h === "number" && h > 0,
+          ),
         ),
       ].sort((a, b) => b - a);
 
@@ -79,12 +79,12 @@ export function useQualityLevels(player: Player | null): UseQualityLevels {
     };
 
     refresh();
-    ql.on('addqualitylevel', refresh);
-    ql.on('change', refresh);
+    ql.on("addqualitylevel", refresh);
+    ql.on("change", refresh);
 
     return () => {
-      ql.off('addqualitylevel', refresh);
-      ql.off('change', refresh);
+      ql.off("addqualitylevel", refresh);
+      ql.off("change", refresh);
     };
   }, [player]);
 
@@ -101,7 +101,7 @@ export function useQualityLevels(player: Player | null): UseQualityLevels {
       setSelected(height);
       getStoreActions().setSelectedQuality(height);
     },
-    [player]
+    [player],
   );
 
   return { heights, selected, setQuality };

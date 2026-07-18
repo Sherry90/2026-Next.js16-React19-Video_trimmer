@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { usePhase } from '@/stores/hooks';
-import { CheckCircleIcon } from '@/shared/ui/icons';
-import { Card } from '@/shared/ui/Card';
-import { Button } from '@/shared/ui/Button';
-import { TextInput } from '@/shared/ui/TextInput';
-import { useDownload } from '../hooks/useDownload';
+import { usePhase } from "@/stores/hooks";
+import { CheckCircleIcon } from "@/shared/ui/icons";
+import { Card } from "@/shared/ui/Card";
+import { Button } from "@/shared/ui/Button";
+import { TextInput } from "@/shared/ui/TextInput";
+import { useDownload } from "../hooks/useDownload";
 
 export function DownloadButton() {
   const phase = usePhase();
@@ -20,7 +20,7 @@ export function DownloadButton() {
     handleEditAnother,
   } = useDownload();
 
-  if (phase !== 'completed' || !outputUrl || !outputFilename) {
+  if (phase !== "completed" || !outputUrl || !outputFilename) {
     return null;
   }
 
@@ -28,15 +28,16 @@ export function DownloadButton() {
     <Card variant="white" className="text-center space-y-4">
       <CheckCircleIcon className="w-16 h-16 mx-auto text-green-500" />
 
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-        Video Ready!
-      </h3>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Video Ready!</h3>
       <p className="text-sm text-gray-500 dark:text-gray-400">
         파일 이름을 정하고 다운로드 버튼을 눌러 저장하세요.
       </p>
 
       <div className="text-left space-y-1">
-        <label htmlFor="save-as-input" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <label
+          htmlFor="save-as-input"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+        >
           Save as
         </label>
         <div className="flex items-center gap-1">

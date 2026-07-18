@@ -1,18 +1,32 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import WaveSurfer from 'wavesurfer.js';
-import { useVideoFile, useTimelineZoomValue, useWaveformProgress, useProgressActions } from '@/stores/hooks';
-import { UI, WAVEFORM_VIEW } from '@/constants/appConfig';
-import { getWaveform, clearWaveform, shouldSkipWaveform, scalePeaksToDuration } from '@/shared/lib/waveformCache';
-import { getSpectrogram, clearSpectrogram } from '@/shared/lib/spectrogramCache';
-import { withRetry } from '@/shared/lib/retry';
-import { isValidSpectrogramData, spectrogramFrameWidth, type SpectrogramData } from '@/shared/lib/spectrogram';
-import { hslToRgb } from '@/shared/lib/color';
-import { computeLocalSpectrogram } from '@/shared/lib/spectrogramLocal';
-import { Overlay } from '@/shared/ui/Overlay';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import WaveSurfer from "wavesurfer.js";
+import {
+  useVideoFile,
+  useTimelineZoomValue,
+  useWaveformProgress,
+  useProgressActions,
+} from "@/stores/hooks";
+import { UI, WAVEFORM_VIEW } from "@/constants/appConfig";
+import {
+  getWaveform,
+  clearWaveform,
+  shouldSkipWaveform,
+  scalePeaksToDuration,
+} from "@/shared/lib/waveformCache";
+import { getSpectrogram, clearSpectrogram } from "@/shared/lib/spectrogramCache";
+import { withRetry } from "@/shared/lib/retry";
+import {
+  isValidSpectrogramData,
+  spectrogramFrameWidth,
+  type SpectrogramData,
+} from "@/shared/lib/spectrogram";
+import { hslToRgb } from "@/shared/lib/color";
+import { computeLocalSpectrogram } from "@/shared/lib/spectrogramLocal";
+import { Overlay } from "@/shared/ui/Overlay";
 
-type SpectrogramStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error' | 'skipped';
+type SpectrogramStatus = "idle" | "loading" | "ready" | "empty" | "error" | "skipped";
 
 export function WaveformBackground() {
   const waveformRef = useRef<HTMLDivElement>(null);
@@ -28,8 +42,8 @@ export function WaveformBackground() {
   const { setProgress } = useProgressActions();
   const spectrogramCanvasRef = useRef<HTMLCanvasElement>(null);
   const [spectrogram, setSpectrogram] = useState<SpectrogramData | null>(null);
-  const [spectrogramStatus, setSpectrogramStatus] = useState<SpectrogramStatus>('idle');
-  const [spectrogramMessage, setSpectrogramMessage] = useState<string>('');
+  const [spectrogramStatus, setSpectrogramStatus] = useState<SpectrogramStatus>("idle");
+  const [spectrogramMessage, setSpectrogramMessage] = useState<string>("");
   const [containerWidth, setContainerWidth] = useState<number>(0);
 
   const renderSpectrogram = useCallback(() => {
@@ -46,7 +60,7 @@ export function WaveformBackground() {
     canvas.width = Math.floor(width * ratio);
     canvas.height = Math.floor(height * ratio);
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
@@ -65,16 +79,16 @@ export function WaveformBackground() {
       spectrogram.duration,
       videoFile?.duration ?? 0,
       frames.length,
-      width
+      width,
     );
 
     // 프레임을 frameCount×binCount 오프스크린 ImageData 한 장으로 채운 뒤
     // 메인 캔버스로 스케일 blit — fillRect 수만~수십만 회 대신 putImageData+drawImage 2회.
     const frameCount = frames.length;
-    const offscreen = document.createElement('canvas');
+    const offscreen = document.createElement("canvas");
     offscreen.width = frameCount;
     offscreen.height = binCount;
-    const offCtx = offscreen.getContext('2d');
+    const offCtx = offscreen.getContext("2d");
     if (!offCtx) return;
 
     const image = offCtx.createImageData(frameCount, binCount);
@@ -129,8 +143,8 @@ export function WaveformBackground() {
       const wavesurfer = WaveSurfer.create({
         container: waveformRef.current,
         waveColor: WAVEFORM_VIEW.WAVE_COLOR,
-        progressColor: 'transparent',
-        cursorColor: 'transparent',
+        progressColor: "transparent",
+        cursorColor: "transparent",
         barWidth: zoom > 4 ? WAVEFORM_VIEW.BAR_WIDTH_ZOOMED : WAVEFORM_VIEW.BAR_WIDTH_DEFAULT,
         barGap: WAVEFORM_VIEW.BAR_GAP,
         height: 80,
@@ -151,7 +165,7 @@ export function WaveformBackground() {
 
       setIsLoading(true);
       setSkipped(false);
-      setProgress('waveform',0);
+      setProgress("waveform", 0);
 
       if (wavesurferRef.current) {
         wavesurferRef.current.destroy();
@@ -160,7 +174,7 @@ export function WaveformBackground() {
 
       try {
         // URL 소스: 영상 전체를 받지 않고 서버에서 오디오-only peaks만 가져온다.
-        if (videoFile.source === 'url') {
+        if (videoFile.source === "url") {
           const target = videoFile.originalUrl;
           if (!target) {
             setHasAudio(false);
@@ -175,7 +189,7 @@ export function WaveformBackground() {
             setSkipped(true);
             setHasAudio(false);
             setIsLoading(false);
-            setProgress('waveform',100);
+            setProgress("waveform", 100);
             return;
           }
 
@@ -189,7 +203,7 @@ export function WaveformBackground() {
             if (cancelled) return;
             setHasAudio(false);
             setIsLoading(false);
-            setProgress('waveform',100);
+            setProgress("waveform", 100);
             return;
           }
           if (cancelled) return;
@@ -199,7 +213,7 @@ export function WaveformBackground() {
             setSkipped(true);
             setHasAudio(false);
             setIsLoading(false);
-            setProgress('waveform',100);
+            setProgress("waveform", 100);
             return;
           }
 
@@ -213,16 +227,16 @@ export function WaveformBackground() {
           const wavesurfer = createInstance({ peaks: scaledPeaks });
           if (!wavesurfer) return;
 
-          wavesurfer.on('error', (error) => {
-            console.warn('Waveform render error:', error);
+          wavesurfer.on("error", (error) => {
+            console.warn("Waveform render error:", error);
             setHasAudio(false);
             setIsLoading(false);
-            setProgress('waveform',100);
+            setProgress("waveform", 100);
           });
 
           setHasAudio(hasPeaks);
           setIsLoading(false);
-          setProgress('waveform',100);
+          setProgress("waveform", 100);
           return;
         }
 
@@ -230,23 +244,23 @@ export function WaveformBackground() {
         const wavesurfer = createInstance();
         if (!wavesurfer) return;
 
-        wavesurfer.on('loading', (percent) => setProgress('waveform',percent));
-        wavesurfer.on('ready', () => {
+        wavesurfer.on("loading", (percent) => setProgress("waveform", percent));
+        wavesurfer.on("ready", () => {
           setIsLoading(false);
-          setProgress('waveform',100);
+          setProgress("waveform", 100);
           setHasAudio(true);
         });
-        wavesurfer.on('error', (error) => {
-          console.warn('Waveform error (possibly no audio):', error);
+        wavesurfer.on("error", (error) => {
+          console.warn("Waveform error (possibly no audio):", error);
           setHasAudio(false);
           setIsLoading(false);
-          setProgress('waveform',100);
+          setProgress("waveform", 100);
         });
 
         wavesurfer.load(videoFile.url);
       } catch (error) {
         if (cancelled) return;
-        console.error('Failed to create WaveSurfer:', error);
+        console.error("Failed to create WaveSurfer:", error);
         setHasAudio(false);
         setIsLoading(false);
       }
@@ -280,42 +294,43 @@ export function WaveformBackground() {
 
     const computeSpectrogramData = async () => {
       setSpectrogram(null);
-      setSpectrogramStatus('loading');
-      setSpectrogramMessage('');
+      setSpectrogramStatus("loading");
+      setSpectrogramMessage("");
 
       try {
         if (shouldSkipWaveform(videoFile.duration)) {
           if (videoFile.originalUrl) clearSpectrogram(videoFile.originalUrl);
-          setSpectrogramStatus('skipped');
-          setSpectrogramMessage('영상이 길어 스펙트럼을 생략했습니다');
+          setSpectrogramStatus("skipped");
+          setSpectrogramMessage("영상이 길어 스펙트럼을 생략했습니다");
           return;
         }
 
         // URL: 서버 fetch(내부 재시도). 파일: 로컬 연산 — 일시 실패 시 최대 3회 재시도.
-        const data = videoFile.source === 'url' && videoFile.originalUrl
-          ? await getSpectrogram(videoFile.originalUrl)
-          : await withRetry(() => computeLocalSpectrogram(videoFile.url, videoFile.duration));
+        const data =
+          videoFile.source === "url" && videoFile.originalUrl
+            ? await getSpectrogram(videoFile.originalUrl)
+            : await withRetry(() => computeLocalSpectrogram(videoFile.url, videoFile.duration));
 
         if (cancelled) return;
         if (!isValidSpectrogramData(data)) {
-          setSpectrogramStatus('error');
-          setSpectrogramMessage('스펙트럼 응답 형식이 올바르지 않습니다');
+          setSpectrogramStatus("error");
+          setSpectrogramMessage("스펙트럼 응답 형식이 올바르지 않습니다");
           return;
         }
         if (data.skipped) {
-          setSpectrogramStatus('skipped');
-          setSpectrogramMessage('영상이 길어 스펙트럼을 생략했습니다');
+          setSpectrogramStatus("skipped");
+          setSpectrogramMessage("영상이 길어 스펙트럼을 생략했습니다");
           return;
         }
         setSpectrogram(data);
         const hasFrames = data.frames.length > 0 && data.frames.some((frame) => frame.length > 0);
-        setSpectrogramStatus(hasFrames ? 'ready' : 'empty');
-        setSpectrogramMessage(hasFrames ? '' : '스펙트럼 데이터가 비어 있습니다');
+        setSpectrogramStatus(hasFrames ? "ready" : "empty");
+        setSpectrogramMessage(hasFrames ? "" : "스펙트럼 데이터가 비어 있습니다");
       } catch (error) {
         if (cancelled) return;
-        console.error('Failed to compute spectrogram:', error);
-        setSpectrogramStatus('error');
-        setSpectrogramMessage('스펙트럼을 표시할 수 없습니다');
+        console.error("Failed to compute spectrogram:", error);
+        setSpectrogramStatus("error");
+        setSpectrogramMessage("스펙트럼을 표시할 수 없습니다");
       }
     };
 
@@ -343,9 +358,11 @@ export function WaveformBackground() {
 
   // 파형과 스펙트럴을 항상 겹쳐 표시 — 오버레이는 두 레이어의 합친 상태를 따른다.
   const spectralUnavailable =
-    spectrogramStatus === 'error' || spectrogramStatus === 'empty' || spectrogramStatus === 'skipped';
+    spectrogramStatus === "error" ||
+    spectrogramStatus === "empty" ||
+    spectrogramStatus === "skipped";
   // 둘 중 하나라도 준비 중이면 로딩 표시.
-  const showLoading = isLoading || spectrogramStatus === 'loading';
+  const showLoading = isLoading || spectrogramStatus === "loading";
   // 파형도 없고 스펙트럴도 사용 불가일 때만 빈 상태.
   const showEmpty = !showLoading && !hasAudio && spectralUnavailable;
 
@@ -376,14 +393,16 @@ export function WaveformBackground() {
       {/* Loading overlay — 파형/스펙트럴 중 하나라도 준비 중 */}
       {showLoading && (
         <Overlay>
-          {isLoading ? `Loading waveform... ${Math.round(waveformProgress)}%` : '스펙트럼 분석 중...'}
+          {isLoading
+            ? `Loading waveform... ${Math.round(waveformProgress)}%`
+            : "스펙트럼 분석 중..."}
         </Overlay>
       )}
 
       {/* 빈 상태 — 파형도 없고 스펙트럴도 사용 불가 */}
       {!showLoading && showEmpty && (
         <Overlay data-testid="waveform-empty-message">
-          {skipped ? '영상이 길어 파형을 생략했습니다' : spectrogramMessage || 'No audio track'}
+          {skipped ? "영상이 길어 파형을 생략했습니다" : spectrogramMessage || "No audio track"}
         </Overlay>
       )}
     </div>

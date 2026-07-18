@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { createContext, useContext, ReactNode } from 'react';
-import type Player from 'video.js/dist/types/player';
+import { createContext, useContext, ReactNode } from "react";
+import type Player from "video.js/dist/types/player";
 
 /**
  * video.js player 인스턴스 + 제어를 공유하는 컨텍스트.
@@ -26,17 +26,13 @@ export function VideoPlayerProvider({
   children: ReactNode;
   value: VideoPlayerContextValue;
 }) {
-  return (
-    <VideoPlayerContext.Provider value={value}>
-      {children}
-    </VideoPlayerContext.Provider>
-  );
+  return <VideoPlayerContext.Provider value={value}>{children}</VideoPlayerContext.Provider>;
 }
 
 export function useVideoPlayerContext() {
   const context = useContext(VideoPlayerContext);
   if (!context) {
-    throw new Error('useVideoPlayerContext must be used within VideoPlayerProvider');
+    throw new Error("useVideoPlayerContext must be used within VideoPlayerProvider");
   }
   return context;
 }

@@ -1,8 +1,13 @@
-import { useEffect, useLayoutEffect, useRef, RefObject } from 'react';
-import { UI } from '@/constants/appConfig';
-import { useTimelineZoomValue } from '@/stores/hooks';
-import { getTimelineSnapshot, getStoreActions } from '@/stores/snapshot';
-import { nextZoom, computeZoomAnchor, anchorScrollLeft, type ZoomAnchor } from '@/features/timeline/utils/zoomMath';
+import { useEffect, useLayoutEffect, useRef, RefObject } from "react";
+import { UI } from "@/constants/appConfig";
+import { useTimelineZoomValue } from "@/stores/hooks";
+import { getTimelineSnapshot, getStoreActions } from "@/stores/snapshot";
+import {
+  nextZoom,
+  computeZoomAnchor,
+  anchorScrollLeft,
+  type ZoomAnchor,
+} from "@/features/timeline/utils/zoomMath";
 
 /**
  * 타임라인 줌/패닝 휠 제어.
@@ -42,14 +47,14 @@ export function useTimelineZoom(viewportRef: RefObject<HTMLDivElement | null>) {
         rect.left,
         viewport.scrollLeft,
         viewport.scrollWidth,
-        event.clientX
+        event.clientX,
       );
 
       getStoreActions().setZoom(newZoom);
     };
 
-    viewport.addEventListener('wheel', handleWheel, { passive: false });
-    return () => viewport.removeEventListener('wheel', handleWheel);
+    viewport.addEventListener("wheel", handleWheel, { passive: false });
+    return () => viewport.removeEventListener("wheel", handleWheel);
   }, [viewportRef]);
 
   // 줌 변화로 content 폭이 갱신된 직후(paint 전) 커서 고정점 유지하도록 scrollLeft 보정.

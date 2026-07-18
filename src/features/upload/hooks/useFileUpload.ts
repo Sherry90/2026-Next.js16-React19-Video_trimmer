@@ -1,7 +1,12 @@
-import { useCallback } from 'react';
-import { useMediaActions, usePhaseActions, useErrorActions, useProgressActions } from '@/stores/hooks';
-import { validateFile } from '@/features/upload/utils/validateFile';
-import type { VideoFile } from '@/types/store';
+import { useCallback } from "react";
+import {
+  useMediaActions,
+  usePhaseActions,
+  useErrorActions,
+  useProgressActions,
+} from "@/stores/hooks";
+import { validateFile } from "@/features/upload/utils/validateFile";
+import type { VideoFile } from "@/types/store";
 
 export function useFileUpload() {
   const { setVideoFile } = useMediaActions();
@@ -14,21 +19,18 @@ export function useFileUpload() {
       // 파일 검증
       const validation = validateFile(file);
       if (!validation.isValid) {
-        setErrorAndTransition(
-          validation.error || 'Unknown validation error',
-          'VALIDATION_ERROR'
-        );
+        setErrorAndTransition(validation.error || "Unknown validation error", "VALIDATION_ERROR");
         return;
       }
 
       // 경고가 있으면 콘솔에 표시 (처리는 계속)
       if (validation.warning) {
-        console.warn('[File Size Warning]', validation.warning);
+        console.warn("[File Size Warning]", validation.warning);
       }
 
       // 업로드 시작
-      setPhase('uploading');
-      setProgress('upload', 0);
+      setPhase("uploading");
+      setProgress("upload", 0);
 
       try {
         // 파일 URL 생성 (즉시 완료)
@@ -37,7 +39,7 @@ export function useFileUpload() {
         // VideoFile 객체 생성
         const videoFile: VideoFile = {
           file,
-          source: 'file',
+          source: "file",
           name: file.name,
           size: file.size,
           type: file.type,
@@ -46,16 +48,16 @@ export function useFileUpload() {
         };
 
         setVideoFile(videoFile);
-        setProgress('upload', 100);
+        setProgress("upload", 100);
 
         // 편집 단계로 전환 (FFmpeg 불필요)
-        setPhase('editing');
+        setPhase("editing");
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'File upload failed';
-        setErrorAndTransition(errorMessage, 'UPLOAD_ERROR');
+        const errorMessage = error instanceof Error ? error.message : "File upload failed";
+        setErrorAndTransition(errorMessage, "UPLOAD_ERROR");
       }
     },
-    [setVideoFile, setPhase, setErrorAndTransition, setProgress]
+    [setVideoFile, setPhase, setErrorAndTransition, setProgress],
   );
 
   return {

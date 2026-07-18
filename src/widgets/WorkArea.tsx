@@ -1,27 +1,37 @@
-'use client';
+"use client";
 
-import { lazy, Suspense } from 'react';
-import { usePhase, usePhaseActions } from '@/stores/hooks';
+import { lazy, Suspense } from "react";
+import { usePhase, usePhaseActions } from "@/stores/hooks";
 
 // Upload feature
-import { UploadZone } from '@/features/upload/components/UploadZone';
-import { UploadProgress } from '@/features/upload/components/UploadProgress';
-import { FileValidationError } from '@/features/upload/components/FileValidationError';
+import { UploadZone } from "@/features/upload/components/UploadZone";
+import { UploadProgress } from "@/features/upload/components/UploadProgress";
+import { FileValidationError } from "@/features/upload/components/FileValidationError";
 
 // URL input feature (랜딩에서 UploadZone과 합성)
-import { UrlInputZone } from '@/features/url-input/components/UrlInputZone';
+import { UrlInputZone } from "@/features/url-input/components/UrlInputZone";
 
 // Export feature (eager load error, lazy load progress/download)
-import { ErrorDisplay } from '@/features/export/components/ErrorDisplay';
-import { Modal } from '@/shared/ui/Modal';
+import { ErrorDisplay } from "@/features/export/components/ErrorDisplay";
+import { Modal } from "@/shared/ui/Modal";
 
 // Editing section은 video.js(~546KB)+wavesurfer를 끌어오므로 editing 진입 전까지
 // 초기 번들에서 분리(랜딩/업로드 화면이 무거운 미디어 라이브러리를 안 받음).
-const EditingSection = lazy(() => import('@/widgets/EditingSection').then(m => ({ default: m.EditingSection })));
+const EditingSection = lazy(() =>
+  import("@/widgets/EditingSection").then((m) => ({ default: m.EditingSection })),
+);
 
 // Lazy load components only needed during/after export to reduce initial bundle
-const ExportProgress = lazy(() => import('@/features/export/components/ExportProgress').then(m => ({ default: m.ExportProgress })));
-const DownloadButton = lazy(() => import('@/features/export/components/DownloadButton').then(m => ({ default: m.DownloadButton })));
+const ExportProgress = lazy(() =>
+  import("@/features/export/components/ExportProgress").then((m) => ({
+    default: m.ExportProgress,
+  })),
+);
+const DownloadButton = lazy(() =>
+  import("@/features/export/components/DownloadButton").then((m) => ({
+    default: m.DownloadButton,
+  })),
+);
 
 /**
  * 메인 작업 영역 — phase에 따라 업로드/편집/내보내기 화면을 스위칭.
@@ -31,8 +41,8 @@ export function WorkArea() {
   const phase = usePhase();
   const { setPhase } = usePhaseActions();
 
-  const isEditorMounted = phase === 'editing' || phase === 'processing' || phase === 'completed';
-  const isExportModalOpen = phase === 'processing' || phase === 'completed';
+  const isEditorMounted = phase === "editing" || phase === "processing" || phase === "completed";
+  const isExportModalOpen = phase === "processing" || phase === "completed";
 
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -41,7 +51,7 @@ export function WorkArea() {
         <ErrorDisplay />
         <FileValidationError />
 
-        {phase === 'idle' && (
+        {phase === "idle" && (
           <UploadZone>
             <UrlInputZone />
           </UploadZone>
@@ -54,8 +64,8 @@ export function WorkArea() {
         )}
         <Modal
           isOpen={isExportModalOpen}
-          dismissable={phase === 'completed'}
-          onClose={() => setPhase('editing')}
+          dismissable={phase === "completed"}
+          onClose={() => setPhase("editing")}
         >
           <Suspense fallback={null}>
             <ExportProgress />

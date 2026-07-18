@@ -5,14 +5,18 @@
  * 타입 정의와 파일 유틸 함수를 한 곳으로 모아 중복을 제거한다.
  */
 
-import { unlinkSync, existsSync, promises as fsPromises } from 'fs';
-import type { SSEProgressEvent, SSECompleteEvent, SSEErrorEvent, DownloadPhase } from '@/types/sse';
-import type { ErrorCode } from '@/types/types';
-import { clamp } from '@/shared/lib/mathUtils';
-import { DOWNLOAD } from '@/constants/appConfig';
+import { unlinkSync, existsSync, promises as fsPromises } from "fs";
+import type { SSEProgressEvent, SSECompleteEvent, SSEErrorEvent, DownloadPhase } from "@/types/sse";
+import type { ErrorCode } from "@/types/types";
+import { clamp } from "@/shared/lib/mathUtils";
+import { DOWNLOAD } from "@/constants/appConfig";
 
 // Server-side event types (extends SSE types with jobId)
-export type JobProgressEvent = SSEProgressEvent & { jobId: string; processedSeconds: number; totalSeconds: number };
+export type JobProgressEvent = SSEProgressEvent & {
+  jobId: string;
+  processedSeconds: number;
+  totalSeconds: number;
+};
 export type JobCompleteEvent = SSECompleteEvent & { jobId: string; filename: string };
 export type JobErrorEvent = SSEErrorEvent & { jobId: string };
 export type JobEvent = JobProgressEvent | JobCompleteEvent | JobErrorEvent;
@@ -21,7 +25,7 @@ export type JobListener = (event: JobEvent) => void;
 
 export type Job = {
   outputPath: string | null;
-  status: 'running' | 'completed' | 'failed';
+  status: "running" | "completed" | "failed";
   listeners: JobListener[];
   errorMessage?: string;
   errorCode?: ErrorCode;
@@ -54,7 +58,7 @@ export async function ensureFileComplete(filePath: string, timeoutMs = 5000): Pr
   while (Date.now() - startTime < timeoutMs) {
     try {
       // 1. 파일 열기 시도 (read-only)
-      const fd = await fsPromises.open(filePath, 'r');
+      const fd = await fsPromises.open(filePath, "r");
 
       try {
         // 2. 파일 크기 확인
@@ -70,8 +74,8 @@ export async function ensureFileComplete(filePath: string, timeoutMs = 5000): Pr
 
         // 4. MP4 signature 검증
         // MP4 파일은 'ftyp' box로 시작 (offset 4-8)
-        const signature = buffer.toString('ascii', 4, 8);
-        if (signature === 'ftyp') {
+        const signature = buffer.toString("ascii", 4, 8);
+        if (signature === "ftyp") {
           // 파일이 완전히 쓰여짐
           return;
         }
@@ -124,7 +128,7 @@ export class DownloadProgressTracker {
     }
 
     this.emitEvent(this.jobId, {
-      type: 'progress',
+      type: "progress",
       jobId: this.jobId,
       progress: roundedProgress,
       processedSeconds: Number(this.processedSeconds.toFixed(2)),
@@ -140,10 +144,9 @@ export class DownloadProgressTracker {
     if (this.currentPhase !== expectedPhase) return;
     const normalized = clamp(progressPercent, 0, 100);
     const seconds = (this.segmentDuration * normalized) / 100;
-    if (seconds > this.processedSeconds || expectedPhase === 'downloading') {
-      this.processedSeconds = expectedPhase === 'downloading'
-        ? seconds
-        : Math.max(this.processedSeconds, seconds);
+    if (seconds > this.processedSeconds || expectedPhase === "downloading") {
+      this.processedSeconds =
+        expectedPhase === "downloading" ? seconds : Math.max(this.processedSeconds, seconds);
       this.emitProgress(expectedPhase);
     }
   }
@@ -164,7 +167,7 @@ export class DownloadProgressTracker {
 
   emitComplete(filename: string): void {
     this.emitEvent(this.jobId, {
-      type: 'complete',
+      type: "complete",
       jobId: this.jobId,
       filename,
     });
@@ -172,7 +175,7 @@ export class DownloadProgressTracker {
 
   emitError(message: string, code?: ErrorCode, technicalDetails?: string): void {
     this.emitEvent(this.jobId, {
-      type: 'error',
+      type: "error",
       jobId: this.jobId,
       message,
       code,

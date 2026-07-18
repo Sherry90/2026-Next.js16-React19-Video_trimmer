@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { TimelineBar } from './TimelineBar';
-import { TrimHandle } from './TrimHandle';
-import { Playhead } from './Playhead';
-import { TimelineControls } from './TimelineControls';
+import { TimelineBar } from "./TimelineBar";
+import { TrimHandle } from "./TrimHandle";
+import { Playhead } from "./Playhead";
+import { TimelineControls } from "./TimelineControls";
 
 /**
  * Timeline editor component for video trimming.

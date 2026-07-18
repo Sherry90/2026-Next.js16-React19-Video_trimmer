@@ -1,10 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
-import type { ReactNode } from 'react';
-import type Player from 'video.js/dist/types/player';
-import { usePreviewPlayback } from '@/features/timeline/hooks/usePreviewPlayback';
-import { VideoPlayerProvider } from '@/shared/video-player/VideoPlayerContext';
-import { PLAYBACK } from '@/constants/appConfig';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { renderHook, act } from "@testing-library/react";
+import type { ReactNode } from "react";
+import type Player from "video.js/dist/types/player";
+import { usePreviewPlayback } from "@/features/timeline/hooks/usePreviewPlayback";
+import { VideoPlayerProvider } from "@/shared/video-player/VideoPlayerContext";
+import { PLAYBACK } from "@/constants/appConfig";
 
 /**
  * usePreviewPlayback 핵심 계약(buffer-aware)만 검증:
@@ -51,7 +51,7 @@ function makeMockPlayer(opts: MockPlayerOpts = {}) {
 function renderPreview(
   inPoint: number,
   outPoint: number,
-  mockPlayer: ReturnType<typeof makeMockPlayer>
+  mockPlayer: ReturnType<typeof makeMockPlayer>,
 ) {
   const seek = vi.fn();
   const setIsScrubbing = vi.fn();
@@ -70,13 +70,13 @@ function renderPreview(
   return { ...view, seek, setIsScrubbing };
 }
 
-describe('usePreviewPlayback', () => {
+describe("usePreviewPlayback", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.clearAllMocks();
   });
 
-  it('seek은 즉시, play()는 seeked+준비 이후에만 (준비 전 play 금지)', () => {
+  it("seek은 즉시, play()는 seeked+준비 이후에만 (준비 전 play 금지)", () => {
     // seeking=true → 동기 fast-path 비활성, 이벤트 경로 강제
     const player = makeMockPlayer({ seeking: true, readyState: 4 });
     const { result, seek, setIsScrubbing } = renderPreview(0, 100, player);
@@ -87,46 +87,46 @@ describe('usePreviewPlayback', () => {
     expect(seek).toHaveBeenCalledWith(0);
     expect(player.play).not.toHaveBeenCalled(); // 아직 준비 안 됨
 
-    act(() => player.emit('seeked')); // readyState 4 ≥ 3 → 즉시 play
+    act(() => player.emit("seeked")); // readyState 4 ≥ 3 → 즉시 play
     expect(player.play).toHaveBeenCalledTimes(1);
   });
 
-  it('seeked 시 readyState<3이면 canplay까지 play 대기', () => {
+  it("seeked 시 readyState<3이면 canplay까지 play 대기", () => {
     const player = makeMockPlayer({ seeking: true, readyState: 1 });
     const { result } = renderPreview(0, 100, player);
 
     act(() => result.current.handlePreview());
-    act(() => player.emit('seeked'));
+    act(() => player.emit("seeked"));
     expect(player.play).not.toHaveBeenCalled(); // 아직 버퍼 부족
 
-    act(() => player.emit('canplay'));
+    act(() => player.emit("canplay"));
     expect(player.play).toHaveBeenCalledTimes(1);
   });
 
-  it('playing 발생 시 isScrubbing 해제', () => {
+  it("playing 발생 시 isScrubbing 해제", () => {
     const player = makeMockPlayer({ seeking: true, readyState: 4 });
     const { result, setIsScrubbing } = renderPreview(0, 100, player);
 
     act(() => result.current.handlePreview());
-    act(() => player.emit('seeked'));
+    act(() => player.emit("seeked"));
     setIsScrubbing.mockClear();
 
-    act(() => player.emit('playing'));
+    act(() => player.emit("playing"));
     expect(setIsScrubbing).toHaveBeenCalledWith(false);
   });
 
-  it('handlePreviewEdges 짧은 구간(<10s)은 전체 재생 — timeupdate 점프 리스너 미등록', () => {
+  it("handlePreviewEdges 짧은 구간(<10s)은 전체 재생 — timeupdate 점프 리스너 미등록", () => {
     const player = makeMockPlayer({ seeking: true, readyState: 4 });
     const { result, seek } = renderPreview(0, 5, player); // 5s < 10s
 
     act(() => result.current.handlePreviewEdges());
 
     expect(seek).toHaveBeenCalledWith(0);
-    const onTimeupdate = player.on.mock.calls.some(([e]) => e === 'timeupdate');
+    const onTimeupdate = player.on.mock.calls.some(([e]) => e === "timeupdate");
     expect(onTimeupdate).toBe(false);
   });
 
-  it('handlePreviewEdges 긴 구간은 in+5 도달 시 out-5로 점프', () => {
+  it("handlePreviewEdges 긴 구간은 in+5 도달 시 out-5로 점프", () => {
     // seeking=false, currentTime=5 → 시작 재생 후 timeupdate가 점프 트리거
     const player = makeMockPlayer({ seeking: false, readyState: 4, currentTime: 5 });
     const { result, seek } = renderPreview(0, 100, player);
@@ -134,12 +134,12 @@ describe('usePreviewPlayback', () => {
     act(() => result.current.handlePreviewEdges());
     expect(seek).toHaveBeenCalledWith(0); // 시작 지점
 
-    act(() => player.emit('timeupdate')); // currentTime 5 ≥ inPoint(0)+5
+    act(() => player.emit("timeupdate")); // currentTime 5 ≥ inPoint(0)+5
     expect(player.pause).toHaveBeenCalled();
     expect(seek).toHaveBeenCalledWith(95); // outPoint(100) - 5
   });
 
-  it('안전 타임아웃: 준비/재생 이벤트 없으면 PREVIEW_BUFFER_TIMEOUT_MS 후 play + isScrubbing 해제', () => {
+  it("안전 타임아웃: 준비/재생 이벤트 없으면 PREVIEW_BUFFER_TIMEOUT_MS 후 play + isScrubbing 해제", () => {
     vi.useFakeTimers();
     const player = makeMockPlayer({ seeking: true, readyState: 1 }); // 이벤트 안 옴
     const { result, setIsScrubbing } = renderPreview(0, 100, player);

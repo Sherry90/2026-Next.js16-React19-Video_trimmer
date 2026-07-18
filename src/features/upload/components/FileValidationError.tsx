@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import { useErrorState, useErrorActions, useReset } from '@/stores/hooks';
-import { AlertCircleIcon } from '@/shared/ui/icons';
-import { Card } from '@/shared/ui/Card';
-import { Button } from '@/shared/ui/Button';
+import { useErrorState, useErrorActions, useReset } from "@/stores/hooks";
+import { AlertCircleIcon } from "@/shared/ui/icons";
+import { Card } from "@/shared/ui/Card";
+import { Button } from "@/shared/ui/Button";
 
 export function FileValidationError() {
   const error = useErrorState();
   const { clearError } = useErrorActions();
   const reset = useReset();
 
-  if (!error.hasError || error.errorCode !== 'VALIDATION_ERROR') {
+  if (!error.hasError || error.errorCode !== "VALIDATION_ERROR") {
     return null;
   }
 
@@ -28,9 +28,7 @@ export function FileValidationError() {
           <h3 className="text-lg font-semibold text-red-800 dark:text-red-200 mb-1">
             File Validation Error
           </h3>
-          <p className="text-sm text-red-700 dark:text-red-300 mb-4">
-            {error.errorMessage}
-          </p>
+          <p className="text-sm text-red-700 dark:text-red-300 mb-4">{error.errorMessage}</p>
 
           <Button
             onClick={handleRetry}

@@ -1,12 +1,18 @@
-'use client';
+"use client";
 
-import { useCallback, useRef, type RefObject } from 'react';
-import { useVideoDuration, useTrimPoints, useTrimLocks, useTrimPointActions, usePlayerActions } from '@/stores/hooks';
-import { getTimelineSnapshot, getPlayerSnapshot } from '@/stores/snapshot';
-import { useVideoPlayerContext } from '@/shared/video-player/VideoPlayerContext';
-import { useDragHandle } from './useDragHandle';
-import { deltaXToTime, timeToPercent } from '@/features/timeline/utils/timelineCoords';
-import { TIMELINE } from '@/constants/appConfig';
+import { useCallback, useRef, type RefObject } from "react";
+import {
+  useVideoDuration,
+  useTrimPoints,
+  useTrimLocks,
+  useTrimPointActions,
+  usePlayerActions,
+} from "@/stores/hooks";
+import { getTimelineSnapshot, getPlayerSnapshot } from "@/stores/snapshot";
+import { useVideoPlayerContext } from "@/shared/video-player/VideoPlayerContext";
+import { useDragHandle } from "./useDragHandle";
+import { deltaXToTime, timeToPercent } from "@/features/timeline/utils/timelineCoords";
+import { TIMELINE } from "@/constants/appConfig";
 
 export interface TrimHandleControl {
   containerRef: RefObject<HTMLDivElement | null>;
@@ -23,7 +29,7 @@ export interface TrimHandleControl {
  * 라이브 in/out·player currentTime은 snapshot 게터로 읽어 stale-closure를 피한다.
  * 컴포넌트는 position/isLocked/handleMouseDown만 소비.
  */
-export function useTrimHandleControl(type: 'in' | 'out'): TrimHandleControl {
+export function useTrimHandleControl(type: "in" | "out"): TrimHandleControl {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { inPoint, outPoint } = useTrimPoints();
@@ -33,11 +39,11 @@ export function useTrimHandleControl(type: 'in' | 'out'): TrimHandleControl {
   const { setCurrentTime } = usePlayerActions();
   const { seek, player } = useVideoPlayerContext();
 
-  const point = type === 'in' ? inPoint : outPoint;
-  const isLocked = type === 'in' ? isInPointLocked : isOutPointLocked;
-  const setPoint = type === 'in' ? setInPoint : setOutPoint;
+  const point = type === "in" ? inPoint : outPoint;
+  const isLocked = type === "in" ? isInPointLocked : isOutPointLocked;
+  const setPoint = type === "in" ? setInPoint : setOutPoint;
 
-  const position = duration > 0 ? timeToPercent(point, duration) : type === 'in' ? 0 : 100;
+  const position = duration > 0 ? timeToPercent(point, duration) : type === "in" ? 0 : 100;
 
   const startTimeRef = useRef(point);
   const lastSeekTimeRef = useRef(0);
@@ -52,11 +58,11 @@ export function useTrimHandleControl(type: 'in' | 'out'): TrimHandleControl {
   //  - out: 제약 위반(playhead가 outPoint 뒤=구간 밖)일 때만 outPoint로 당김.
   const snapPlayheadToBoundary = useCallback(() => {
     const { inPoint: liveIn, outPoint: liveOut } = getTimelineSnapshot();
-    if (type === 'out') {
+    if (type === "out") {
       const realTime = player?.currentTime?.() ?? getPlayerSnapshot().currentTime;
       if (realTime <= liveOut) return;
     }
-    const boundary = type === 'in' ? liveIn : liveOut;
+    const boundary = type === "in" ? liveIn : liveOut;
     setCurrentTime(boundary);
     seek(boundary);
   }, [type, player, seek, setCurrentTime]);
@@ -76,10 +82,10 @@ export function useTrimHandleControl(type: 'in' | 'out'): TrimHandleControl {
         snapPlayheadToBoundary();
       }
     },
-    [duration, isLocked, setPoint, snapPlayheadToBoundary]
+    [duration, isLocked, setPoint, snapPlayheadToBoundary],
   );
 
-  const { handleMouseDown } = useDragHandle(type === 'in' ? 'inPoint' : 'outPoint', {
+  const { handleMouseDown } = useDragHandle(type === "in" ? "inPoint" : "outPoint", {
     onDragStart: handleDragStart,
     onDrag: handleDrag,
     // 최종 확정 — throttle이 마지막 mousemove를 건너뛰어도 경계로 snap.

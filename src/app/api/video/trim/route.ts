@@ -1,16 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { spawn } from 'child_process';
-import { existsSync } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
-import { randomUUID } from 'crypto';
-import { getFfmpegPath, getStreamlinkPath, hasStreamlink } from '@/lib/binPaths';
+import { NextRequest, NextResponse } from "next/server";
+import { spawn } from "child_process";
+import { existsSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
+import { randomUUID } from "crypto";
+import { getFfmpegPath, getStreamlinkPath, hasStreamlink } from "@/lib/binPaths";
 
-import { runWithTimeout } from '@/lib/processUtils';
-import { formatTime } from '@/shared/lib/timeFormatter';
-import { validateTrimRequest, handleApiError } from '@/lib/apiUtils';
-import { streamFile } from '@/lib/streamUtils';
-import { safeUnlink } from '@/lib/downloadTypes';
+import { runWithTimeout } from "@/lib/processUtils";
+import { formatTime } from "@/shared/lib/timeFormatter";
+import { validateTrimRequest, handleApiError } from "@/lib/apiUtils";
+import { streamFile } from "@/lib/streamUtils";
+import { safeUnlink } from "@/lib/downloadTypes";
 
 /**
  * Streamlink → ffmpeg two-stage trimming
@@ -42,29 +42,35 @@ async function trimWithStreamlink(
 
   try {
     // Stage 1: Download segment with streamlink
-    console.log(`[trim] Stage 1 - streamlink download: offset=${formatTime(startTime, false)} duration=${formatTime(duration, false)}`);
+    console.log(
+      `[trim] Stage 1 - streamlink download: offset=${formatTime(startTime, false)} duration=${formatTime(duration, false)}`,
+    );
 
     const args = [
-      '--hls-start-offset', formatTime(startTime, false),
-      '--hls-duration', formatTime(duration, false),
-      '--stream-segment-threads', '6',  // 병렬 다운로드 (1-10, 기본값 1)
+      "--hls-start-offset",
+      formatTime(startTime, false),
+      "--hls-duration",
+      formatTime(duration, false),
+      "--stream-segment-threads",
+      "6", // 병렬 다운로드 (1-10, 기본값 1)
       originalUrl,
-      'best',
-      '-o', tempFile,
+      "best",
+      "-o",
+      tempFile,
     ];
 
     // Linux AppImage: FUSE 없는 환경 대응
-    if (streamlinkBin.endsWith('.AppImage')) {
-      args.unshift('--appimage-extract-and-run');
+    if (streamlinkBin.endsWith(".AppImage")) {
+      args.unshift("--appimage-extract-and-run");
     }
 
     const streamlinkProc = spawn(streamlinkBin, args, {
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
     const streamlinkSuccess = await runWithTimeout(streamlinkProc, {
       timeoutMs: 300000,
-      logPrefix: '[trim] Stage 1 - streamlink download',
+      logPrefix: "[trim] Stage 1 - streamlink download",
       onSuccess: (code) => code === 0 && existsSync(tempFile),
     });
 
@@ -74,33 +80,41 @@ async function trimWithStreamlink(
     }
 
     // Stage 2: Reset timestamps with ffmpeg
-    console.log('[trim] Stage 2 - ffmpeg timestamp reset');
+    console.log("[trim] Stage 2 - ffmpeg timestamp reset");
 
-    const ffmpegProc = spawn(ffmpegPath, [
-      '-y',
-      '-i', tempFile,
-      '-c', 'copy',
-      '-avoid_negative_ts', 'make_zero',
-      '-fflags', '+genpts',
-      '-movflags', '+faststart',
-      outputPath,
-    ], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    const ffmpegProc = spawn(
+      ffmpegPath,
+      [
+        "-y",
+        "-i",
+        tempFile,
+        "-c",
+        "copy",
+        "-avoid_negative_ts",
+        "make_zero",
+        "-fflags",
+        "+genpts",
+        "-movflags",
+        "+faststart",
+        outputPath,
+      ],
+      {
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
 
     const ffmpegSuccess = await runWithTimeout(ffmpegProc, {
       timeoutMs: 60000,
-      logPrefix: '[trim] Stage 2 - ffmpeg timestamp reset',
+      logPrefix: "[trim] Stage 2 - ffmpeg timestamp reset",
       onSuccess: (code) => code === 0 && existsSync(outputPath),
     });
 
     safeUnlink(tempFile);
 
     return ffmpegSuccess;
-
   } catch (error) {
     safeUnlink(tempFile);
-    console.log('[trim] Unexpected error:', error);
+    console.log("[trim] Unexpected error:", error);
     return false;
   }
 }
@@ -118,30 +132,30 @@ export async function POST(request: NextRequest) {
     }
 
     const { originalUrl, startTime, endTime, filename } = validation.data;
-    const outputFilename = filename || 'trimmed_video.mp4';
+    const outputFilename = filename || "trimmed_video.mp4";
     const success = await trimWithStreamlink(originalUrl, startTime, endTime, tmpFile);
 
     if (!success) {
       return NextResponse.json(
-        { error: 'streamlink 트리밍에 실패했습니다. streamlink 설치를 확인해주세요.' },
-        { status: 500 }
+        { error: "streamlink 트리밍에 실패했습니다. streamlink 설치를 확인해주세요." },
+        { status: 500 },
       );
     }
 
     // Stream the output file
-    console.log('[trim] Streaming file to client...');
+    console.log("[trim] Streaming file to client...");
 
     return streamFile({
       filePath: tmpFile,
-      contentType: 'video/mp4',
+      contentType: "video/mp4",
       onStreamEnd: () => safeUnlink(tmpFile),
       onStreamError: (err) => {
-        console.error('[trim] Stream error:', err);
+        console.error("[trim] Stream error:", err);
         safeUnlink(tmpFile);
       },
     });
   } catch (error: unknown) {
     safeUnlink(tmpFile);
-    return handleApiError(error, 'trim', '트리밍 처리 중 오류가 발생했습니다');
+    return handleApiError(error, "trim", "트리밍 처리 중 오류가 발생했습니다");
   }
 }

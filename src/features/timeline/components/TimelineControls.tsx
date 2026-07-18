@@ -1,15 +1,10 @@
-'use client';
+"use client";
 
-import {
-  useTrimPoints,
-  useVideoDuration,
-  useTrimLocks,
-  useTimelineActions,
-} from '@/stores/hooks';
-import { usePreviewPlaybackContext } from '../context/PreviewPlaybackContext';
-import { TimeInput } from './TimeInput';
-import { LockButton } from './LockButton';
-import { PreviewButtons } from './PreviewButtons';
+import { useTrimPoints, useVideoDuration, useTrimLocks, useTimelineActions } from "@/stores/hooks";
+import { usePreviewPlaybackContext } from "../context/PreviewPlaybackContext";
+import { TimeInput } from "./TimeInput";
+import { LockButton } from "./LockButton";
+import { PreviewButtons } from "./PreviewButtons";
 
 /**
  * Timeline controls (connected) — time inputs, lock buttons, preview buttons.
@@ -31,7 +26,9 @@ export function TimelineControls() {
           <TimeInput
             label="In"
             value={inPoint}
-            onChange={(value) => { if (value !== null) setInPoint(value); }}
+            onChange={(value) => {
+              if (value !== null) setInPoint(value);
+            }}
             min={0}
             max={outPoint}
             disabled={isInPointLocked}
@@ -46,7 +43,9 @@ export function TimelineControls() {
           <TimeInput
             label="Out"
             value={outPoint}
-            onChange={(value) => { if (value !== null) setOutPoint(value); }}
+            onChange={(value) => {
+              if (value !== null) setOutPoint(value);
+            }}
             min={inPoint}
             max={duration}
             disabled={isOutPointLocked}

@@ -1,4 +1,4 @@
-import { createSimpleSelector, createStateSelector } from '../selectorFactory';
+import { createSimpleSelector, createStateSelector } from "../selectorFactory";
 
 // ── media ──
 /** 전체 videoFile 객체. */

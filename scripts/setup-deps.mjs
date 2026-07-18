@@ -4,35 +4,44 @@
  * ffmpeg is bundled via @ffmpeg-installer/ffmpeg (no download needed).
  */
 
-import { execFileSync } from 'child_process';
-import { existsSync, mkdirSync, createWriteStream, copyFileSync, unlinkSync, rmSync, readFileSync, readdirSync } from 'fs';
-import { join } from 'path';
-import { fileURLToPath } from 'url';
-import { createRequire } from 'module';
-import https from 'https';
-import { pipeline } from 'stream/promises';
+import { execFileSync } from "child_process";
+import {
+  existsSync,
+  mkdirSync,
+  createWriteStream,
+  copyFileSync,
+  unlinkSync,
+  rmSync,
+  readFileSync,
+  readdirSync,
+} from "fs";
+import { join } from "path";
+import { fileURLToPath } from "url";
+import { createRequire } from "module";
+import https from "https";
+import { pipeline } from "stream/promises";
 
 const require = createRequire(import.meta.url);
-const __dirname = fileURLToPath(new URL('.', import.meta.url));
-const projectRoot = join(__dirname, '..');
-const binDir = join(projectRoot, '.bin');
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
+const projectRoot = join(__dirname, "..");
+const binDir = join(projectRoot, ".bin");
 const skipOptionalBinaryDownloads =
-  process.env.SKIP_OPTIONAL_BINARY_DOWNLOADS === '1' ||
-  process.env.SKIP_OPTIONAL_BINARY_DOWNLOADS === 'true';
+  process.env.SKIP_OPTIONAL_BINARY_DOWNLOADS === "1" ||
+  process.env.SKIP_OPTIONAL_BINARY_DOWNLOADS === "true";
 const downloadTimeoutMs = Number.parseInt(
-  process.env.SETUP_DEPS_DOWNLOAD_TIMEOUT_MS || '45000',
+  process.env.SETUP_DEPS_DOWNLOAD_TIMEOUT_MS || "45000",
   10,
 );
 const childProcessTimeoutMs = Number.parseInt(
-  process.env.SETUP_DEPS_CHILD_TIMEOUT_MS || '300000',
+  process.env.SETUP_DEPS_CHILD_TIMEOUT_MS || "300000",
   10,
 );
 
 function hasCommand(cmd) {
   try {
     // Windows는 `which`가 없으므로 `where`를 쓴다.
-    const probe = process.platform === 'win32' ? 'where' : 'which';
-    execFileSync(probe, [cmd], { stdio: 'ignore' });
+    const probe = process.platform === "win32" ? "where" : "which";
+    execFileSync(probe, [cmd], { stdio: "ignore" });
     return true;
   } catch {
     return false;
@@ -44,32 +53,32 @@ function hasCommand(cmd) {
  */
 async function downloadFile(url, dest) {
   return new Promise((resolve, reject) => {
-    const request = https.get(url, {
-      headers: { 'User-Agent': 'Video-Trimmer' },
-    }, (res) => {
-      // Handle redirects
-      if (res.statusCode === 301 || res.statusCode === 302) {
-        return downloadFile(res.headers.location, dest)
-          .then(resolve)
-          .catch(reject);
-      }
+    const request = https.get(
+      url,
+      {
+        headers: { "User-Agent": "Video-Trimmer" },
+      },
+      (res) => {
+        // Handle redirects
+        if (res.statusCode === 301 || res.statusCode === 302) {
+          return downloadFile(res.headers.location, dest).then(resolve).catch(reject);
+        }
 
-      if (res.statusCode !== 200) {
-        reject(new Error(`HTTP ${res.statusCode}`));
-        return;
-      }
+        if (res.statusCode !== 200) {
+          reject(new Error(`HTTP ${res.statusCode}`));
+          return;
+        }
 
-      const fileStream = createWriteStream(dest);
-      pipeline(res, fileStream)
-        .then(resolve)
-        .catch(reject);
-    });
+        const fileStream = createWriteStream(dest);
+        pipeline(res, fileStream).then(resolve).catch(reject);
+      },
+    );
 
     request.setTimeout(downloadTimeoutMs, () => {
       request.destroy(new Error(`Download timed out after ${downloadTimeoutMs}ms`));
     });
 
-    request.on('error', reject);
+    request.on("error", reject);
   });
 }
 
@@ -77,8 +86,8 @@ async function downloadFile(url, dest) {
  * Download and extract ZIP file (Windows)
  */
 async function downloadAndExtract(url, destDir) {
-  const AdmZip = (await import('adm-zip')).default;
-  const tmpZip = join(binDir, 'temp-streamlink.zip');
+  const AdmZip = (await import("adm-zip")).default;
+  const tmpZip = join(binDir, "temp-streamlink.zip");
 
   try {
     await downloadFile(url, tmpZip);
@@ -97,13 +106,13 @@ async function downloadAndExtract(url, destDir) {
 function getStreamlinkBinPath() {
   const { platform, arch } = process;
 
-  if (platform === 'win32') {
-    return join(binDir, 'streamlink-win', 'streamlink.exe');
-  } else if (platform === 'linux') {
-    const archSuffix = arch === 'arm64' ? 'arm64' : 'x64';
+  if (platform === "win32") {
+    return join(binDir, "streamlink-win", "streamlink.exe");
+  } else if (platform === "linux") {
+    const archSuffix = arch === "arm64" ? "arm64" : "x64";
     return join(binDir, `streamlink-linux-${archSuffix}.AppImage`);
-  } else if (platform === 'darwin') {
-    return join(binDir, 'streamlink-venv', 'bin', 'streamlink');
+  } else if (platform === "darwin") {
+    return join(binDir, "streamlink-venv", "bin", "streamlink");
   }
   return null;
 }
@@ -113,10 +122,10 @@ function getStreamlinkBinPath() {
  */
 function getYtdlpAssetName() {
   const { platform, arch } = process;
-  if (platform === 'win32') return 'yt-dlp.exe';
-  if (platform === 'darwin') return 'yt-dlp_macos';
-  if (platform === 'linux') {
-    return arch === 'arm64' ? 'yt-dlp_linux_aarch64' : 'yt-dlp_linux';
+  if (platform === "win32") return "yt-dlp.exe";
+  if (platform === "darwin") return "yt-dlp_macos";
+  if (platform === "linux") {
+    return arch === "arm64" ? "yt-dlp_linux_aarch64" : "yt-dlp_linux";
   }
   throw new Error(`Unsupported platform for yt-dlp bundling: ${platform} ${arch}`);
 }
@@ -125,10 +134,10 @@ function getYtdlpAssetName() {
  * venv-installed yt-dlp 실행 파일 경로 (플랫폼별)
  */
 function getYtdlpVenvBinPath() {
-  const venvDir = join(binDir, 'yt-dlp-venv');
-  return process.platform === 'win32'
-    ? join(venvDir, 'Scripts', 'yt-dlp.exe')
-    : join(venvDir, 'bin', 'yt-dlp');
+  const venvDir = join(binDir, "yt-dlp-venv");
+  return process.platform === "win32"
+    ? join(venvDir, "Scripts", "yt-dlp.exe")
+    : join(venvDir, "bin", "yt-dlp");
 }
 
 /**
@@ -139,8 +148,8 @@ function getYtdlpVenvBinPath() {
  * Fastly CDN으로 서빙된다. 갱신 시 version/release 두 값만 바꾸면 됨.
  */
 const BUNDLED_PYTHON = {
-  version: '3.13.13',
-  release: '20260510',
+  version: "3.13.13",
+  release: "20260510",
 };
 
 /**
@@ -148,10 +157,10 @@ const BUNDLED_PYTHON = {
  */
 function getPythonTriple() {
   const { platform, arch } = process;
-  const a = arch === 'arm64' ? 'aarch64' : 'x86_64';
-  if (platform === 'darwin') return `${a}-apple-darwin`;
-  if (platform === 'linux') return `${a}-unknown-linux-gnu`;
-  if (platform === 'win32') return `${a}-pc-windows-msvc`;
+  const a = arch === "arm64" ? "aarch64" : "x86_64";
+  if (platform === "darwin") return `${a}-apple-darwin`;
+  if (platform === "linux") return `${a}-unknown-linux-gnu`;
+  if (platform === "win32") return `${a}-pc-windows-msvc`;
   return null;
 }
 
@@ -170,10 +179,8 @@ function pythonStandaloneUrl() {
  * 프로젝트 내 번들 Python 실행 파일 경로(.bin/python).
  */
 function getBundledPythonBinPath() {
-  const pyDir = join(binDir, 'python');
-  return process.platform === 'win32'
-    ? join(pyDir, 'python.exe')
-    : join(pyDir, 'bin', 'python3');
+  const pyDir = join(binDir, "python");
+  return process.platform === "win32" ? join(pyDir, "python.exe") : join(pyDir, "bin", "python3");
 }
 
 /**
@@ -183,12 +190,12 @@ function getBundledPythonBinPath() {
  * @param venvName .bin 하위 venv 디렉터리명 (예: 'yt-dlp-venv', 'streamlink-venv')
  */
 function venvUsesBundledPython(venvName) {
-  const cfg = join(binDir, venvName, 'pyvenv.cfg');
+  const cfg = join(binDir, venvName, "pyvenv.cfg");
   if (!existsSync(cfg)) return false;
   try {
-    const m = readFileSync(cfg, 'utf-8').match(/^home\s*=\s*(.+)$/m);
+    const m = readFileSync(cfg, "utf-8").match(/^home\s*=\s*(.+)$/m);
     if (!m) return false;
-    return m[1].trim().startsWith(join(binDir, 'python'));
+    return m[1].trim().startsWith(join(binDir, "python"));
   } catch {
     return false;
   }
@@ -204,35 +211,37 @@ function venvUsesBundledPython(venvName) {
 async function setupBundledPython() {
   const url = pythonStandaloneUrl();
   if (!url) {
-    console.warn('  python: no standalone build for this platform');
+    console.warn("  python: no standalone build for this platform");
     return null;
   }
 
   const pyBin = getBundledPythonBinPath();
   if (existsSync(pyBin)) {
     try {
-      const v = execFileSync(pyBin, ['--version'], { encoding: 'utf-8' }).trim();
+      const v = execFileSync(pyBin, ["--version"], { encoding: "utf-8" }).trim();
       console.log(`  python: ${v} (.bin/python, bundled)`);
     } catch {
-      console.log('  python: found (.bin/python, bundled)');
+      console.log("  python: found (.bin/python, bundled)");
     }
     return pyBin;
   }
 
   try {
     if (!existsSync(binDir)) mkdirSync(binDir, { recursive: true });
-    const tgz = join(binDir, 'python-standalone.tar.gz');
-    console.log(`  python: downloading bundled CPython ${BUNDLED_PYTHON.version} (no system Python required)...`);
+    const tgz = join(binDir, "python-standalone.tar.gz");
+    console.log(
+      `  python: downloading bundled CPython ${BUNDLED_PYTHON.version} (no system Python required)...`,
+    );
     console.log(`    ${url}`);
     await downloadFile(url, tgz);
     // tarball은 "python/" 루트로 풀린다 → .bin/python/
-    execFileSync('tar', ['-xzf', tgz, '-C', binDir], { timeout: childProcessTimeoutMs });
+    execFileSync("tar", ["-xzf", tgz, "-C", binDir], { timeout: childProcessTimeoutMs });
     if (existsSync(tgz)) unlinkSync(tgz);
     if (!existsSync(pyBin)) {
-      console.warn('  python: extract did not produce expected interpreter');
+      console.warn("  python: extract did not produce expected interpreter");
       return null;
     }
-    const v = execFileSync(pyBin, ['--version'], { encoding: 'utf-8' }).trim();
+    const v = execFileSync(pyBin, ["--version"], { encoding: "utf-8" }).trim();
     console.log(`  python: ${v} (.bin/python, bundled)`);
     return pyBin;
   } catch (e) {
@@ -250,45 +259,48 @@ async function setupBundledPython() {
 async function setupYtDlpVenv() {
   const python = await setupBundledPython();
   if (!python) {
-    console.warn('  yt-dlp: bundled Python unavailable → onefile 바이너리로 폴백');
+    console.warn("  yt-dlp: bundled Python unavailable → onefile 바이너리로 폴백");
     return false;
   }
 
-  const venvDir = join(binDir, 'yt-dlp-venv');
-  const pipBin = process.platform === 'win32'
-    ? join(venvDir, 'Scripts', 'pip.exe')
-    : join(venvDir, 'bin', 'pip');
+  const venvDir = join(binDir, "yt-dlp-venv");
+  const pipBin =
+    process.platform === "win32"
+      ? join(venvDir, "Scripts", "pip.exe")
+      : join(venvDir, "bin", "pip");
 
   try {
     if (!existsSync(binDir)) mkdirSync(binDir, { recursive: true });
     console.log(`  yt-dlp: installing via Python venv (${python}, fast startup)...`);
-    execFileSync(python, ['-m', 'venv', venvDir], {
-      stdio: 'inherit',
+    execFileSync(python, ["-m", "venv", venvDir], {
+      stdio: "inherit",
       timeout: childProcessTimeoutMs,
     });
     // yt-dlp는 YouTube 변경으로 자주 깨지므로 unpinned(최신) 설치 (Dockerfile과 동일 정책)
-    execFileSync(pipBin, ['install', '--quiet', '--upgrade', 'yt-dlp'], {
-      stdio: 'inherit',
+    execFileSync(pipBin, ["install", "--quiet", "--upgrade", "yt-dlp"], {
+      stdio: "inherit",
       timeout: childProcessTimeoutMs,
     });
-    const version = execFileSync(getYtdlpVenvBinPath(), ['--version'], { encoding: 'utf-8' }).trim();
+    const version = execFileSync(getYtdlpVenvBinPath(), ["--version"], {
+      encoding: "utf-8",
+    }).trim();
     console.log(`  yt-dlp: v${version} (.bin/yt-dlp-venv)`);
     return true;
   } catch (error) {
     console.warn(`  yt-dlp: venv install failed - ${error.message}`);
-    console.warn('          falling back to onefile binary (slower startup)');
+    console.warn("          falling back to onefile binary (slower startup)");
     return false;
   }
 }
 
 async function setupYtDlp() {
   // 1. System yt-dlp (예: Docker `pip install yt-dlp`) — 모듈이라 빠름, 그대로 사용
-  if (hasCommand('yt-dlp')) {
+  if (hasCommand("yt-dlp")) {
     try {
-      const version = execFileSync('yt-dlp', ['--version'], { encoding: 'utf-8' }).trim();
+      const version = execFileSync("yt-dlp", ["--version"], { encoding: "utf-8" }).trim();
       console.log(`  yt-dlp: v${version} (system)`);
     } catch {
-      console.log('  yt-dlp: found (system)');
+      console.log("  yt-dlp: found (system)");
     }
     return;
   }
@@ -296,39 +308,41 @@ async function setupYtDlp() {
   // 2. venv yt-dlp 이미 설치됨 — 단, 번들 Python(.bin/python)으로 만든 것만 유효
   //    (과거 시스템 Python으로 만든 venv는 버전 통일/재현성 위해 재생성)
   if (existsSync(getYtdlpVenvBinPath())) {
-    if (venvUsesBundledPython('yt-dlp-venv')) {
+    if (venvUsesBundledPython("yt-dlp-venv")) {
       try {
-        const version = execFileSync(getYtdlpVenvBinPath(), ['--version'], { encoding: 'utf-8' }).trim();
+        const version = execFileSync(getYtdlpVenvBinPath(), ["--version"], {
+          encoding: "utf-8",
+        }).trim();
         console.log(`  yt-dlp: v${version} (.bin/yt-dlp-venv, bundled Python)`);
       } catch {
-        console.log('  yt-dlp: found (.bin/yt-dlp-venv)');
+        console.log("  yt-dlp: found (.bin/yt-dlp-venv)");
       }
       return;
     }
-    console.log('  yt-dlp: 기존 venv가 번들 Python 미사용 → 재생성 (버전 통일)');
-    rmSync(join(binDir, 'yt-dlp-venv'), { recursive: true, force: true });
+    console.log("  yt-dlp: 기존 venv가 번들 Python 미사용 → 재생성 (버전 통일)");
+    rmSync(join(binDir, "yt-dlp-venv"), { recursive: true, force: true });
   }
 
   // 3. venv 설치 시도 (시스템 3.10+ 또는 번들 Python, onefile 대비 startup ~90배 빠름)
   if (await setupYtDlpVenv()) return;
 
   // 4. Fallback: onefile 바이너리 다운로드 (startup 느림, venv 불가 환경용)
-  const ytdlpBinPath = join(binDir, process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp');
+  const ytdlpBinPath = join(binDir, process.platform === "win32" ? "yt-dlp.exe" : "yt-dlp");
   if (existsSync(ytdlpBinPath)) {
     try {
-      const version = execFileSync(ytdlpBinPath, ['--version'], { encoding: 'utf-8' }).trim();
+      const version = execFileSync(ytdlpBinPath, ["--version"], { encoding: "utf-8" }).trim();
       console.log(`  yt-dlp: v${version} (.bin/, onefile fallback)`);
     } catch {
-      console.log('  yt-dlp: found (.bin/, onefile fallback)');
+      console.log("  yt-dlp: found (.bin/, onefile fallback)");
     }
     return;
   }
 
-  const version = '2026.03.17';
+  const version = "2026.03.17";
   const asset = getYtdlpAssetName();
   const url = `https://github.com/yt-dlp/yt-dlp/releases/download/${version}/${asset}`;
 
-  console.log('  yt-dlp: not found, downloading onefile binary...');
+  console.log("  yt-dlp: not found, downloading onefile binary...");
   console.log(`    Downloading from ${url}`);
 
   if (!existsSync(binDir)) {
@@ -338,11 +352,13 @@ async function setupYtDlp() {
   await downloadFile(url, ytdlpBinPath);
 
   // Make executable on Unix-like systems
-  if (process.platform !== 'win32') {
-    execFileSync('chmod', ['+x', ytdlpBinPath], { timeout: childProcessTimeoutMs });
+  if (process.platform !== "win32") {
+    execFileSync("chmod", ["+x", ytdlpBinPath], { timeout: childProcessTimeoutMs });
   }
 
-  console.log(`  yt-dlp: downloaded to .bin/${process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp'}`);
+  console.log(
+    `  yt-dlp: downloaded to .bin/${process.platform === "win32" ? "yt-dlp.exe" : "yt-dlp"}`,
+  );
 }
 
 /**
@@ -350,39 +366,42 @@ async function setupYtDlp() {
  */
 async function downloadStreamlink() {
   const { platform, arch } = process;
-  const version = '8.2.0-1';
+  const version = "8.2.0-1";
 
   if (!existsSync(binDir)) {
     mkdirSync(binDir, { recursive: true });
   }
 
-  if (platform === 'win32') {
+  if (platform === "win32") {
     // Windows portable .zip download
     const url = `https://github.com/streamlink/windows-builds/releases/download/${version}/streamlink-${version}-py314-x86_64.zip`;
     console.log(`    Downloading from ${url}`);
-    await downloadAndExtract(url, join(binDir, 'streamlink-win'));
-  } else if (platform === 'linux') {
+    await downloadAndExtract(url, join(binDir, "streamlink-win"));
+  } else if (platform === "linux") {
     // Linux AppImage download
-    const archSuffix = arch === 'arm64' ? 'aarch64' : 'x86_64';
+    const archSuffix = arch === "arm64" ? "aarch64" : "x86_64";
     const url = `https://github.com/streamlink/streamlink-appimage/releases/download/${version}/streamlink-${version}-cp314-cp314-manylinux_2_28_${archSuffix}.AppImage`;
-    const destPath = join(binDir, `streamlink-linux-${arch === 'arm64' ? 'arm64' : 'x64'}.AppImage`);
+    const destPath = join(
+      binDir,
+      `streamlink-linux-${arch === "arm64" ? "arm64" : "x64"}.AppImage`,
+    );
     console.log(`    Downloading from ${url}`);
     await downloadFile(url, destPath);
-    execFileSync('chmod', ['+x', destPath], { timeout: childProcessTimeoutMs });
-  } else if (platform === 'darwin') {
+    execFileSync("chmod", ["+x", destPath], { timeout: childProcessTimeoutMs });
+  } else if (platform === "darwin") {
     // macOS: 프로젝트 번들 Python으로 venv 생성 (yt-dlp와 동일한 단일 고정 Python → 버전 통일)
     const python = await setupBundledPython();
     if (!python) {
-      throw new Error('번들 Python 확보 실패 (streamlink venv 생성 불가)');
+      throw new Error("번들 Python 확보 실패 (streamlink venv 생성 불가)");
     }
-    const venvDir = join(binDir, 'streamlink-venv');
-    console.log('    Installing streamlink via bundled Python venv...');
-    execFileSync(python, ['-m', 'venv', venvDir], {
-      stdio: 'inherit',
+    const venvDir = join(binDir, "streamlink-venv");
+    console.log("    Installing streamlink via bundled Python venv...");
+    execFileSync(python, ["-m", "venv", venvDir], {
+      stdio: "inherit",
       timeout: childProcessTimeoutMs,
     });
-    execFileSync(join(venvDir, 'bin', 'pip'), ['install', 'streamlink', '--quiet'], {
-      stdio: 'inherit',
+    execFileSync(join(venvDir, "bin", "pip"), ["install", "streamlink", "--quiet"], {
+      stdio: "inherit",
       timeout: childProcessTimeoutMs,
     });
     console.log(`    Installed to ${venvDir}`);
@@ -395,12 +414,12 @@ async function downloadStreamlink() {
  */
 async function setupStreamlink() {
   // 1. Check system streamlink
-  if (hasCommand('streamlink')) {
+  if (hasCommand("streamlink")) {
     try {
-      const version = execFileSync('streamlink', ['--version'], { encoding: 'utf-8' }).trim();
+      const version = execFileSync("streamlink", ["--version"], { encoding: "utf-8" }).trim();
       console.log(`  streamlink: ${version} (system)`);
     } catch {
-      console.log('  streamlink: found (system)');
+      console.log("  streamlink: found (system)");
     }
     return;
   }
@@ -409,25 +428,25 @@ async function setupStreamlink() {
   const binPath = getStreamlinkBinPath();
   if (binPath && existsSync(binPath)) {
     // macOS venv는 번들 Python으로 만든 것만 유효 (버전 통일). 아니면 재생성.
-    if (process.platform === 'darwin' && !venvUsesBundledPython('streamlink-venv')) {
-      console.log('  streamlink: 기존 venv가 번들 Python 미사용 → 재생성 (버전 통일)');
-      rmSync(join(binDir, 'streamlink-venv'), { recursive: true, force: true });
+    if (process.platform === "darwin" && !venvUsesBundledPython("streamlink-venv")) {
+      console.log("  streamlink: 기존 venv가 번들 Python 미사용 → 재생성 (버전 통일)");
+      rmSync(join(binDir, "streamlink-venv"), { recursive: true, force: true });
     } else {
-      const filename = join('.bin', binPath.split('.bin/')[1] || 'streamlink');
+      const filename = join(".bin", binPath.split(".bin/")[1] || "streamlink");
       console.log(`  streamlink: found (${filename})`);
       return;
     }
   }
 
   // 3. Download
-  console.log('  streamlink: not found, downloading...');
+  console.log("  streamlink: not found, downloading...");
   try {
     await downloadStreamlink();
-    console.log('  streamlink: downloaded successfully');
+    console.log("  streamlink: downloaded successfully");
   } catch (error) {
     console.warn(`  streamlink: download failed - ${error.message}`);
-    console.warn('          HLS trimming will be unavailable');
-    console.warn('          Install manually: https://streamlink.github.io/install.html');
+    console.warn("          HLS trimming will be unavailable");
+    console.warn("          Install manually: https://streamlink.github.io/install.html");
   }
 }
 
@@ -438,15 +457,15 @@ async function setupStreamlink() {
  * - Linux: abcfy2 musl static(x86_64/aarch64)
  */
 const ARIA2 = {
-  version: '1.37.0', // 공식·linux 빌드 버전 (appConfig ARIA2C 상수와 동일 계열)
-  macTag: 'v1.0.0', // q741451 릴리스 태그 (aria2 1.37.0 기반)
+  version: "1.37.0", // 공식·linux 빌드 버전 (appConfig ARIA2C 상수와 동일 계열)
+  macTag: "v1.0.0", // q741451 릴리스 태그 (aria2 1.37.0 기반)
 };
 
 /**
  * .bin/aria2 하위 aria2c 실행 파일 경로 (플랫폼별).
  */
 function getAria2cBundlePath() {
-  return join(binDir, 'aria2', process.platform === 'win32' ? 'aria2c.exe' : 'aria2c');
+  return join(binDir, "aria2", process.platform === "win32" ? "aria2c.exe" : "aria2c");
 }
 
 /**
@@ -471,9 +490,9 @@ function findFile(dir, name) {
  * (win/linux aria2c 공통 추출 경로 — 내부 디렉터리 구조가 소스마다 달라 findFile로 탐색.)
  */
 async function extractZipBinary(url, destBin, searchName, workDir) {
-  const AdmZip = (await import('adm-zip')).default;
-  const tmpZip = join(workDir, 'temp-aria2.zip');
-  const tmpDir = join(workDir, '_extract');
+  const AdmZip = (await import("adm-zip")).default;
+  const tmpZip = join(workDir, "temp-aria2.zip");
+  const tmpDir = join(workDir, "_extract");
   await downloadFile(url, tmpZip);
   new AdmZip(tmpZip).extractAllTo(tmpDir, true);
   unlinkSync(tmpZip);
@@ -494,12 +513,12 @@ async function extractZipBinary(url, destBin, searchName, workDir) {
  */
 async function setupAria2c() {
   // 1. System aria2c
-  if (hasCommand('aria2c')) {
+  if (hasCommand("aria2c")) {
     try {
-      const v = execFileSync('aria2c', ['--version'], { encoding: 'utf-8' }).split('\n')[0].trim();
+      const v = execFileSync("aria2c", ["--version"], { encoding: "utf-8" }).split("\n")[0].trim();
       console.log(`  aria2c: ${v} (system)`);
     } catch {
-      console.log('  aria2c: found (system)');
+      console.log("  aria2c: found (system)");
     }
     return;
   }
@@ -511,7 +530,7 @@ async function setupAria2c() {
   //    arm64 mac의 무서명 바이너리(SIGKILL)·손상 파일이면 삭제 후 재다운로드한다.
   if (existsSync(dest)) {
     try {
-      const v = execFileSync(dest, ['--version'], { encoding: 'utf-8' }).split('\n')[0].trim();
+      const v = execFileSync(dest, ["--version"], { encoding: "utf-8" }).split("\n")[0].trim();
       console.log(`  aria2c: ${v} (.bin/aria2)`);
       return;
     } catch (e) {
@@ -521,45 +540,45 @@ async function setupAria2c() {
   }
 
   // 3. Download platform prebuilt
-  console.log('  aria2c: not found, downloading...');
-  const aria2Dir = join(binDir, 'aria2');
+  console.log("  aria2c: not found, downloading...");
+  const aria2Dir = join(binDir, "aria2");
   try {
     if (!existsSync(aria2Dir)) mkdirSync(aria2Dir, { recursive: true });
 
-    if (platform === 'win32') {
+    if (platform === "win32") {
       const url = `https://github.com/aria2/aria2/releases/download/release-${ARIA2.version}/aria2-${ARIA2.version}-win-64bit-build1.zip`;
       console.log(`    Downloading from ${url}`);
-      await extractZipBinary(url, dest, 'aria2c.exe', aria2Dir);
-    } else if (platform === 'darwin') {
-      const a = arch === 'arm64' ? 'arm64' : 'x86_64';
+      await extractZipBinary(url, dest, "aria2c.exe", aria2Dir);
+    } else if (platform === "darwin") {
+      const a = arch === "arm64" ? "arm64" : "x86_64";
       const url = `https://github.com/q741451/aria2c-macos-standalone-binary/releases/download/${ARIA2.macTag}/aria2c-macos-${a}.tar.gz`;
       console.log(`    Downloading from ${url}`);
-      const tgz = join(aria2Dir, 'temp-aria2.tar.gz');
+      const tgz = join(aria2Dir, "temp-aria2.tar.gz");
       await downloadFile(url, tgz);
-      execFileSync('tar', ['-xzf', tgz, '-C', aria2Dir], { timeout: childProcessTimeoutMs });
+      execFileSync("tar", ["-xzf", tgz, "-C", aria2Dir], { timeout: childProcessTimeoutMs });
       unlinkSync(tgz);
       if (!existsSync(dest)) {
-        const found = findFile(aria2Dir, 'aria2c');
+        const found = findFile(aria2Dir, "aria2c");
         if (found && found !== dest) copyFileSync(found, dest);
       }
-      if (!existsSync(dest)) throw new Error('aria2c not found after extract');
-      execFileSync('chmod', ['+x', dest], { timeout: childProcessTimeoutMs });
-    } else if (platform === 'linux') {
-      const a = arch === 'arm64' ? 'aarch64' : 'x86_64';
+      if (!existsSync(dest)) throw new Error("aria2c not found after extract");
+      execFileSync("chmod", ["+x", dest], { timeout: childProcessTimeoutMs });
+    } else if (platform === "linux") {
+      const a = arch === "arm64" ? "aarch64" : "x86_64";
       const url = `https://github.com/abcfy2/aria2-static-build/releases/download/${ARIA2.version}/aria2-${a}-linux-musl_static.zip`;
       console.log(`    Downloading from ${url}`);
-      await extractZipBinary(url, dest, 'aria2c', aria2Dir);
-      execFileSync('chmod', ['+x', dest], { timeout: childProcessTimeoutMs });
+      await extractZipBinary(url, dest, "aria2c", aria2Dir);
+      execFileSync("chmod", ["+x", dest], { timeout: childProcessTimeoutMs });
     } else {
       console.warn(`  aria2c: no prebuilt for ${platform} ${arch}`);
       return;
     }
 
-    const v = execFileSync(dest, ['--version'], { encoding: 'utf-8' }).split('\n')[0].trim();
+    const v = execFileSync(dest, ["--version"], { encoding: "utf-8" }).split("\n")[0].trim();
     console.log(`  aria2c: ${v} (.bin/aria2, downloaded)`);
   } catch (error) {
     console.warn(`  aria2c: download failed - ${error.message}`);
-    console.warn('          YouTube 폴백(전체 다운) 경로가 느려질 수 있음 (1차 byte-range는 정상)');
+    console.warn("          YouTube 폴백(전체 다운) 경로가 느려질 수 있음 (1차 byte-range는 정상)");
   }
 }
 
@@ -567,12 +586,12 @@ async function setupAria2c() {
  * Copy FFmpeg.wasm files from node_modules to public/ffmpeg/
  */
 function copyWasmFiles() {
-  const srcDir = join(projectRoot, 'node_modules', '@ffmpeg', 'core', 'dist', 'umd');
-  const destDir = join(projectRoot, 'public', 'ffmpeg');
-  const files = ['ffmpeg-core.js', 'ffmpeg-core.wasm'];
+  const srcDir = join(projectRoot, "node_modules", "@ffmpeg", "core", "dist", "umd");
+  const destDir = join(projectRoot, "public", "ffmpeg");
+  const files = ["ffmpeg-core.js", "ffmpeg-core.wasm"];
 
   if (!existsSync(srcDir)) {
-    console.warn('  ffmpeg-wasm: @ffmpeg/core not installed, skipping copy');
+    console.warn("  ffmpeg-wasm: @ffmpeg/core not installed, skipping copy");
     return;
   }
 
@@ -593,13 +612,13 @@ function copyWasmFiles() {
   if (copied > 0) {
     console.log(`  ffmpeg-wasm: copied ${copied} file(s) to public/ffmpeg/`);
   } else {
-    console.log('  ffmpeg-wasm: already up to date (public/ffmpeg/)');
+    console.log("  ffmpeg-wasm: already up to date (public/ffmpeg/)");
   }
 }
 
 function checkFfmpeg() {
   try {
-    const installer = require('@ffmpeg-installer/ffmpeg');
+    const installer = require("@ffmpeg-installer/ffmpeg");
     if (existsSync(installer.path)) {
       console.log(`  ffmpeg: v${installer.version} (bundled)`);
       return;
@@ -608,18 +627,18 @@ function checkFfmpeg() {
     // ignore
   }
 
-  if (hasCommand('ffmpeg')) {
-    console.log('  ffmpeg: found (system)');
+  if (hasCommand("ffmpeg")) {
+    console.log("  ffmpeg: found (system)");
   } else {
-    console.warn('  ffmpeg: NOT FOUND - install with: brew install ffmpeg');
+    console.warn("  ffmpeg: NOT FOUND - install with: brew install ffmpeg");
   }
 }
 
-console.log('\nVideo Trimmer - Dependencies\n');
+console.log("\nVideo Trimmer - Dependencies\n");
 checkFfmpeg();
 
 if (skipOptionalBinaryDownloads) {
-  console.log('  optional binaries: skipped (SKIP_OPTIONAL_BINARY_DOWNLOADS)');
+  console.log("  optional binaries: skipped (SKIP_OPTIONAL_BINARY_DOWNLOADS)");
 } else {
   await setupYtDlp();
   await setupStreamlink();
@@ -627,4 +646,4 @@ if (skipOptionalBinaryDownloads) {
 }
 
 copyWasmFiles();
-console.log('');
+console.log("");

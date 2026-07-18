@@ -6,7 +6,7 @@ export function hslToRgb(h: number, s: number, l: number): [number, number, numb
   const sat = s / 100;
   const lig = l / 100;
   const c = (1 - Math.abs(2 * lig - 1)) * sat;
-  const hp = ((h % 360) + 360) % 360 / 60;
+  const hp = (((h % 360) + 360) % 360) / 60;
   const x = c * (1 - Math.abs((hp % 2) - 1));
   let r = 0;
   let g = 0;
@@ -18,9 +18,5 @@ export function hslToRgb(h: number, s: number, l: number): [number, number, numb
   else if (hp < 5) [r, g, b] = [x, 0, c];
   else [r, g, b] = [c, 0, x];
   const m = lig - c / 2;
-  return [
-    Math.round((r + m) * 255),
-    Math.round((g + m) * 255),
-    Math.round((b + m) * 255),
-  ];
+  return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
 }

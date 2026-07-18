@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { PlayIcon } from '@/shared/ui/icons';
+import { PlayIcon } from "@/shared/ui/icons";
 
 interface VideoScreenPlaceholderProps {
   label?: string;
@@ -14,9 +14,9 @@ interface VideoScreenPlaceholderProps {
  * 시스템에는 이 검은 프레임 + 라벨 스탠드인을 노출한다(실 화면은 VideoScreen).
  */
 export function VideoScreenPlaceholder({
-  label = 'Video preview',
-  aspectRatio = '16 / 9',
-  className = '',
+  label = "Video preview",
+  aspectRatio = "16 / 9",
+  className = "",
 }: VideoScreenPlaceholderProps) {
   return (
     <div

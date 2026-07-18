@@ -4,7 +4,7 @@ interface ProgressBarProps {
   className?: string;
 }
 
-export function ProgressBar({ progress, label, className = '' }: ProgressBarProps) {
+export function ProgressBar({ progress, label, className = "" }: ProgressBarProps) {
   return (
     <div className={`w-full ${className}`}>
       {label && (

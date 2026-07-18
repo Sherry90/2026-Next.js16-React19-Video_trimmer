@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
-import { useExportResult, usePhaseActions, useReset } from '@/stores/hooks';
+import { useCallback, useEffect, useState } from "react";
+import { useExportResult, usePhaseActions, useReset } from "@/stores/hooks";
 
 /**
  * 다운로드 화면 로직 — 파일명(base/ext) 분리, 편집 가능한 이름 상태, 다운로드 트리거,
@@ -12,13 +12,15 @@ export function useDownload() {
   const { setPhase } = usePhaseActions();
   const reset = useReset();
 
-  const lastDot = outputFilename ? outputFilename.lastIndexOf('.') : -1;
+  const lastDot = outputFilename ? outputFilename.lastIndexOf(".") : -1;
   const baseName = outputFilename
-    ? lastDot !== -1 ? outputFilename.slice(0, lastDot) : outputFilename
-    : '';
-  const ext = outputFilename && lastDot !== -1 ? outputFilename.slice(lastDot) : '';
+    ? lastDot !== -1
+      ? outputFilename.slice(0, lastDot)
+      : outputFilename
+    : "";
+  const ext = outputFilename && lastDot !== -1 ? outputFilename.slice(lastDot) : "";
 
-  const [editableName, setEditableName] = useState('');
+  const [editableName, setEditableName] = useState("");
 
   useEffect(() => {
     if (outputFilename) setEditableName(baseName);
@@ -27,12 +29,12 @@ export function useDownload() {
   const triggerDownload = useCallback(
     (name: string) => {
       if (!outputUrl || !outputFilename) return;
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = outputUrl;
       link.download = name + ext;
       link.click();
     },
-    [outputUrl, outputFilename, ext]
+    [outputUrl, outputFilename, ext],
   );
 
   const handleDownload = useCallback(() => {
@@ -40,7 +42,7 @@ export function useDownload() {
   }, [triggerDownload, editableName, baseName]);
 
   const handleBackToEdit = useCallback(() => {
-    setPhase('editing');
+    setPhase("editing");
   }, [setPhase]);
 
   const handleEditAnother = useCallback(() => {

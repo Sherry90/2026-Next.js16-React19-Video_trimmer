@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { usePhase, useReset } from '@/stores/hooks';
+import { usePhase, useReset } from "@/stores/hooks";
 
 export function ResetButton() {
   const phase = usePhase();
   const reset = useReset();
 
-  if (phase !== 'editing') {
+  if (phase !== "editing") {
     return null;
   }
 

@@ -1,6 +1,6 @@
-import type Player from 'video.js/dist/types/player';
-import { getStoreActions } from '@/stores/snapshot';
-import { shouldAutoPauseAtOut } from './playbackGuards';
+import type Player from "video.js/dist/types/player";
+import { getStoreActions } from "@/stores/snapshot";
+import { shouldAutoPauseAtOut } from "./playbackGuards";
 
 /**
  * video.js player 이벤트를 store에 결선한다.
@@ -15,7 +15,7 @@ import { shouldAutoPauseAtOut } from './playbackGuards';
  * - play/pause/ended: isPlaying 동기화.
  */
 export function bindPlayerStoreSync(player: Player): void {
-  player.on('loadedmetadata', () => {
+  player.on("loadedmetadata", () => {
     const duration = player.duration();
     const s = getStoreActions();
     // URL 스트리밍 소스는 resolve 메타데이터로 duration이 미리 설정됨(>0) → 덮어쓰지 않음.
@@ -26,7 +26,7 @@ export function bindPlayerStoreSync(player: Player): void {
     }
   });
 
-  player.on('timeupdate', () => {
+  player.on("timeupdate", () => {
     const currentTime = player.currentTime() || 0;
     const s = getStoreActions();
 
@@ -42,7 +42,7 @@ export function bindPlayerStoreSync(player: Player): void {
     }
   });
 
-  player.on('play', () => getStoreActions().setIsPlaying(true));
-  player.on('pause', () => getStoreActions().setIsPlaying(false));
-  player.on('ended', () => getStoreActions().setIsPlaying(false));
+  player.on("play", () => getStoreActions().setIsPlaying(true));
+  player.on("pause", () => getStoreActions().setIsPlaying(false));
+  player.on("ended", () => getStoreActions().setIsPlaying(false));
 }

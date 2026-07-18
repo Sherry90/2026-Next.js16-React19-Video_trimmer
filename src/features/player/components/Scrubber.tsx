@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useRef, useState } from 'react';
+import { useRef, useState } from "react";
 
 interface ScrubberProps {
   currentTime: number; // seconds
@@ -26,7 +26,7 @@ export function Scrubber({
   onScrubStart,
   onScrub,
   onScrubEnd,
-  className = '',
+  className = "",
 }: ScrubberProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -78,14 +78,19 @@ export function Scrubber({
       {/* track */}
       <div className="relative w-full h-1 rounded-full bg-white/20 overflow-hidden">
         {/* buffered underlay */}
-        {bufPct > 0 && <div className="absolute inset-y-0 left-0 bg-white/30" style={{ width: `${bufPct}%` }} />}
+        {bufPct > 0 && (
+          <div className="absolute inset-y-0 left-0 bg-white/30" style={{ width: `${bufPct}%` }} />
+        )}
         {/* played fill */}
-        <div className="absolute inset-y-0 left-0 bg-[var(--primary-blue,#2962ff)]" style={{ width: `${pct}%` }} />
+        <div
+          className="absolute inset-y-0 left-0 bg-[var(--primary-blue,#2962ff)]"
+          style={{ width: `${pct}%` }}
+        />
       </div>
       {/* thumb */}
       <div
         className={`absolute w-3 h-3 -ml-1.5 rounded-full bg-[var(--primary-blue,#2962ff)] ring-2 ring-white transition-opacity ${
-          dragging ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          dragging ? "opacity-100" : "opacity-0 group-hover:opacity-100"
         }`}
         style={{ left: `${pct}%` }}
       />

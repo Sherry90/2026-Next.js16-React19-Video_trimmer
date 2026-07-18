@@ -11,21 +11,21 @@
 
 export type ErrorCode =
   // 클라이언트 처리 계열
-  | 'MEMORY_INSUFFICIENT'
-  | 'CODEC_UNSUPPORTED'
-  | 'FILE_CORRUPTED'
-  | 'FFMPEG_LOAD_FAILED'
-  | 'PROCESSING_FAILED'
+  | "MEMORY_INSUFFICIENT"
+  | "CODEC_UNSUPPORTED"
+  | "FILE_CORRUPTED"
+  | "FFMPEG_LOAD_FAILED"
+  | "PROCESSING_FAILED"
   // 서버/네트워크/다운로드 계열
-  | 'NETWORK_ERROR'
-  | 'DOWNLOAD_ERROR'
-  | 'VIDEO_UNAVAILABLE'
-  | 'BINARY_MISSING'
-  | 'TIMEOUT'
-  | 'VALIDATION_ERROR'
-  | 'EXPORT_ERROR'
-  | 'SERVER_ERROR'
-  | 'UNKNOWN';
+  | "NETWORK_ERROR"
+  | "DOWNLOAD_ERROR"
+  | "VIDEO_UNAVAILABLE"
+  | "BINARY_MISSING"
+  | "TIMEOUT"
+  | "VALIDATION_ERROR"
+  | "EXPORT_ERROR"
+  | "SERVER_ERROR"
+  | "UNKNOWN";
 
 /** 에러 발생 정황 — 리포트/디버깅에 쓰는 부가 정보 */
 export interface ErrorContext {
@@ -55,11 +55,11 @@ export interface ErrorDisplayProps {
 // Timeline Types (from timeline.ts)
 // ============================================================
 
-export type HandleType = 'inPoint' | 'outPoint' | 'playhead';
+export type HandleType = "inPoint" | "outPoint" | "playhead";
 
 export interface TimelinePosition {
-  x: number;        // 픽셀 단위
-  time: number;     // 초 단위
+  x: number; // 픽셀 단위
+  time: number; // 초 단위
 }
 
 export interface DragState {
@@ -82,6 +82,6 @@ export interface VideoMetadata {
 }
 
 export interface VideoConstraints {
-  maxSize: number;      // bytes
+  maxSize: number; // bytes
   supportedFormats: string[];
 }

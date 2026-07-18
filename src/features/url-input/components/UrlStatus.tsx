@@ -24,9 +24,7 @@ export function UrlStatus({ isLoading, error }: UrlStatusProps) {
       )}
 
       {/* Supported platforms hint */}
-      <p className="mt-2 text-[10px] text-[#74808c] opacity-50">
-        Chzzk, YouTube
-      </p>
+      <p className="mt-2 text-[10px] text-[#74808c] opacity-50">Chzzk, YouTube</p>
     </>
   );
 }

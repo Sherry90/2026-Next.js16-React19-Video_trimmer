@@ -21,7 +21,7 @@ export interface FFmpegProgress {
  */
 export function parseFFmpegProgress(message: string): FFmpegProgress | null {
   // Check if this is a progress line (contains "time=" and other indicators)
-  if (!message.includes('time=')) {
+  if (!message.includes("time=")) {
     return null;
   }
 
@@ -32,9 +32,7 @@ export function parseFFmpegProgress(message: string): FFmpegProgress | null {
   if (timeMatch) {
     const [, hours, minutes, seconds] = timeMatch;
     result.processedTime =
-      parseInt(hours, 10) * 3600 +
-      parseInt(minutes, 10) * 60 +
-      parseFloat(seconds);
+      parseInt(hours, 10) * 3600 + parseInt(minutes, 10) * 60 + parseFloat(seconds);
   }
 
   // Parse FPS
@@ -61,11 +59,11 @@ export function parseFFmpegProgress(message: string): FFmpegProgress | null {
     const value = parseFloat(sizeMatch[1]);
     const unit = sizeMatch[2];
     result.size =
-      unit === 'kB'
+      unit === "kB"
         ? value * 1024
-        : unit === 'MB'
-        ? value * 1024 * 1024
-        : value * 1024 * 1024 * 1024;
+        : unit === "MB"
+          ? value * 1024 * 1024
+          : value * 1024 * 1024 * 1024;
   }
 
   // Return null if no useful information was parsed
@@ -79,10 +77,7 @@ export function parseFFmpegProgress(message: string): FFmpegProgress | null {
 /**
  * Calculate progress percentage from processed time and total duration
  */
-export function calculateProgress(
-  processedTime: number,
-  totalDuration: number
-): number {
+export function calculateProgress(processedTime: number, totalDuration: number): number {
   if (totalDuration <= 0) return 0;
   return Math.min((processedTime / totalDuration) * 100, 100);
 }
@@ -93,7 +88,7 @@ export function calculateProgress(
 export function estimateRemainingTime(
   processedTime: number,
   totalDuration: number,
-  speed: number
+  speed: number,
 ): number {
   if (speed <= 0) return 0;
   const remainingDuration = totalDuration - processedTime;

@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { ChevronLeftIcon, ChevronRightIcon } from '@/shared/ui/icons';
+import { ChevronLeftIcon, ChevronRightIcon } from "@/shared/ui/icons";
 
 interface PreviewButtonsProps {
   onPreviewEdges: () => void;

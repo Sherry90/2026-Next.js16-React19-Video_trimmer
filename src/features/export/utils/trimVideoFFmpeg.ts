@@ -1,14 +1,14 @@
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { toBlobURL, fetchFile } from '@ffmpeg/util';
-import { checkMemoryAvailability } from '@/shared/lib/memoryMonitor';
-import { parseFFmpegError } from '@/shared/lib/errorHandler';
-import { parseFFmpegProgress, calculateProgress } from '@/shared/lib/ffmpegLogParser';
+import { FFmpeg } from "@ffmpeg/ffmpeg";
+import { toBlobURL, fetchFile } from "@ffmpeg/util";
+import { checkMemoryAvailability } from "@/shared/lib/memoryMonitor";
+import { parseFFmpegError } from "@/shared/lib/errorHandler";
+import { parseFFmpegProgress, calculateProgress } from "@/shared/lib/ffmpegLogParser";
 
 export interface TrimOptions {
   ffmpeg: FFmpeg;
   inputFile: File;
-  startTime: number;  // seconds
-  endTime: number;    // seconds
+  startTime: number; // seconds
+  endTime: number; // seconds
   onProgress?: (progress: number) => void; // 0-100
 }
 
@@ -35,13 +35,13 @@ export async function trimVideoFFmpeg(options: TrimOptions): Promise<Blob> {
     // Check memory availability before processing
     if (!checkMemoryAvailability(inputFile.size)) {
       throw new Error(
-        'MEMORY_INSUFFICIENT: Not enough memory to process this file. Please use a smaller file (recommended: < 500MB).'
+        "MEMORY_INSUFFICIENT: Not enough memory to process this file. Please use a smaller file (recommended: < 500MB).",
       );
     }
 
     // Input and output filenames
-    const inputFileName = 'input.mp4';
-    const outputFileName = 'output.mp4';
+    const inputFileName = "input.mp4";
+    const outputFileName = "output.mp4";
 
     // Write input file to FFmpeg filesystem
     // For large files, this uses WORKERFS internally
@@ -58,17 +58,14 @@ export async function trimVideoFFmpeg(options: TrimOptions): Promise<Blob> {
       const progressInfo = parseFFmpegProgress(message);
       if (progressInfo) {
         // Calculate progress: 20% (file load) + 70% (processing) = 90% total
-        const processingProgress = calculateProgress(
-          progressInfo.processedTime,
-          duration
-        );
-        const totalProgress = 20 + (processingProgress * 0.7);
+        const processingProgress = calculateProgress(progressInfo.processedTime, duration);
+        const totalProgress = 20 + processingProgress * 0.7;
         onProgress?.(Math.min(Math.round(totalProgress), 90));
       }
     };
 
     // Attach log handler
-    ffmpeg.on('log', progressHandler);
+    ffmpeg.on("log", progressHandler);
 
     try {
       // FFmpeg command with stream copy (no re-encoding)
@@ -82,16 +79,16 @@ export async function trimVideoFFmpeg(options: TrimOptions): Promise<Blob> {
       // for better accuracy. Previous concern about dropping video stream was unfounded.
       // Speed impact is negligible (+0.002s) while accuracy improved from ±0.5s to ±0.02s.
       const ffmpegArgs = [
-        '-i',
+        "-i",
         inputFileName,
-        '-ss',
+        "-ss",
         startTime.toString(),
-        '-t',
+        "-t",
         duration.toString(),
-        '-c',
-        'copy',
-        '-progress',
-        'pipe:1', // Output progress to stdout for parsing
+        "-c",
+        "copy",
+        "-progress",
+        "pipe:1", // Output progress to stdout for parsing
         outputFileName,
       ];
 
@@ -103,7 +100,7 @@ export async function trimVideoFFmpeg(options: TrimOptions): Promise<Blob> {
       onProgress?.(90);
     } finally {
       // Always remove log handler, even if exec fails
-      ffmpeg.off('log', progressHandler);
+      ffmpeg.off("log", progressHandler);
     }
 
     // Read output file
@@ -119,22 +116,20 @@ export async function trimVideoFFmpeg(options: TrimOptions): Promise<Blob> {
 
     // Convert to Blob
     // data is FileData (Uint8Array | string), we expect Uint8Array for video files
-    if (typeof data === 'string') {
-      throw new Error('Unexpected string data from FFmpeg');
+    if (typeof data === "string") {
+      throw new Error("Unexpected string data from FFmpeg");
     }
 
     // Create a new Uint8Array to avoid SharedArrayBuffer issues
     const uint8Array = new Uint8Array(data);
-    const blob = new Blob([uint8Array], { type: inputFile.type || 'video/mp4' });
+    const blob = new Blob([uint8Array], { type: inputFile.type || "video/mp4" });
 
     onProgress?.(100);
 
     return blob;
   } catch (error) {
     // Parse FFmpeg error into user-friendly AppError
-    const appError = parseFFmpegError(
-      error instanceof Error ? error : new Error('Unknown error')
-    );
+    const appError = parseFFmpegError(error instanceof Error ? error : new Error("Unknown error"));
 
     // Throw error with enhanced message
     const enhancedError = new Error(`Video trimming failed: ${appError.message}`);
