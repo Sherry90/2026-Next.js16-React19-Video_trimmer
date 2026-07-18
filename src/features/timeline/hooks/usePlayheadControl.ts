@@ -6,6 +6,7 @@ import {
   useVideoDuration,
   useTrimPoints,
   usePlayerActions,
+  useDraggingBoundary,
 } from "@/stores/hooks";
 import { useVideoPlayerContext } from "@/shared/video-player/VideoPlayerContext";
 import { useDragHandle } from "./useDragHandle";
@@ -46,14 +47,17 @@ export function usePlayheadControl(): PlayheadControl {
   const currentTime = usePlayerCurrentTime();
   const duration = useVideoDuration();
   const { inPoint, outPoint } = useTrimPoints();
+  const draggingBoundary = useDraggingBoundary();
   const { setCurrentTime } = usePlayerActions();
   const { seek, setIsScrubbing, player } = useVideoPlayerContext();
   const { performSeek } = usePlayheadSeek(player);
 
   const position = useMemo(() => {
-    if (draggingPosition !== null) return draggingPosition;
+    if (draggingPosition !== null) return draggingPosition; // playhead 자체 드래그
+    // in 핸들 드래그 중: currentTime store churn 없이 inPoint를 직접 추종(핸들과 동일 값 → lockstep).
+    if (draggingBoundary === "in") return timeToPercent(inPoint, duration);
     return timeToPercent(currentTime, duration);
-  }, [draggingPosition, currentTime, duration]);
+  }, [draggingPosition, draggingBoundary, inPoint, currentTime, duration]);
 
   const startPositionRef = useRef(position);
 
