@@ -1,8 +1,9 @@
 import { FFmpeg } from "@ffmpeg/ffmpeg";
-import { toBlobURL, fetchFile } from "@ffmpeg/util";
+import { fetchFile } from "@ffmpeg/util";
 import { checkMemoryAvailability } from "@/shared/lib/memoryMonitor";
 import { parseFFmpegError } from "@/shared/lib/errorHandler";
 import { parseFFmpegProgress, calculateProgress } from "@/shared/lib/ffmpegLogParser";
+import type { AppError } from "@/types/types";
 
 export interface TrimOptions {
   ffmpeg: FFmpeg;
@@ -134,7 +135,7 @@ export async function trimVideoFFmpeg(options: TrimOptions): Promise<Blob> {
     // Throw error with enhanced message
     const enhancedError = new Error(`Video trimming failed: ${appError.message}`);
     // Attach AppError details for UI to use
-    (enhancedError as any).appError = appError;
+    (enhancedError as Error & { appError?: AppError }).appError = appError;
     throw enhancedError;
   }
 }

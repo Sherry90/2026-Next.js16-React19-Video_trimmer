@@ -48,6 +48,5 @@ export function useDragHandle(handleType: HandleType, options: UseDragHandleOpti
 
   return {
     handleMouseDown,
-    isDragging: isDraggingRef.current,
   };
 }

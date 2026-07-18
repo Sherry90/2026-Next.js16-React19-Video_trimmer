@@ -37,19 +37,27 @@ export function useQualityLevels(player: Player | null): UseQualityLevels {
   const [selected, setSelected] = useState<number | null>(null);
   const userChoseRef = useRef(false);
 
-  // 최신 selected를 effect 밖에서 참조하기 위한 ref (effect deps는 player만)
+  // 최신 selected를 effect 밖에서 참조하기 위한 ref (effect deps는 player만).
+  // 렌더 중 ref 쓰기는 금지 → commit 후 effect에서 동기화한다.
   const selectedRef = useRef<number | null>(null);
-  selectedRef.current = selected;
+  useEffect(() => {
+    selectedRef.current = selected;
+  });
+
+  // player가 바뀌면 이전 player의 화질 상태를 초기화 (렌더 중 조정 패턴).
+  // effect 내 동기 setState의 cascading 렌더를 피한다. 실제 채움은 아래 effect의 refresh()가 담당.
+  const [prevPlayer, setPrevPlayer] = useState(player);
+  if (player !== prevPlayer) {
+    setPrevPlayer(player);
+    setHeights([]);
+    setSelected(null);
+  }
 
   useEffect(() => {
     userChoseRef.current = false;
     const p = player as unknown as { qualityLevels?: () => QualityLevelList } | null;
     const ql = p?.qualityLevels ? p.qualityLevels() : null;
-    if (!ql) {
-      setHeights([]);
-      setSelected(null);
-      return;
-    }
+    if (!ql) return;
 
     const computeHeights = (): number[] =>
       [

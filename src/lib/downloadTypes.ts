@@ -85,7 +85,7 @@ export async function ensureFileComplete(filePath: string, timeoutMs = 5000): Pr
       } finally {
         await fd.close().catch(() => {});
       }
-    } catch (error) {
+    } catch {
       // 파일 아직 쓰기 중 또는 잠김 → 재시도
       await new Promise((resolve) => setTimeout(resolve, 50));
     }

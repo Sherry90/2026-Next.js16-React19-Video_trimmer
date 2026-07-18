@@ -1,10 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  detectPlatform,
-  selectDownloadStrategy,
-  type Platform,
-  type DownloadStrategy,
-} from "@/lib/platformDetector";
+import { detectPlatform, selectDownloadStrategy } from "@/lib/platformDetector";
 
 describe("platformDetector", () => {
   describe("detectPlatform", () => {

@@ -37,7 +37,7 @@ export function detectPlatform(url: string): Platform {
  */
 export function selectDownloadStrategy(
   platform: Platform,
-  streamType: "hls" | "mp4" = "mp4",
+  _streamType: "hls" | "mp4" = "mp4",
 ): DownloadStrategy {
   // 치지직은 HLS 전문가인 streamlink 사용
   if (platform === "chzzk") {

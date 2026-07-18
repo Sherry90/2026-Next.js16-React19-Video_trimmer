@@ -9,13 +9,7 @@
 import { detectPlatform, selectDownloadStrategy } from "./platformDetector";
 import { downloadWithStreamlink } from "./streamlinkDownloader";
 import { downloadWithYtdlp } from "./ytdlpDownloader";
-import {
-  type Job,
-  type JobListener,
-  type EventEmitter,
-  type JobEvent,
-  safeUnlink,
-} from "./downloadTypes";
+import { type Job, type JobListener, type JobEvent, safeUnlink } from "./downloadTypes";
 import { DOWNLOAD } from "@/constants/appConfig";
 
 // Global job storage (향후 Redis/DB로 교체 가능)

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useId } from "react";
+import { useState, useCallback, useId } from "react";
 import { formatTime, parseFlexibleTime } from "@/shared/lib/timeFormatter";
 
 interface TimeInputProps {
@@ -73,15 +73,20 @@ export function TimeInput({
     e.preventDefault();
   }, []);
 
-  // value가 변경되면 input도 업데이트 (focus 중이 아닐 때만)
-  useEffect(() => {
+  // value/focus가 바뀌면 input을 동기화 (focus 중이 아닐 때만) — 렌더 중 조정 패턴.
+  // effect 내 setState의 cascading 렌더를 피한다.
+  const [prevValue, setPrevValue] = useState(value);
+  const [prevFocused, setPrevFocused] = useState(isFocused);
+  if (value !== prevValue || isFocused !== prevFocused) {
+    setPrevValue(value);
+    setPrevFocused(isFocused);
     if (!isFocused) {
       const expected = value === null ? "" : formatTime(value);
       if (inputValue !== expected) {
         setInputValue(expected);
       }
     }
-  }, [value, isFocused, inputValue]);
+  }
 
   return (
     <div className="flex items-center gap-2">

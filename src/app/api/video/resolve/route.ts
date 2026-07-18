@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
     // Step 2b: Select best format using format selector (muxed / HLS)
     const formatSelection = selectBestFormat(info);
     let streamUrl = formatSelection?.url || null;
-    let streamType = formatSelection?.streamType || "mp4";
+    const streamType = formatSelection?.streamType || "mp4";
 
     // Last resort: use --get-url to let yt-dlp choose the best format
     if (!streamUrl) {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isProcessError, toProcessError } from "@/types/process";
+import { toProcessError } from "@/types/process";
 import { hasMemoryAPI } from "@/types/browser";
 
 describe("Process Type Guards", () => {

@@ -1,11 +1,15 @@
 import { createServer as createHttpServer } from "http";
 import { createServer as createHttpsServer } from "https";
+import type { IncomingMessage, ServerResponse } from "http";
 import { readFileSync, existsSync, createReadStream, statSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import { parse } from "url";
+import type { ParsedUrlQuery } from "querystring";
 import { Readable } from "stream";
+import type { ReadableStream as NodeWebReadableStream } from "stream/web";
 import next from "next";
+import type { Job, JobEvent, JobListener } from "./src/lib/downloadTypes";
 
 // ── Next 우회 raw 핸들러들 (다운로드 파일/진행률 SSE/미디어 프록시) ──
 // 공통 이유: 장수명/대용량 스트림을 Next 핸들러에 태우면 Next/Turbopack이 그 Response를
@@ -19,7 +23,7 @@ const JOBID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
  * GET /api/download/<jobId> 를 가로채 파일을 직접 스트리밍한다.
  * @returns 처리했으면 true(=Next로 넘기지 않음), 아니면 false.
  */
-function tryServeDownload(req: any, res: any, pathname: string): boolean {
+function tryServeDownload(req: IncomingMessage, res: ServerResponse, pathname: string): boolean {
   if (req.method !== "GET") return false;
   const m = pathname.match(/^\/api\/download\/([^/]+)$/);
   if (!m) return false; // /start, /stream/<id> 등은 매칭 안 됨
@@ -78,14 +82,15 @@ function tryServeDownload(req: any, res: any, pathname: string): boolean {
 // job 레지스트리는 downloadJob.ts가 globalThis.__vtDownloadJobs에 올려둔 걸 공유한다.
 const SSE_ORPHAN_GRACE_MS = 30_000; // appConfig.DOWNLOAD.JOB_ORPHAN_GRACE_PERIOD_MS와 동일 유지
 
-function tryServeProgressSse(req: any, res: any, pathname: string): boolean {
+function tryServeProgressSse(req: IncomingMessage, res: ServerResponse, pathname: string): boolean {
   if (req.method !== "GET") return false;
   const m = pathname.match(/^\/api\/download\/stream\/([^/]+)$/);
   if (!m) return false;
   const jobId = m[1];
   if (!JOBID_RE.test(jobId)) return false;
 
-  const registry = (globalThis as any).__vtDownloadJobs as Map<string, any> | undefined;
+  const registry = (globalThis as unknown as { __vtDownloadJobs?: Map<string, Job> })
+    .__vtDownloadJobs;
   const job = registry?.get(jobId);
   // 레지스트리/잡 없음(미시작·만료) → 짧은 요청이라 누수 없음. Next 라우트가 적절히 처리하게 폴백.
   if (!job) return false;
@@ -124,7 +129,7 @@ function tryServeProgressSse(req: any, res: any, pathname: string): boolean {
     closed = true;
     const cur = registry?.get(jobId);
     if (cur) {
-      cur.listeners = cur.listeners.filter((l: any) => l !== listener);
+      cur.listeners = cur.listeners.filter((l: JobListener) => l !== listener);
       // 마지막 리스너 이탈 + 실행 중 → grace 후 orphan abort (downloadJob.getJobStream과 동일 정책)
       if (cur.listeners.length === 0 && cur.status === "running" && !cur.orphanCleanupScheduled) {
         cur.orphanCleanupScheduled = true;
@@ -138,7 +143,7 @@ function tryServeProgressSse(req: any, res: any, pathname: string): boolean {
       }
     }
   };
-  const listener = (event: any) => {
+  const listener = (event: JobEvent) => {
     if (closed) return;
     try {
       send(event);
@@ -192,7 +197,12 @@ function proxyRewriteM3U8(content: string, baseUrl: string): string {
     .join("\n");
 }
 
-async function tryServeProxy(req: any, res: any, pathname: string, query: any): Promise<boolean> {
+async function tryServeProxy(
+  req: IncomingMessage,
+  res: ServerResponse,
+  pathname: string,
+  query: ParsedUrlQuery,
+): Promise<boolean> {
   if (pathname !== "/api/video/proxy") return false;
   const streamUrl = typeof query.url === "string" ? query.url : null;
   if (!streamUrl) return false; // Next 라우트가 400 처리
@@ -248,7 +258,7 @@ async function tryServeProxy(req: any, res: any, pathname: string, query: any): 
     res.end();
     return true;
   }
-  const nodeStream = Readable.fromWeb(upstream.body as any);
+  const nodeStream = Readable.fromWeb(upstream.body as NodeWebReadableStream);
   res.on("close", () => nodeStream.destroy());
   nodeStream.on("error", () => {
     if (!res.headersSent) res.statusCode = 502;
@@ -291,9 +301,9 @@ const enableHsts = useHttps && process.env.ENABLE_HSTS === "true";
 app
   .prepare()
   .then(() => {
-    const handler = async (req: any, res: any) => {
+    const handler = async (req: IncomingMessage, res: ServerResponse) => {
       try {
-        const parsedUrl = parse(req.url, true);
+        const parsedUrl = parse(req.url ?? "", true);
 
         // raw 우회 핸들러 우선 시도(상단 공통 이유 참고). 처리하면 Next로 넘기지 않는다.
         if (parsedUrl.pathname && tryServeProgressSse(req, res, parsedUrl.pathname)) {
@@ -316,7 +326,7 @@ app
           );
         }
         await handle(req, res, parsedUrl);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("[Server] Error handling", req.url, err);
         res.statusCode = 500;
         res.end("internal server error");
@@ -337,7 +347,7 @@ app
     const portSuffix = `:${port}`;
 
     server
-      .once("error", (err: any) => {
+      .once("error", (err: unknown) => {
         console.error(err);
         process.exit(1);
       })
@@ -345,7 +355,7 @@ app
         console.log(`> Ready on ${protocol}://${hostname}${portSuffix}`),
       );
   })
-  .catch((err: any) => {
+  .catch((err: unknown) => {
     console.error(err);
     process.exit(1);
   });

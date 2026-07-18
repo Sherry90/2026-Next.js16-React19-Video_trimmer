@@ -40,6 +40,13 @@ export function WaveformBackground() {
   const zoom = useTimelineZoomValue();
   const waveformProgress = useWaveformProgress();
   const { setProgress } = useProgressActions();
+
+  // 생성 effect는 zoom 변경에 재실행되면 안 된다(줌마다 wavesurfer 재생성 → 리로드 깜빡임).
+  // 최신 zoom을 재실행 없이 참조하기 위한 ref (commit 후 동기화, 렌더 중 ref 쓰기 회피).
+  const zoomRef = useRef(zoom);
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
   const spectrogramCanvasRef = useRef<HTMLCanvasElement>(null);
   const [spectrogram, setSpectrogram] = useState<SpectrogramData | null>(null);
   const [spectrogramStatus, setSpectrogramStatus] = useState<SpectrogramStatus>("idle");
@@ -145,7 +152,8 @@ export function WaveformBackground() {
         waveColor: WAVEFORM_VIEW.WAVE_COLOR,
         progressColor: "transparent",
         cursorColor: "transparent",
-        barWidth: zoom > 4 ? WAVEFORM_VIEW.BAR_WIDTH_ZOOMED : WAVEFORM_VIEW.BAR_WIDTH_DEFAULT,
+        barWidth:
+          zoomRef.current > 4 ? WAVEFORM_VIEW.BAR_WIDTH_ZOOMED : WAVEFORM_VIEW.BAR_WIDTH_DEFAULT,
         barGap: WAVEFORM_VIEW.BAR_GAP,
         height: 80,
         normalize: true,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useExportResult, usePhaseActions, useReset } from "@/stores/hooks";
 
 /**
@@ -22,9 +22,13 @@ export function useDownload() {
 
   const [editableName, setEditableName] = useState("");
 
-  useEffect(() => {
+  // outputFilename이 바뀔 때만 편집 이름을 baseName으로 초기화 (렌더 중 조정 패턴).
+  // effect 내 setState의 cascading 렌더를 피하고, 사용자 편집은 파일 변경 전까지 보존한다.
+  const [prevFilename, setPrevFilename] = useState(outputFilename);
+  if (outputFilename !== prevFilename) {
+    setPrevFilename(outputFilename);
     if (outputFilename) setEditableName(baseName);
-  }, [outputFilename, baseName]);
+  }
 
   const triggerDownload = useCallback(
     (name: string) => {

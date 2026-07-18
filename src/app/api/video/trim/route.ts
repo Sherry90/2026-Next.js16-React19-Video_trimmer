@@ -4,7 +4,7 @@ import { existsSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { randomUUID } from "crypto";
-import { getFfmpegPath, getStreamlinkPath, hasStreamlink } from "@/lib/binPaths";
+import { getFfmpegPath, getStreamlinkPath } from "@/lib/binPaths";
 
 import { runWithTimeout } from "@/lib/processUtils";
 import { formatTime } from "@/shared/lib/timeFormatter";
@@ -131,8 +131,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: validation.error }, { status: validation.status });
     }
 
-    const { originalUrl, startTime, endTime, filename } = validation.data;
-    const outputFilename = filename || "trimmed_video.mp4";
+    const { originalUrl, startTime, endTime } = validation.data;
     const success = await trimWithStreamlink(originalUrl, startTime, endTime, tmpFile);
 
     if (!success) {

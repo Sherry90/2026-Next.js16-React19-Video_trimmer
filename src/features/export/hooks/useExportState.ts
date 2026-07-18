@@ -12,6 +12,7 @@ import { startStreamDownload } from "@/features/export/utils/streamDownloadContr
 import { useFFmpegLoader } from "./useFFmpegLoader";
 import { errorFromRaw } from "@/shared/lib/errorHandler";
 import type { VideoFile } from "@/types/store";
+import type { AppError } from "@/types/types";
 
 /**
  * Export 버튼 상태 관리 훅
@@ -66,7 +67,9 @@ export function useExportState(videoFile: VideoFile | null, inPoint: number, out
     } catch (error) {
       // Check if error has AppError attached (from parseFFmpegError)
       const appError =
-        error instanceof Error && (error as any).appError ? (error as any).appError : null;
+        error instanceof Error
+          ? ((error as Error & { appError?: AppError }).appError ?? null)
+          : null;
 
       if (appError) {
         // Use parsed error code and user-friendly message (+ 기술 상세)
@@ -90,6 +93,7 @@ export function useExportState(videoFile: VideoFile | null, inPoint: number, out
     setProgress,
     setExportResultAndComplete,
     setErrorAndTransition,
+    ffmpegLoader.handlers,
   ]);
 
   // Check if this video will require FFmpeg download

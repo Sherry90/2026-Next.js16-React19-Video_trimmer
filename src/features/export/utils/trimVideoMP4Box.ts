@@ -1,5 +1,13 @@
 import { createFile } from "mp4box";
-import type { ISOFile, Track, Sample, MP4BoxBuffer, Box, SampleEntryFourCC } from "mp4box";
+import type {
+  Track,
+  Sample,
+  MP4BoxBuffer,
+  Box,
+  BoxKind,
+  SampleEntryFourCC,
+  IsoFileOptions,
+} from "mp4box";
 import { filterSamplesByTimeRange, createCompletionDetector } from "./mp4boxHelpers";
 
 // Movie type from mp4box
@@ -124,7 +132,7 @@ async function parseAndExtractSamples(
       completionDetector.start();
     };
 
-    mp4boxfile.onSamples = (trackId: number, user: any, samples: Sample[]) => {
+    mp4boxfile.onSamples = (trackId: number, user: unknown, samples: Sample[]) => {
       const trackData = tracksData.get(trackId);
       if (trackData) {
         trackData.samples.push(...samples);
@@ -178,9 +186,9 @@ async function createTrimmedMP4(
           );
         }
 
-        const trackOptions: any = {
+        const trackOptions: IsoFileOptions = {
           type: trackData.sampleEntryType, // 실제 fourcc (avc1/hvc1/mp4a ...)
-          description_boxes: trackData.descriptionBoxes, // avcC/hvcC/esds/pasp 복원
+          description_boxes: trackData.descriptionBoxes as BoxKind[] | undefined, // avcC/hvcC/esds/pasp 복원
           timescale: track.timescale,
           duration: Math.floor((endTime - startTime) * track.timescale),
           language: track.language || "und",
@@ -189,9 +197,9 @@ async function createTrimmedMP4(
         };
 
         if (!isVideo) {
-          trackOptions.samplerate = (track as any).audio?.sample_rate || 48000;
-          trackOptions.channel_count = (track as any).audio?.channel_count || 2;
-          trackOptions.samplesize = (track as any).audio?.sample_size || 16;
+          trackOptions.samplerate = track.audio?.sample_rate || 48000;
+          trackOptions.channel_count = track.audio?.channel_count || 2;
+          trackOptions.samplesize = track.audio?.sample_size || 16;
         }
 
         const newTrackId = mp4boxfile.addTrack(trackOptions);
@@ -205,7 +213,7 @@ async function createTrimmedMP4(
 
         const firstDts = trackData.samples[0].dts;
 
-        trackData.samples.forEach((sample, index) => {
+        trackData.samples.forEach((sample) => {
           if (!sample.data) return; // Skip samples without data
 
           const sampleOptions = {

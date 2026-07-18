@@ -205,7 +205,7 @@ export async function downloadWithStreamlink(
     try {
       await ensureFileComplete(outputPath);
       console.log("[Streamlink] File write completed and verified:", outputPath);
-    } catch (error) {
+    } catch {
       safeUnlink(outputPath);
       throw new Error("파일 쓰기 검증에 실패했습니다");
     }

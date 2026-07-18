@@ -122,7 +122,7 @@ export function runWithTimeout(
     let stderr = "";
     let settled = false;
 
-    const settle = (result: boolean, reason: string) => {
+    const settle = (result: boolean, _reason: string) => {
       if (settled) return;
       settled = true;
       if (timeout) clearTimeout(timeout);

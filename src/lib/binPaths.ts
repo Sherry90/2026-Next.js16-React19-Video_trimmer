@@ -10,6 +10,7 @@
 import { execFileSync } from "child_process";
 import { existsSync } from "fs";
 import { join } from "path";
+import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
 
 let _ffmpegPath: string | null = null;
 let _ytdlpPath: string | null = null;
@@ -54,9 +55,9 @@ export function getFfmpegPath(): string {
   if (_ffmpegPath) return _ffmpegPath;
 
   try {
-    // Try bundled ffmpeg first
-    const installer = require("@ffmpeg-installer/ffmpeg");
-    const path: string = installer.path;
+    // Try bundled ffmpeg first (ESM static import; @ffmpeg-installer/ffmpeg는 hard dependency)
+    const path = ffmpegInstaller.path;
+    if (!path) throw new Error("ffmpeg-installer path empty");
     _ffmpegPath = path;
     return path;
   } catch {
