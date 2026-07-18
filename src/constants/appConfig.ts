@@ -35,11 +35,15 @@ export const APP_CONFIG = {
    * 프로세스 타임아웃 설정
    */
   PROCESS: {
-    /** Streamlink 프로세스 타임아웃 (ms) - 5분 */
+    /**
+     * Streamlink 프로세스 타임아웃 (ms). 현재 미적용(예약값):
+     * streamlink/yt-dlp 다운로드는 절대 타임아웃 없이 stall 감시(watchStall) +
+     * DOWNLOAD.MAX_JOB_MS로 제어한다. ffmpeg 후처리만 FFMPEG_TIMEOUT_MS 적용.
+     */
     STREAMLINK_TIMEOUT_MS: 300000,
-    /** FFmpeg 프로세스 타임아웃 (ms) - 1분 */
+    /** FFmpeg 후처리 프로세스 타임아웃 (ms) - 1분. byteRange/streamlink/ytdlp의 컷 단계에 적용 */
     FFMPEG_TIMEOUT_MS: 60000,
-    /** yt-dlp 프로세스 타임아웃 (ms) - 5분 (streamlink와 동일) */
+    /** yt-dlp 프로세스 타임아웃 (ms). 현재 미적용(예약값) — STREAMLINK_TIMEOUT_MS 주석 참고 */
     YTDLP_TIMEOUT_MS: 300000,
   },
 

@@ -9,12 +9,15 @@
 **실행**: `npm install` 시 `postinstall` 훅으로 자동 실행
 
 **기능**:
-- **yt-dlp**: GitHub 릴리스에서 고정 버전 바이너리를 `.bin/`에 직접 다운로드
+- **번들 Python** (`.bin/python`): 시스템 Python에 의존하지 않도록 astral-sh/python-build-standalone의 고정 버전 하나를 받아 둔다. yt-dlp·streamlink venv가 이 Python을 공용으로 쓴다(버전 통일).
+- **yt-dlp**: 우선순위대로 준비 — ① 시스템에 이미 있으면 그대로 사용(예: Docker의 `pip install yt-dlp`) → ② 번들 Python으로 만든 venv(`.bin/yt-dlp-venv`)에 `pip install` → ③ 실패 시 GitHub 릴리스의 고정 onefile 바이너리를 `.bin/`에 다운로드(startup 느림, venv 불가 환경용).
 - **streamlink**: 플랫폼별로 `.bin/`에 준비
   - Windows: portable 빌드(.zip)를 받아 `adm-zip`으로 추출
   - Linux: AppImage(x64/ARM64)
-  - macOS: Python venv 자동 생성 후 `pip install streamlink` (Python 3 미설치 시 경고 후 계속)
+  - macOS: 번들 Python venv 자동 생성 후 `pip install streamlink`
 - **FFmpeg.wasm**: `@ffmpeg/core`를 `public/ffmpeg/`로 복사 (`copyWasmFiles`, CDN 미사용)
+
+> 런타임 경로 해석(`src/lib/binPaths.ts`)은 번들 venv/바이너리를 시스템 설치보다 우선한다. 설치 단계의 위 우선순위(시스템 먼저 확인)와는 관점이 다르다.
 
 다운로드 실패는 경고만 출력하고 `npm install`을 중단하지 않는다.
 

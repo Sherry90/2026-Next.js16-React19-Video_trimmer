@@ -10,7 +10,8 @@ export const dynamic = 'force-dynamic';
  *
  * 다운로드 작업 시작
  * - JobID 생성
- * - 백그라운드에서 streamlink → ffmpeg 파이프라인 실행
+ * - 백그라운드에서 플랫폼별 파이프라인 실행 (selectDownloadStrategy):
+ *   chzzk → streamlink, 그 외(유튜브/일반) → yt-dlp
  */
 export async function POST(request: NextRequest) {
   try {
