@@ -4,12 +4,12 @@
 
 ## 주요 기능
 
-- 🎬 **로컬 파일**: 서버 업로드 없이 브라우저에서 직접 트리밍 (17개 형식)
+- 🎬 **로컬 파일**: 서버 업로드 없이 브라우저에서 직접 트리밍 (14개 형식)
 - 🌐 **URL 영상**: 스트리밍 에디터 — 다운로드 전 스트림 위에서 구간 편집, 확정 시 서버 구간 다운로드(SSE)
 - ⚡ **하이브리드 트리밍**: 형식에 따라 MP4Box.js(빠름) / FFmpeg.wasm(정밀) 자동 선택
-- 🎨 **video.js** 기반 플레이어 (HLS 재생 지원)
+- 🎨 **video.js** 기반 플레이어 (HLS/DASH 재생 지원)
 - 🎵 **wavesurfer.js** 오디오 파형 (URL 소스는 서버 peaks)
-- ⌨️ 키보드 단축키, In/Out Point 잠금, 타임라인 줌(Ctrl+휠)
+- ⌨️ 키보드 단축키, In/Out Point 잠금, 타임라인 줌(휠)
 - 🔎 가장자리 미리보기(처음 5초 + 마지막 5초)
 
 ## 기술 스택
@@ -19,7 +19,7 @@
 - **UI**: React 19, Tailwind CSS
 - **State**: Zustand (단일 스토어 + selector)
 - **Video**: MP4Box.js, FFmpeg.wasm, video.js, wavesurfer.js
-- **Server tools**: yt-dlp, streamlink, ffmpeg (자동 다운로드)
+- **Server tools**: yt-dlp, streamlink, aria2c, ffmpeg (자동 다운로드)
 - **Testing**: Vitest (Unit), Playwright (E2E)
 
 ## 시작하기
@@ -64,22 +64,23 @@ npm run docker:build
 컨테이너 실행:
 
 ```bash
-docker run --rm -p 443:443 \
+docker run --rm -p 3443:3443 \
   -v "$PWD/certificates:/app/certificates:ro" \
   -e HOSTNAME=0.0.0.0 \
-  -e APP_URL=https://trimvideo.net \
+  -e APP_URL=https://trimvideo.net:3443 \
   video-trimmer
 ```
 
-브라우저에서 `https://trimvideo.net`으로 접속할 수 있습니다.
+컨테이너는 비루트로 실행되며 비특권 포트 `3443/tcp`를 사용합니다(`Dockerfile`의 `PORT=3443`/`EXPOSE 3443`).
 
-현재 Docker Compose 구성은 컨테이너의 `443/tcp`를 호스트의 `443/tcp`에 바인딩합니다. 따라서 외부에서는 다음 조건이 맞으면 `https://trimvideo.net`으로 접근할 수 있습니다.
+Docker Compose 구성은 호스트의 `${HOST_PORT:-3443}`을 컨테이너의 `3443/tcp`에 바인딩합니다. 외부 접근 조건:
 
 - DNS의 `trimvideo.net` A/AAAA 레코드가 이 Docker 호스트의 공인 IP를 가리켜야 합니다.
-- 서버 방화벽, 공유기, 클라우드 보안 그룹에서 인바운드 `443/tcp`가 열려 있어야 합니다.
+- 서버 방화벽, 공유기, 클라우드 보안 그룹에서 인바운드 `3443/tcp`(또는 지정한 `HOST_PORT`)가 열려 있어야 합니다.
 - `./certificates/trimvideo.net.pem`과 `./certificates/trimvideo.net-key.pem`이 있어야 합니다. 현재 저장소의 로컬 개발 인증서는 mkcert 인증서라, 접속하는 클라이언트가 해당 mkcert CA를 신뢰하지 않으면 브라우저 인증서 경고가 표시됩니다. 공개 서비스라면 Let's Encrypt 같은 공인 인증서로 교체하세요.
+- 80/443 표준 포트로 노출하려면 리버스 프록시를 앞단에 두거나 `HOST_PORT`를 조정하세요.
 
-로컬 테스트만 할 때는 호스트에서 `https://localhost`로 접속하거나, `/etc/hosts`에 Docker 호스트 IP와 `trimvideo.net`을 매핑한 뒤 `https://trimvideo.net`으로 접속할 수 있습니다.
+로컬 테스트만 할 때는 호스트에서 `https://localhost:3443`으로 접속하거나, `/etc/hosts`에 Docker 호스트 IP와 `trimvideo.net`을 매핑한 뒤 `https://trimvideo.net:3443`으로 접속할 수 있습니다.
 
 참고:
 - Docker 빌드는 `npm ci --ignore-scripts`로 `postinstall`의 외부 바이너리 다운로드를 건너뜁니다.
@@ -115,17 +116,18 @@ npm run test:e2e:ui    # Playwright UI
 |----|------|
 | Space | 재생/일시정지 |
 | I / O | In / Out Point 설정 |
-| ← / → | 1초 이동 |
-| Shift + ← / → | 0.1초(프레임) 이동 |
+| ← / → | 1프레임 이동 (1/30초) |
+| Shift + ← / → | 1초 이동 |
 | Home / End | In / Out Point로 점프 |
 | A | 미리보기(선택 구간 재생) |
-| Ctrl + 휠 | 타임라인 줌 (0.1x ~ 10x) |
+| 휠 | 타임라인 줌 (1x ~ 10x, 커서 기준) |
+| Shift + 휠 | 타임라인 가로 패닝 (줌 > 1일 때) |
 
 단축키는 입력 필드 포커스 시 비활성화된다.
 
 ## 지원 포맷
 
-입력 17종: MP4, WebM, OGG, MOV, M4V, AVI, WMV, MKV, FLV, TS, 3GP, 3G2, MPEG, MPG 등.
+입력 14종: MP4, WebM, OGG, MOV, M4V, AVI, WMV, MKV, FLV, TS, 3GP, 3G2, MPEG, MPG.
 
 **처리 방식**: stream copy(재인코딩 없음)로 원본 화질 유지.
 - ISO 형식(MP4/MOV/M4V) → MP4Box.js (±1-2초, 키프레임 기반, 빠름)
@@ -144,7 +146,7 @@ npm run test:e2e:ui    # Playwright UI
 | 문서 | 내용 |
 |------|------|
 | `.docs/00_INDEX.md` | 문서 인덱스 |
-| `.docs/01_OVERVIEW.md` | 프로젝트 기술 개요 |
+| `.docs/01_OVERVIEW.md` | 아키텍처 & 설계 |
 | `.docs/02_API.md` | API 레퍼런스 |
 | `.docs/03_DEPENDENCIES.md` | 외부 의존성 관리 |
 | `.docs/04_DEVELOPER_GUIDE.md` | 개발자 학습 가이드 |

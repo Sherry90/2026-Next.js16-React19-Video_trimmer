@@ -37,134 +37,49 @@ npm run test:e2e:ui   # Playwright UI
 | ------------------ | ------------------------ |
 | **Space**          | 재생/일시정지                  |
 | **I** / **O**      | In Point / Out Point 설정  |
-| **←** / **→**      | 1초 이동                    |
-| **Shift + ←/→**    | 0.1초 이동 (프레임)            |
+| **←** / **→**      | 1프레임 이동 (1/30초)          |
+| **Shift + ←/→**    | 1초 이동                    |
 | **Home** / **End** | In Point / Out Point로 점프 |
+| **A**              | 미리보기 (선택 구간 재생)         |
 | **휠**              | 타임라인 줌 (1x ~ 10x, 커서 기준) |
-| **Shift + 휠**      | 타임라인 가로 패닝 (줌&gt;1일 때)   |
+| **Shift + 휠**      | 타임라인 가로 패닝 (줌 > 1일 때)   |
 
 
 단축키는 입력 필드 포커스 시 비활성화됩니다.
 
-### 핵심 아키텍처
+### 핵심 아키텍처 (요약)
 
-- **State**: Zustand 단일 스토어 (`src/stores/useStore.ts`), Selector 패턴
-- **Phase**: idle → uploading → editing → processing → completed | error
-- **Features**: `src/features/` 하위에 upload, url-input, player, timeline, export
-- **Widgets**: `src/widgets/` — feature 합성 컴포지션 (예: `EditingSection` = player+timeline)
-- **Shared**: `src/shared/ui/` — 재사용 UI 프리미티브 (예: `ProgressBar`)
-- **Processing**: MP4Box.js (primary) / FFmpeg.wasm (fallback)
-- **Dependencies**: ffmpeg, yt-dlp, streamlink (자동 다운로드)
+- **State**: Zustand 단일 스토어 (`src/stores/useStore.ts`). 읽기는 `src/stores/hooks/`(reactive) / `snapshot.ts`(이벤트용 비반응) 분리 — 컴포넌트가 `useStore` 직접 호출 금지.
+- **Phase**: idle → uploading → editing → processing → completed | error (순차 진행)
+- **Layers**: `app → widgets → features → shared/stores/lib` (FSD 계열 단방향)
+- **Processing**: 로컬은 MP4Box.js(ISO) / FFmpeg.wasm(그 외), URL은 서버 다운로드(chzzk→streamlink, 그 외→yt-dlp)
+- **Custom server**: `server.ts`가 다운로드/SSE/프록시를 Next 우회(raw bypass)
 
-### Feature 구조
+> 아키텍처·설계 상세(레이어, selector 분리, URL 파이프라인, player-timeline sync, 커스텀 서버)는 **[.docs/01_OVERVIEW.md](.docs/01_OVERVIEW.md)** 참조.
 
-```
-src/features/<feature>/
-├── components/    # React 컴포넌트
-├── hooks/         # Custom hooks
-├── utils/         # 유틸리티 함수
-└── context/       # Context Provider (필요시)
-```
+## Critical Patterns (주의점만)
 
-## Critical Patterns
+작업 시 반드시 지킬 것. 배경 설명은 [.docs/01_OVERVIEW.md](.docs/01_OVERVIEW.md) 참조.
 
-### 1. Player-Timeline Synchronization
-
-**Race condition 방지**:
-
-```typescript
-// VideoPlayerView.tsx - timeupdate handler
-player.on('timeupdate', () => {
-  const state = useStore.getState();
-
-  // CRITICAL: Ignore if scrubbing or seeking
-  if (state.player.isScrubbing || player.seeking()) {
-    return; // Prevents overwriting store during user interaction
-  }
-
-  state.setCurrentTime(currentTime || 0);
-});
-```
-
-**Playhead dragging** (`Playhead.tsx`):
-
-- `isScrubbing: true` on mousedown
-- Works in PERCENTAGE coordinates during drag
-- Converts to time only at drag end
-- Uses refs for stable closures
-
-### 2. Phase-based Workflow
-
-상태는 항상 순차적으로 진행:
-
-- `idle` → `uploading` → `editing` → `processing` → `completed` | `error`
-- Phase 변경 시 이전 phase 상태 정리 필요 (URL revoke 등)
-
-### 3. Memory Management
-
-**필수 cleanup**:
-
-- Object URLs: `URL.revokeObjectURL()` on reset/unmount
-- Video.js player: `player.dispose()` on unmount
-- Wavesurfer: `wavesurfer.destroy()` when video changes
-- Event listeners: cleanup in useEffect return
-
-**URL sources**:
-
-- `source: 'file' | 'url'` 필드로 구분
-- `file: File | null` (URL sources는 null)
-- URL sources는 revokeObjectURL 스킵
-
-### 4. Video Player Context
-
-```typescript
-// Access player instance
-const { player, play, pause, seek, togglePlay } = useVideoPlayerContext();
-
-// Always check existence
-if (!player) return;
-player.currentTime(time);
-```
-
-### 5. URL Download Strategy
-
-**Platform detection** (`src/lib/platformDetector.ts`):
-
-- Chzzk → Streamlink downloader
-- YouTube → yt-dlp downloader
-- Generic → yt-dlp (fallback)
-
-**Two-phase process**:
-
-1. Download/extract segment → temp file
-2. FFmpeg timestamp reset → final file
-
-**Progress**: SSE (Server-Sent Events)
-
-- Phase 1 (downloading): 0-90%
-- Phase 2 (processing): 90-100%
+1. **Player-Timeline sync**: `timeupdate` 핸들러는 `isScrubbing || player.seeking()` 동안 스토어를 갱신하지 말 것(플레이헤드 튐 방지). 이벤트 핸들러는 `snapshot.ts` getter로 최신값을 읽어 stale closure를 피한다. (`playerStoreSync.ts`, `Playhead.tsx`, `usePreviewPlayback.ts`)
+2. **Phase 전환**: 항상 순차 진행. 전환 시 이전 phase 정리 필수(blob URL revoke, 서버 임시파일 `DELETE /api/download/[jobId]`).
+3. **Memory cleanup**: object URL revoke, video.js `player.dispose()`, wavesurfer `destroy()`, useEffect cleanup. 모듈은 `registerCleanup()`으로 등록 → `reset()`이 `runAllCleanups()`. **URL 소스는 `videoFile.url`이 proxy URL이라 `reset()`의 revokeObjectURL이 no-op** (createObjectURL은 파일 소스·export blob에만 사용).
+4. **Player 접근**: `useVideoPlayerContext()`로 얻고 항상 존재 확인 후 호출.
+   ```typescript
+   const { player } = useVideoPlayerContext();
+   if (!player) return;
+   player.currentTime(time);
+   ```
 
 ## Development Workflow
 
 ### Adding Features
 
-1. Add state to Zustand store with validation
+1. Add state to Zustand store with validation (`constraintUtils.ts` 검증 패턴 준수)
 2. Create feature folder with components/hooks/utils
 3. Use context only if needed (avoid prop drilling)
 4. Add unit tests for logic, E2E tests for workflows
 5. Run `npm run type-check` before committing
-
-### Debugging Timeline Sync
-
-- Check `isScrubbing` and `isSeeking` flags
-- Verify timeupdate handlers ignore events during user interaction
-- Use refs for stable closures in event handlers
-
-### Working with video.js
-
-- Access player via `useVideoPlayerContext()`
-- Always check player exists before calling methods
-- Dispose player on component unmount
 
 ## Important Constraints
 
@@ -235,7 +150,7 @@ Ctrl+휠로 타임라인 줌 조절 가능
 **For detailed information, always refer to:**
 
 - `**.docs/00_INDEX.md**` - Documentation index
-- `**.docs/01_OVERVIEW.md**` - Architecture, tech stack, performance
+- `**.docs/01_OVERVIEW.md**` - 아키텍처 & 설계 (레이어, 상태관리, URL 파이프라인, 커스텀 서버)
 - `**.docs/02_API.md**` - API endpoint specs
 - `**.docs/03_DEPENDENCIES.md**` - Dependency bundling (ffmpeg/yt-dlp/streamlink)
 - `**.docs/04_DEVELOPER_GUIDE.md**` - Patterns, testing, implementation details

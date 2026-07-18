@@ -16,13 +16,14 @@ import { safeUnlink } from '@/lib/downloadTypes';
  * Streamlink → ffmpeg two-stage trimming
  *
  * Reference: scripts/cut_video.sh (original shell script)
- * - Line 216: streamlink --hls-start-offset --stream-segmented-duration
- * - Line 226: ffmpeg -i temp.mp4 -c copy -avoid_negative_ts make_zero
+ * - streamlink --hls-start-offset --hls-duration
+ * - ffmpeg -i temp.mp4 -c copy -avoid_negative_ts make_zero
  *
  * Stage 1: streamlink downloads segment to temp file
  * Stage 2: ffmpeg resets timestamps with copy codec
  *
- * Uses --stream-segmented-duration for accurate segment extraction.
+ * Uses --hls-duration (실제 비디오 길이 기준)으로 구간을 추출한다.
+ * (--stream-segmented-duration은 유효하지 않은 플래그 — Chzzk에서 무시됨.)
  */
 async function trimWithStreamlink(
   originalUrl: string,
@@ -45,7 +46,7 @@ async function trimWithStreamlink(
 
     const args = [
       '--hls-start-offset', formatTime(startTime, false),
-      '--stream-segmented-duration', formatTime(duration, false),
+      '--hls-duration', formatTime(duration, false),
       '--stream-segment-threads', '6',  // 병렬 다운로드 (1-10, 기본값 1)
       originalUrl,
       'best',

@@ -1,13 +1,13 @@
 /**
  * yt-dlp 기반 다운로드 (유튜브 및 범용 플랫폼)
  *
- * 1단계 프로세스 (최적화):
- * - yt-dlp --download-sections + --postprocessor-args → 최종 파일
- * - FFmpeg 옵션 (-avoid_negative_ts make_zero -movflags +faststart)을 postprocessor로 전달
- * - Phase 2 불필요, 파일 I/O 1회로 감소
+ * 2-tier 전략 (--download-sections 안 씀, 이유는 buildYtdlpArgs 주석 참고):
+ * - (A) byte-range: sidx를 파싱해 구간 바이트만 받아 로컬 컷 (downloadClipByteRange).
+ *       짧은 클립에 최적. 구간이 너무 크거나 원본의 50% 이상이면 폴백.
+ * - (B) 전체 다운로드 후 컷: 선택 포맷 전체를 aria2c 다중연결로 받아
+ *       로컬 ffmpeg로 스트림 카피 컷 (downloadFullThenCut + buildFfmpegCutArgs).
  *
  * 공식 문서:
- * - https://gigazine.net/gsc_news/en/20220624-yt-dlp-download-sections/
  * - https://github.com/yt-dlp/yt-dlp
  */
 

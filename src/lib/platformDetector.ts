@@ -30,10 +30,10 @@ export function detectPlatform(url: string): Platform {
 }
 
 /**
- * 플랫폼과 스트림 타입에 따라 다운로드 전략 선택
+ * 플랫폼에 따라 다운로드 전략 선택 (chzzk → streamlink, 그 외 → yt-dlp)
  *
- * @param platform - 감지된 플랫폼
- * @param streamType - 스트림 타입 (선택적 힌트)
+ * @param platform - 감지된 플랫폼 (전략을 결정하는 유일한 기준)
+ * @param streamType - 현재 미사용. 향후 스트림 타입별 분기를 위한 예약 파라미터
  */
 export function selectDownloadStrategy(
   platform: Platform,

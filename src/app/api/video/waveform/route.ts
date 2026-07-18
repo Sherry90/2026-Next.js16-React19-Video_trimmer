@@ -17,7 +17,7 @@ import { DOWNLOAD, WAVEFORM } from '@/constants/appConfig';
  * so it is unaffected by stream-URL expiry/CORS.
  *
  * Pipeline:
- *   yt-dlp -f worstaudio/bestaudio -o - <url>  →  ffmpeg -i pipe:0 -ac 1 -ar 8000 -f s16le pipe:1
+ *   yt-dlp -f worstaudio/bestaudio/best -o - <url>  →  ffmpeg -i pipe:0 -ac 1 -ar 8000 -f s16le pipe:1
  */
 
 const SAMPLE_RATE = 8000; // mono, low rate — enough for a volume envelope

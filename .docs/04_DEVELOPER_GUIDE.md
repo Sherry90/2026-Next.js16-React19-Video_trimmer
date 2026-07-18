@@ -1,12 +1,14 @@
-# Video Trimmer - Developer Guide
+# Video Trimmer - Developer Guide (학습 가이드)
 
-> **교육용 학습 자료**: 이 문서는 단순한 프로젝트 소개가 아니라, Video Trimmer 프로젝트를 통해 현대 웹 개발 패턴과 비디오 처리 기술을 배울 수 있는 종합 학습 가이드입니다.
+> **이 문서는 "직접 만져 보며 배우는" 실습 가이드입니다.** Video Trimmer의 코드를 따라가며 현대 웹 개발 패턴과 비디오 처리 기술을 익힌다. 코드 예제가 많지만, 어려운 부분은 비유와 그림으로 풀어 설명한다.
+>
+> **프로젝트가 "어떤 구조로, 왜" 만들어졌는지**가 궁금하다면 먼저 [01_OVERVIEW.md](./01_OVERVIEW.md)(아키텍처 & 설계)를 읽자. 이 문서는 그 위에서 실습을 얹는다.
 
-**대상 독자**:
-- 웹 개발 경험 1-2년 (React 기본 지식 필요)
-- Next.js, TypeScript에 관심 있는 개발자
-- 비디오 처리 기술을 배우고 싶은 개발자
-- 실제 프로덕션 수준의 코드 패턴을 학습하고 싶은 개발자
+**이런 사람에게 좋아요**:
+- React를 조금 아는 사람 (컴포넌트, useState 정도)
+- Next.js·TypeScript를 배우고 싶은 사람
+- 영상 처리(자르기·스트리밍) 원리가 궁금한 사람
+- 실제 서비스 수준의 코드 패턴을 익히고 싶은 사람
 
 **학습 목표**:
 - Next.js 16 App Router와 Turbopack 이해
@@ -22,14 +24,15 @@
 
 1. [학습 경로](#학습-경로)
 2. [프로젝트 개요](#프로젝트-개요)
-3. [아키텍처 심층 분석](#아키텍처-심층-분석)
-4. [핵심 개념 설명](#핵심-개념-설명)
-5. [개발 워크플로](#개발-워크플로)
-6. [주요 패턴과 모범 사례](#주요-패턴과-모범-사례)
-7. [디버깅 가이드](#디버깅-가이드)
-8. [테스팅 전략](#테스팅-전략)
-9. [실전 예제](#실전-예제)
-10. [트러블슈팅](#트러블슈팅)
+3. [핵심 개념 설명](#핵심-개념-설명)
+4. [개발 워크플로](#개발-워크플로)
+5. [주요 패턴과 모범 사례](#주요-패턴과-모범-사례)
+6. [디버깅 가이드](#디버깅-가이드)
+7. [테스팅 전략](#테스팅-전략)
+8. [실전 예제](#실전-예제)
+9. [트러블슈팅](#트러블슈팅)
+
+> **아키텍처(레이어 구조, 상태 관리 설계, URL 파이프라인, 플레이어-타임라인 동기화)**는 이 문서에서 다루지 않는다. → [01_OVERVIEW.md](./01_OVERVIEW.md) 참조.
 
 ---
 
@@ -58,9 +61,9 @@
    - 브라우저 개발자 도구로 네트워크, 콘솔 관찰
 
 4. **문서 읽기**
-   - `CLAUDE.md` - 프로젝트 개요
-   - `.docs/01_OVERVIEW.md` - 기술 문서
+   - `.docs/01_OVERVIEW.md` - 아키텍처 & 설계 (먼저 읽기 권장)
    - `.docs/02_API.md` - API 참조
+   - `CLAUDE.md` - 작업 지침·제약
 
 **확인 과제**:
 - [ ] 로컬에서 프로젝트 실행 성공
@@ -309,9 +312,9 @@ const cleanup = () => {
 - 키보드 단축키 지원 (Space, I/O, 화살표)
 
 **3. 기술적 우수성**
-- 계층 아키텍처 (features / widgets / shared)
+- 계층 아키텍처 (features / widgets / shared) — 자세히는 [01_OVERVIEW.md](./01_OVERVIEW.md)
 - 자동 의존성 관리 (postinstall)
-- 206개 유닛 테스트 통과 (안정성)
+- 유닛 테스트로 핵심 로직 검증 (안정성)
 
 ### 기술 스택
 
@@ -357,250 +360,6 @@ Tools & Scripts
 │  4. Completed   │ → 다운로드
 └─────────────────┘
 ```
-
----
-
-## 아키텍처 심층 분석
-
-### 1. 계층 구조 (features / widgets / shared)
-
-**철학**: 기능은 `features/`에 완결 모듈(components + hooks + utils)로, 여러 feature를 합성하는 컴포지션은 `widgets/`에, 재사용 UI 프리미티브는 `shared/`에 둔다.
-
-```
-src/
-├── features/
-│   ├── upload/              # UploadZone, UploadProgress, FileValidationError
-│   │   ├── hooks/           useFileUpload
-│   │   └── utils/           validateFile
-│   ├── url-input/           # 스트리밍 에디터 입력
-│   │   ├── components/      UrlInputZone
-│   │   └── hooks/           useUrlInput
-│   ├── player/
-│   │   ├── components/      VideoPlayerView(context 노출), VideoScreen, PlayerControlBar →
-│   │   │                    PlayerControls → PlayButton, VolumeControl, Scrubber, TimeDisplay,
-│   │   │                    FullscreenButton, QualitySelector
-│   │   ├── hooks/           useFullscreen, useQualityLevels
-│   │   └── context/         VideoPlayerContext
-│   ├── timeline/
-│   │   ├── components/      TimelineEditor, TimelineBar, TrimHandle, Playhead, TimelineControls,
-│   │   │                    PreviewButtons, LockButton, WaveformBackground(파형+스펙트럴 오버레이)
-│   │   └── hooks/           useDragHandle, useKeyboardShortcuts, usePreviewPlayback,
-│   │                        useTimelineZoom, usePlayheadSeek
-│   └── export/
-│       ├── components/      ExportButton, ExportProgress, DownloadButton, ErrorDisplay
-│       ├── hooks/           useExportState, useFFmpegLoader
-│       └── utils/           trimVideoDispatcher, trimVideoMP4Box, trimVideoFFmpeg,
-│                            trimVideoServer, FFmpegSingleton, formatDetector, generateFilename,
-│                            streamDownloadController, sseProgressUtils
-│
-├── widgets/
-│   └── EditingSection.tsx   # VideoPlayerView + TimelineEditor + 키보드 단축키 합성
-│
-└── shared/
-    ├── ui/                  # 재사용 UI 프리미티브: ProgressBar, Modal, icons/ (공용 SVG 아이콘 모듈)
-    └── lib/                 # 클라이언트 공유 순수 유틸 (상위 레이어 미참조 leaf)
-                             waveformCache, spectrogram, spectrogramCache, retry, platformUrl,
-                             timeFormatter, mathUtils, stringUtils, formatBytes, errorHandler,
-                             ffmpegLogParser, memoryMonitor
-```
-
-> 서버 전용 유틸은 `src/lib/`(예: downloadJob, downloaders, binPaths, apiUtils), API 라우트는
-> `src/app/api/`에 둔다. `src/utils`는 제거되어 client(`shared/lib`) / server(`lib`) 2버킷으로 정리됨.
-
-**장점**:
-1. **모듈성**: 각 feature는 독립적으로 개발/테스트 가능
-2. **확장성**: 새 기능은 새 폴더로 추가
-3. **결합도 관리**: 합성은 widgets, 공용 UI는 shared로 분리해 feature 간 결합을 낮춤
-4. **재사용성**: hooks와 utils는 feature 내/계층 간에서 재사용
-
----
-
-### 2. 상태 관리 (Zustand)
-
-**단일 스토어 패턴**: 하나의 거대한 객체로 모든 상태 관리
-
-```typescript
-// src/stores/useStore.ts
-export interface StoreState {
-  // Phase-based workflow (최상위)
-  phase: AppPhase;
-
-  // 비디오 소스 (파일 또는 URL)
-  videoFile: VideoFile | null;   // source: 'file' | 'url'
-
-  // Timeline 상태
-  timeline: {
-    inPoint: number;
-    outPoint: number;
-    playhead: number;
-    zoom: number;
-    isInPointLocked: boolean;
-    isOutPointLocked: boolean;
-  };
-
-  // 진행률 상태
-  processing: {
-    uploadProgress: number;
-    trimProgress: number;
-    waveformProgress: number;
-    downloadPhase: 'downloading' | 'processing' | 'completed' | null;
-    downloadMessage: string | null;
-    activeDownloadJobId: string | null;
-  };
-
-  // Player 상태
-  player: {
-    isPlaying: boolean;
-    currentTime: number;
-    volume: number;
-    isMuted: boolean;
-    isScrubbing: boolean;
-  };
-
-  // Export 결과
-  export: {
-    outputUrl: string | null;      // 파일: Blob URL / URL: /api/download/:jobId
-    outputFilename: string | null;
-  };
-
-  error: { hasError: boolean; errorMessage: string | null; errorCode: string | null };
-
-  // Actions (setPhase, setVideoFile, setInPoint, setOutPoint, setDownloadPhase, reset, ...)
-}
-```
-
-**Selector Pattern**: 최적화된 상태 구독
-
-```typescript
-// src/stores/selectors.ts (createStateSelector = useShallow 래핑)
-export const useTimelineState = createStateSelector((state) => ({
-  inPoint: state.timeline.inPoint,
-  outPoint: state.timeline.outPoint,
-  playhead: state.timeline.playhead,
-  isInPointLocked: state.timeline.isInPointLocked,
-  isOutPointLocked: state.timeline.isOutPointLocked,
-  zoom: state.timeline.zoom,
-}));
-export const useTimelineActions = createStateSelector((state) => ({
-  setInPoint: state.setInPoint, setOutPoint: state.setOutPoint, /* ... */
-}));
-
-// 사용
-function TimelineEditor() {
-  const { inPoint, outPoint } = useTrimPoints();
-  const { setInPoint, setOutPoint } = useTimelineActions();
-  // 구독한 슬라이스가 실제로 변경될 때만 리렌더
-}
-```
-
-**왜 useShallow가 필요한가?**
-
-```typescript
-// Without useShallow (나쁜 예)
-const state = useStore((state) => ({
-  currentTime: state.timeline.currentTime,
-  inPoint: state.timeline.inPoint,
-}));
-// 매번 새 객체 생성 → 항상 리렌더
-
-// With useShallow (좋은 예)
-const state = useStore(
-  useShallow((state) => ({
-    currentTime: state.timeline.currentTime,
-    inPoint: state.timeline.inPoint,
-  }))
-);
-// 값이 실제로 변경될 때만 리렌더
-```
-
----
-
-### 3. Phase-Based Workflow (FSM)
-
-**유한 상태 기계 (Finite State Machine)** 패턴:
-
-```typescript
-export type AppPhase =
-  | 'idle'        // 초기 상태 (업로드 대기)
-  | 'uploading'   // 파일 로딩 중
-  | 'editing'     // 편집 중
-  | 'processing'  // 트리밍 처리 중
-  | 'completed'   // 완료
-  | 'error';      // 에러
-
-// 상태 전이 규칙
-idle → uploading → editing → processing → completed
-                                        ↘ error
-```
-
-**Phase별 UI 렌더링**:
-
-```typescript
-// src/app/page.tsx
-export default function HomePage() {
-  const phase = useStore((state) => state.phase);
-
-  return (
-    <main>
-      {phase === 'idle' && <UploadZone />}
-      <UploadProgress />
-      {phase === 'editing' && (
-        <Suspense fallback={…}><EditingSection /></Suspense>  // lazy 로드
-      )}
-      {/* ExportProgress / DownloadButton 도 phase에 따라 lazy */}
-    </main>
-  );
-}
-```
-
----
-
-### 4. Video Player-Timeline 동기화
-
-**핵심 문제**: Race Condition
-
-```
-사용자가 Playhead 드래그 중
-   ↓
-Video Player의 timeupdate 이벤트 발생
-   ↓
-Store의 currentTime 업데이트
-   ↓
-Playhead 컴포넌트 리렌더
-   ↓
-드래그 위치가 덮어써짐 (버그!)
-```
-
-**해결책**: `isScrubbing` 플래그
-
-```typescript
-// VideoPlayerView.tsx
-player.on('timeupdate', () => {
-  const state = useStore.getState();
-
-  // CRITICAL: 드래그 중이거나 seeking 중이면 무시
-  if (state.player.isScrubbing || player.seeking()) {
-    return;
-  }
-
-  state.setCurrentTime(currentTime || 0);
-});
-```
-
-```typescript
-// Playhead.tsx
-const handleMouseDown = () => {
-  setIsScrubbing(true);  // 플래그 켜기
-  // ... 드래그 로직
-};
-
-const handleMouseUp = () => {
-  // ... seek 완료 후
-  setIsScrubbing(false);  // 플래그 끄기
-};
-```
-
-**교훈**: 비동기 이벤트와 사용자 입력이 충돌할 때는 플래그로 제어
 
 ---
 
@@ -705,21 +464,22 @@ headers: [
 ],
 ```
 
-**트리밍 명령어**:
+**트리밍 명령어** (실제 `trimVideoFFmpeg.ts`):
 
 ```typescript
 await ffmpeg.exec([
   '-i', 'input.mp4',
-  '-ss', startTime.toString(),
-  '-to', endTime.toString(),
-  '-c:v', 'libx264',      // 비디오 재인코딩
-  '-preset', 'ultrafast',  // 빠른 인코딩
-  '-c:a', 'aac',          // 오디오 재인코딩
+  '-ss', startTime.toString(),   // output seeking (-i 뒤) → 정확도 ↑
+  '-t', duration.toString(),
+  '-c', 'copy',                  // 스트림 카피 (재인코딩 없음)
+  '-progress', 'pipe:1',         // 진행률 파싱용
   'output.mp4',
 ]);
 ```
 
-**정확도**: ±0.02초 (프레임 단위)
+> 재인코딩하지 않는다(`-c copy`). `-ss`를 `-i` **뒤**에 두는 output seeking으로 정확도를 ±0.5초 → ±0.02초로 올렸다(속도 영향 ~+0.002초). MP4Box 경로가 못 다루는 비-ISO 형식을 담당한다.
+
+**정확도**: ±0.02초
 
 ---
 
@@ -1064,19 +824,21 @@ interface SSEEvent {
 // src/types/sse.ts
 export interface SSEProgressEvent {
   type: 'progress';
-  progress: number;
-  processedSeconds: number;
-  totalSeconds: number;
   phase: 'downloading' | 'processing' | 'completed';
+  progress: number;
+  processedSeconds?: number;   // optional
+  totalSeconds?: number;       // optional
 }
 
 export interface SSECompleteEvent {
-  type: 'complete';   // 페이로드 없음 — 파일명은 다운로드 응답의 Content-Disposition이 정함
+  type: 'complete';   // 배선 계층(downloadTypes.ts)이 jobId+filename을 덧붙여 발행
 }
 
 export interface SSEErrorEvent {
   type: 'error';
   message: string;
+  code?: ErrorCode;
+  technicalDetails?: string;
 }
 
 export type SSEEvent =
@@ -1456,10 +1218,10 @@ streamlink: not found
 
 ### 프로젝트 문서
 
-- `CLAUDE.md` - 프로젝트 개요 및 커밋 가이드 (Quick Reference)
-- `.docs/01_OVERVIEW.md` - 기술 문서
+- `.docs/01_OVERVIEW.md` - 아키텍처 & 설계
 - `.docs/02_API.md` - API 참조
 - `.docs/03_DEPENDENCIES.md` - 바이너리/의존성 문서
+- `CLAUDE.md` - 작업 지침·제약 및 커밋 가이드 (Quick Reference)
 
 ### 학습 순서 추천
 

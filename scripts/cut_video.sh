@@ -213,7 +213,7 @@ download_video() {
     echo ""
 
     log_info "구간 다운로드 시작..."
-    if streamlink --hls-start-offset "$START" --stream-segmented-duration "$DUR" "$URL" best -o "temp.mp4"; then
+    if streamlink --hls-start-offset "$START" --hls-duration "$DUR" "$URL" best -o "temp.mp4"; then
         log_success "다운로드 완료"
     else
         log_error "다운로드 실패"
