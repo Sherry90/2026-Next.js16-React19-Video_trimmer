@@ -12,11 +12,10 @@ import { TimelineControls } from "./TimelineControls";
 export function TimelineEditor() {
   return (
     <div className="w-full h-full">
-      {/* Timeline Bar */}
-      <TimelineBar>
+      {/* Timeline Bar — trim 핸들은 트랙 오버레이(children), playhead 는 룰러+트랙 관통 오버레이 */}
+      <TimelineBar playhead={<Playhead />}>
         <TrimHandle type="in" />
         <TrimHandle type="out" />
-        <Playhead />
       </TimelineBar>
 
       {/* Controls */}

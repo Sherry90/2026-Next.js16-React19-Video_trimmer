@@ -5,6 +5,7 @@ import {
   deltaXToTime,
   clampPercentToTrim,
   stepClamped,
+  clientXToPercent,
 } from "@/features/timeline/utils/timelineCoords";
 
 describe("timelineCoords", () => {
@@ -52,6 +53,22 @@ describe("timelineCoords", () => {
       expect(stepClamped(50, 1, 0, 100)).toBe(51);
       expect(stepClamped(99.5, 1, 0, 100)).toBe(100);
       expect(stepClamped(0.5, -1, 0, 100)).toBe(0);
+    });
+  });
+
+  describe("clientXToPercent", () => {
+    it("요소 폭 기준 절대 X를 퍼센트로 변환", () => {
+      // left=100, width=200 → x=200 은 50%
+      expect(clientXToPercent(200, { left: 100, width: 200 })).toBe(50);
+      expect(clientXToPercent(100, { left: 100, width: 200 })).toBe(0);
+      expect(clientXToPercent(300, { left: 100, width: 200 })).toBe(100);
+    });
+    it("범위 밖은 [0,100]로 클램프", () => {
+      expect(clientXToPercent(50, { left: 100, width: 200 })).toBe(0);
+      expect(clientXToPercent(400, { left: 100, width: 200 })).toBe(100);
+    });
+    it("width 0이면 0", () => {
+      expect(clientXToPercent(150, { left: 100, width: 0 })).toBe(0);
     });
   });
 });

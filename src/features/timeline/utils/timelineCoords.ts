@@ -36,3 +36,13 @@ export function clampPercentToTrim(
 export function stepClamped(time: number, step: number, min: number, max: number): number {
   return Math.max(min, Math.min(time + step, max));
 }
+
+/**
+ * 절대 마우스 X(clientX) → 요소 폭 기준 퍼센트(0-100). 룰러 클릭/스크럽 seek용.
+ * rect는 룰러 요소의 getBoundingClientRect(). width 0이면 0. 결과는 [0,100]로 클램프.
+ */
+export function clientXToPercent(clientX: number, rect: { left: number; width: number }): number {
+  if (rect.width <= 0) return 0;
+  const percent = ((clientX - rect.left) / rect.width) * 100;
+  return Math.max(0, Math.min(percent, 100));
+}
