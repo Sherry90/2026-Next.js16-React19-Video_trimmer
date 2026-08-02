@@ -25,8 +25,8 @@
 - **downloadJob.ts** - SSE 다운로드 Job 오케스트레이터 (플랫폼 감지 → 전략 선택, Job 레지스트리/스트림)
 - **platformDetector.ts** - 도메인 기반 플랫폼 감지 (chzzk / youtube / generic)
 - **streamlinkDownloader.ts** - Chzzk 다운로더 (Streamlink 2-phase)
-- **ytdlpDownloader.ts** - YouTube/Generic 다운로더 (byte-range 우선 → 전체 다운로드+로컬 컷 폴백)
-- **byteRangeDownloader.ts** - DASH `sidx` 파싱 → 구간 바이트만 Range 수신 후 로컬 ffmpeg 컷
+- **ytdlpDownloader.ts** - YouTube/Generic 부분 다운로드 전용 오케스트레이터
+- **byteRangeDownloader.ts** - DASH `sidx` 파싱 → 8MB Range 청크 디스크 스트리밍 → 로컬 ffmpeg 컷·검증
 - **downloadTypes.ts** - `DownloadProgressTracker` 등 다운로더 공통 타입/클래스
 - **errorReport.ts** - 서버 다운로드 실패 리포팅 (`reportServerError`)
 

@@ -17,6 +17,7 @@
   - [GET /api/video/spectrogram](#get-apivideospectrogram)
   - [POST /api/video/trim](#post-apivideotrim)
 - [Download API (SSE)](#download-api-sse)
+  - [POST /api/download/file](#post-apidownloadfile)
   - [POST /api/download/start](#post-apidownloadstart)
   - [GET /api/download/stream/:jobId](#get-apidownloadstreamjobid)
   - [GET /api/download/:jobId](#get-apidownloadjobid)
@@ -244,6 +245,7 @@ URL 소스 편집의 **구간 다운로드 파이프라인**. 작업을 비동�
 
 ```
 POST /api/download/start            → jobId
+POST /api/download/file             → 로컬 File raw body 저장 + jobId
 GET  /api/download/stream/:jobId    → SSE 진행률
 GET  /api/download/:jobId           → 완료 파일(디스크 직행)
 DELETE /api/download/:jobId         → 서버 임시 파일 정리
@@ -270,6 +272,24 @@ DELETE /api/download/:jobId         → 서버 임시 파일 정리
 
 ---
 
+### POST /api/download/file
+
+로컬 파일을 같은 PC의 raw Node 서버로 스트리밍하고 정확 트리밍 job을 시작한다. multipart를 사용하지 않으며 요청 본문은 파일 바이트 자체다.
+
+```http
+POST /api/download/file?startTime=4.2&endTime=6.2&filename=source.mp4
+Content-Type: video/mp4
+Content-Length: <file.size>
+
+<raw file bytes>
+```
+
+**응답 `202`:** `{ "jobId": "uuid-v4" }`
+
+파일은 `/tmp/upload_<jobId>.<ext>`로 스트리밍되고 성공·실패·취소 후 삭제된다. 5GB 하드 제한을 서버에서도 다시 검사한다. 이후 진행률·완료 파일은 URL job과 같은 SSE/download API를 사용한다.
+
+---
+
 ### GET /api/download/stream/:jobId
 
 SSE로 실시간 진행률을 받는다.
@@ -287,10 +307,10 @@ data: {"type":"error","message":"에러 메시지","code":"...","technicalDetail
 > **`complete` 이벤트는 `jobId`와 `filename`을 함께 싣는다**(라이브 스트림 경로, `emitComplete` → 원본 이벤트 그대로 전달). 다만 이미 완료된 작업에 재연결하면 bare `{ type: 'complete' }`만 온다. 다운로드 응답의 `Content-Disposition`에는 파일명이 들어있지 않으므로(아래 참고), 클라이언트는 이 이벤트의 `filename`을 파일명 힌트로 쓴다.
 > `progress`의 `processedSeconds`/`totalSeconds`, `error`의 `code`/`technicalDetails`는 optional 필드다.
 
-| Phase         | Chzzk                       | YouTube/Generic                                                  |
-| ------------- | --------------------------- | ---------------------------------------------------------------- |
-| `downloading` | ✅ (Streamlink)             | ✅ (yt-dlp / aria2c)                                             |
-| `processing`  | ✅ (FFmpeg 타임스탬프 리셋) | ✅ 전체 다운로드 폴백 시 로컬 FFmpeg 컷 (byte-range 경로는 생략) |
+| Phase         | Chzzk                     | YouTube/Generic           |
+| ------------- | ------------------------- | ------------------------- |
+| `downloading` | ✅ (Streamlink)           | ✅ (yt-dlp / aria2c)      |
+| `processing`  | ✅ (정확 seek + 재인코딩) | ✅ (정확 seek + 재인코딩) |
 
 **클라이언트:**
 
@@ -323,30 +343,32 @@ es.onmessage = (e) => {
 # Phase 1: Streamlink 구간 다운로드
 streamlink --hls-start-offset HH:MM:SS --hls-duration HH:MM:SS \
   --stream-segment-threads 6 <url> best -o temp.mp4
-# Phase 2: FFmpeg 타임스탬프 리셋
-ffmpeg -i temp.mp4 -c copy -avoid_negative_ts make_zero -fflags +genpts -movflags +faststart final.mp4
+# Phase 2: raw TS pre-roll 디코딩 + 정확 output seek + 재인코딩
+ffmpeg -i temp.ts -ss LOCAL_START -t DUR -vf setpts=PTS-STARTPTS \
+  -af asetpts=PTS-STARTPTS -c:v libx264 -crf 18 -c:a aac final.mp4
 ```
 
 - 성능: 15–20초(1분 영상). SSE: `downloading` → `processing`.
 
 > **`--hls-duration`**: 표준 `--stream-segmented-duration`은 Chzzk에서 무시되므로 `--hls-duration`을 사용한다(플랫폼 특화 동작).
 
-**YouTube/Generic** (`ytdlpDownloader.ts`) — `--download-sections`를 쓰지 않는다. yt-dlp가 구간을 ffmpeg로 직렬 추출하면 연결당 스로틀에 묶여 매우 느리기 때문이다. 대신 두 경로를 순서대로 시도한다:
+**YouTube/Generic** (`ytdlpDownloader.ts`) — `--download-sections`나 전체 다운로드 폴백을 쓰지 않는다.
 
-1. **byte-range 우선** (`byteRangeDownloader.ts`): DASH 단일파일 표현의 `sidx`를 파싱해 **구간에 해당하는 바이트만** Range로 받아 로컬 ffmpeg로 컷. 짧은 클립이 수 초에 끝난다. SSE: `downloading`만.
-2. **폴백 — 전체 다운로드 + 로컬 컷**: 선택 포맷 **전체**를 aria2c 다중연결로 받아(연결당 스로틀 우회) 로컬 ffmpeg로 컷·타임스탬프 리셋·faststart. SSE: `downloading` → `processing`.
+1. yt-dlp JSON에서 DASH avc1 video와 mp4a audio URL을 선택한다.
+2. 각 표현의 128KB 헤더에서 `sidx`를 읽고 선택 구간을 덮는 subsegment 범위를 계산한다.
+3. 8MB Range 청크를 표현별 최대 4개씩 받아 OS 임시 파일의 정확한 오프셋에 스트리밍한다.
+4. 입력 seek + 재인코딩 후 결과를 다시 디코딩해 검증한다.
 
 ```bash
-# 폴백 경로 (전체 다운로드)
-yt-dlp -f "bestvideo[height<=?<maxHeight>]+bestaudio/best" \
-  --ffmpeg-location <ffmpeg> -N 8 \
-  --external-downloader <aria2c> --downloader-args "aria2c:-x 16 -s 16 -k 1M" \
-  -o full.mp4 <url>
-ffmpeg -ss START -i full.mp4 -t DUR -c copy -avoid_negative_ts make_zero \
-  -fflags +genpts -movflags +faststart final.mp4
+# Range로 만든 video/audio 임시 입력을 정확하게 내보내기
+ffmpeg -ss VIDEO_OFFSET -i download_<jobId>.mp4.v.mp4 \
+  -ss AUDIO_OFFSET -i download_<jobId>.mp4.a.mp4 -t DUR \
+  -vf setpts=PTS-STARTPTS \
+  -af asetpts=PTS-STARTPTS -c:v libx264 -preset veryfast -crf 18 \
+  -c:a aac -b:a 192k -movflags +faststart final.mp4
 ```
 
-> aria2c 연결 수(`-x`/`-s`)·`-N`은 `appConfig.DOWNLOAD`에서 설정한다(기본 16/16/8). 전체 다운로드는 스로틀을 우회하므로 구간 ffmpeg 추출보다 훨씬 빠르다.
+모든 미디어 응답은 `206`과 정확한 `Content-Range`/수신 크기를 요구한다. `200 OK`, DASH/sidx 부재, 범위 불일치는 `PARTIAL_DOWNLOAD_UNAVAILABLE`로 실패하며 전체 파일을 받지 않는다.
 
 **클라이언트 진행률 가중치** (`sseProgressUtils.ts`): `downloading` 0–90%, `processing` 90–100%로 매핑해 phase 전환 시 진행률 역행을 방지한다.
 

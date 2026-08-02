@@ -1,12 +1,12 @@
 # Video Trimmer
 
-웹 브라우저에서 동영상을 트리밍하는 클라이언트 사이드 웹 애플리케이션. 로컬 파일은 서버 업로드 없이 브라우저에서 직접 처리하고, URL 영상(YouTube·치지직 등)은 다운로드 전에 스트림 위에서 구간을 정한 뒤 확정 구간만 서버에서 받아 디스크로 직행 전달한다.
+웹 브라우저에서 동영상을 편집하고, 함께 실행되는 로컬 Node 프로세스와 번들 FFmpeg로 프레임 정확하게 트리밍하는 웹 애플리케이션. 로컬 파일은 loopback 밖으로 전송하지 않으며 URL 영상(YouTube·치지직 등)은 확정 구간에 필요한 데이터만 받는다.
 
 ## 주요 기능
 
-- 🎬 **로컬 파일**: 서버 업로드 없이 브라우저에서 직접 트리밍 (14개 형식)
+- 🎬 **로컬 파일**: 같은 PC의 로컬 처리 서버로 스트리밍해 프레임 정확하게 트리밍 (14개 형식)
 - 🌐 **URL 영상**: 스트리밍 에디터 — 다운로드 전 스트림 위에서 구간 편집, 확정 시 서버 구간 다운로드(SSE)
-- ⚡ **하이브리드 트리밍**: 형식에 따라 MP4Box.js(빠름) / FFmpeg.wasm(정밀) 자동 선택
+- ⚡ **정확 트리밍**: 네이티브 FFmpeg의 빠른 입력 seek + 선택 구간 재인코딩
 - 🎨 **video.js** 기반 플레이어 (HLS/DASH 재생 지원)
 - 🎵 **wavesurfer.js** 오디오 파형 (URL 소스는 서버 peaks)
 - ⌨️ 키보드 단축키, In/Out Point 잠금, 타임라인 줌(휠)
@@ -18,7 +18,7 @@
 - **Language**: TypeScript
 - **UI**: React 19, Tailwind CSS
 - **State**: Zustand (단일 스토어 + selector)
-- **Video**: MP4Box.js, FFmpeg.wasm, video.js, wavesurfer.js
+- **Video**: Native FFmpeg, video.js, wavesurfer.js
 - **Server tools**: yt-dlp, streamlink, aria2c, ffmpeg (자동 다운로드)
 - **Testing**: Vitest (Unit), Playwright (E2E)
 
@@ -130,11 +130,7 @@ npm run test:e2e:ui    # Playwright UI
 
 입력 14종: MP4, WebM, OGG, MOV, M4V, AVI, WMV, MKV, FLV, TS, 3GP, 3G2, MPEG, MPG.
 
-**처리 방식**: stream copy(재인코딩 없음)로 원본 화질 유지.
-
-- ISO 형식(MP4/MOV/M4V) → MP4Box.js (±1-2초, 키프레임 기반, 빠름)
-- 그 외 형식 → FFmpeg.wasm (±0.02초, 정밀)
-- 출력은 입력 형식 유지
+**처리 방식**: 입력 형식과 무관하게 번들 네이티브 FFmpeg가 선택 구간을 H.264 CRF 18/AAC MP4로 출력한다. 시작점은 실제 디코딩 프레임 기준 원본 1프레임 이내를 목표로 한다.
 
 ## 브라우저 지원
 

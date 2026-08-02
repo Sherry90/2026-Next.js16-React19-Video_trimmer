@@ -28,7 +28,7 @@
 
 핵심 특징 두 가지:
 
-- **로컬 파일은 서버에 올리지 않는다.** 내 컴퓨터의 영상은 브라우저 안에서 바로 자른다. 파일이 인터넷을 떠나지 않으니 빠르고 안전하다.
+- **로컬 파일은 외부로 보내지 않는다.** 브라우저가 같은 PC의 Node 프로세스로만 파일을 스트리밍하고 번들 FFmpeg가 임시 디스크에서 처리한다.
 - **URL 영상은 필요한 구간만 받는다.** 유튜브·치지직 같은 온라인 영상은, 통째로 받지 않고 편집을 먼저 한 뒤 확정한 구간만 서버가 받아 준다.
 
 기술 기반: **Next.js 16**(React 웹 프레임워크) 위에서 돌아가고, 무거운 다운로드 작업은 직접 만든 **커스텀 Node 서버**(`server.ts`)가 처리한다.
@@ -145,26 +145,21 @@
 
 ---
 
-## 로컬 파일 자르기: 갈림길에서 길 고르기
+## 로컬 파일 자르기: loopback 네이티브 처리
 
-내 컴퓨터 영상은 브라우저 안에서 바로 자른다. 그런데 영상 형식마다 자르는 도구가 다르다. 그래서 **갈림길에서 형식을 보고 길을 골라 준다**. 이 안내원이 디스패처(`src/features/export/utils/trimVideoDispatcher.ts`의 `trimVideo()`)다.
+브라우저의 `File`은 raw body로 같은 PC의 커스텀 Node 서버에 전달된다. 서버는 전체 파일을 JS 메모리에 올리지 않고 임시 파일에 스트리밍한 뒤, 설치 단계에서 준비된 네이티브 FFmpeg로 선택 구간만 처리한다.
 
 ```
-                자를 영상
-                   │
-        형식 확인 (formatDetector.ts)
-        ┌──────────┼───────────────┐
-     MP4 계열     그 외 형식       URL 소스
-    (mov, m4v)   (webm, avi …)   (파일 아님)
-        │            │               │
-     MP4Box.js   FFmpeg.wasm      서버로 넘김
-   (재인코딩      (브라우저용       (아래 섹션)
-    없이 빠름)     ffmpeg, 정밀)
+브라우저 File → POST /api/download/file → /tmp 입력 파일
+                                        ↓
+                              accurateTrimmer(native FFmpeg)
+                                        ↓
+                              SSE 완료 → 결과 파일 스트림
 ```
 
-- **MP4 계열(ISOBMFF)** → `trimVideoMP4Box.ts`. **다시 인코딩하지 않고** 필요한 조각만 골라 붙인다(스트림 카피). 그래서 아주 빠르다. 대신 자를 수 있는 위치가 키프레임 단위라 ±1~2초 오차가 있다.
-- **그 외 형식** → `trimVideoFFmpeg.ts`. 브라우저에서 도는 ffmpeg(FFmpeg.wasm, 약 20MB)를 **필요할 때만** 불러온다(`FFmpegSingleton.ts`). 느리지만 정밀하다(±0.02초).
-- **URL 소스**면 여기서 바로 서버 경로(`trimVideoServer.ts`)로 넘긴다.
+- 입력 형식과 관계없이 `accurateTrimmer.ts`가 빠른 입력 seek 후 선택 구간을 H.264 CRF 18/AAC로 재인코딩한다.
+- HLS raw segment는 seek index가 불완전하므로 짧은 pre-roll을 처음부터 디코딩해 요청 프레임에서 자른다.
+- 결과는 시작 PTS 0, H.264/AAC MP4로 통일하고 다시 디코딩해 손상을 검사한다.
 
 전체 자르기 과정은 `src/features/export/hooks/useExportState.ts`의 `handleExport`가 지휘한다.
 
@@ -196,19 +191,16 @@
 
 이렇게 상황 따라 도구를 바꾸는 방식을 전략 패턴(Strategy)이라 한다.
 
-**yt-dlp 쪽은 두 단계로 시도한다** (`src/lib/downloadJob.ts`가 지휘, 진행 중인 작업은 `globalThis.__vtDownloadJobs`에 기록):
+**yt-dlp 쪽은 부분 다운로드만 사용한다** (`src/lib/downloadJob.ts`가 지휘, 진행 중인 작업은 `globalThis.__vtDownloadJobs`에 기록):
 
 ```
-(A) 먼저: 구간 바이트만 콕 집어 받기 (byteRangeDownloader.ts)
-      └─ 조각 위치표(sidx)를 읽어 필요한 바이트 범위만 받고,
-         ffmpeg로 정확히 잘라 붙임. 짧은 클립에 최적.
-         │  (구간이 너무 크거나 원본의 50% 이상이면 포기하고 ↓)
-(B) 그 다음: 통째로 빨리 받고 로컬에서 자르기 (downloadFullThenCut)
-      └─ aria2c(여러 연결로 동시에 받는 도구)로 빠르게 전체를 받고,
-         내 서버에서 ffmpeg로 잘라냄 (재인코딩 없이 = 스트림 카피).
+DASH 머리 128KB만 메모리에서 읽어 조각 위치표(sidx)를 해석
+      └─ 선택 구간의 video/audio 범위를 각각 8MB 청크로 나누고
+         표현별 최대 4개 Range 요청을 OS 임시 파일에 바로 기록
+      └─ ffmpeg로 요청 프레임에 맞춰 H.264 CRF 18/AAC 192kbps로 내보냄
 ```
 
-> 참고: 예전에는 yt-dlp의 `--download-sections` 옵션을 썼지만, 이 방식은 연결 하나로 느리게 받아서 폐기했다. 지금은 위 (A)/(B) 방식이다.
+서버가 Range/DASH를 지원하지 않으면 전체 파일을 대신 받지 않고 명확한 오류로 끝난다. 전체 타임라인을 선택한 경우에도 같은 Range 경로를 사용한다.
 
 **치지직 쪽은** `src/lib/streamlinkDownloader.ts`가 처리하며, 2단계로 나뉜다: 먼저 구간을 받고, 그다음 ffmpeg로 시간 표시를 0부터 다시 맞춘다(타임스탬프 리셋, `src/app/api/video/trim/route.ts`).
 
@@ -310,29 +302,23 @@ Next.js에는 API를 만드는 기본 통로가 있다. 그런데 **아주 크�
 
 ## 성능과 한계
 
-**로컬 자르기 속도** (재인코딩 없는 경우):
+**로컬 자르기 성능**: 원본 전체가 아니라 입력 seek 이후 선택 구간만 네이티브 FFmpeg로 재인코딩한다. 실제 속도는 CPU, 코덱, 해상도와 선택 길이에 따라 달라진다.
 
-| 파일 크기 | MP4Box | FFmpeg.wasm |
-| --------- | ------ | ----------- |
-| 100MB     | ~1초   | ~3초        |
-| 500MB     | ~3초   | ~10초       |
-| 1GB       | ~5초   | ~20초       |
+**자르기 정확도**: 원본 1프레임 이내. stream-copy 결과를 정확 결과로 취급하지 않는다.
 
-**자르기 정확도**: MP4Box는 키프레임 단위라 ±1~2초, FFmpeg.wasm은 ±0.02초. 빠름과 정밀함을 맞바꾼 것이다.
-
-**로컬 파일 크기 한계** (브라우저 메모리 때문):
+**로컬 파일 크기 한계**:
 
 | 크기      | 상태           |
 | --------- | -------------- |
 | < 500MB   | ✅ 권장        |
 | 500MB~1GB | ⚠️ 경고        |
-| 1~2GB     | 🟠 메모리 확인 |
-| 2~5GB     | 🔴 위험        |
+| 1~2GB     | 🟠 긴 처리시간 |
+| 2~5GB     | 🔴 디스크 주의 |
 | > 5GB     | ⛔ 차단        |
 
-URL 영상은 브라우저 메모리에 안 담고 서버→디스크로 바로 가므로 이 한계와 무관하다.
+로컬 파일과 URL 영상 모두 대용량 데이터를 JS 메모리에 적재하지 않고 디스크로 스트리밍한다.
 
-**지원 형식 (입력 14종)**: MP4·WebM·OGG·MOV·M4V·AVI·WMV·MKV·FLV·TS·3GP·3G2·MPEG·MPG. 출력은 입력 형식을 그대로 유지한다(스트림 카피).
+**지원 형식 (입력 14종)**: MP4·WebM·OGG·MOV·M4V·AVI·WMV·MKV·FLV·TS·3GP·3G2·MPEG·MPG. 출력은 H.264/AAC MP4다.
 
 **브라우저**: Chrome/Edge 90+, Firefox 88+, Safari 14+.
 
