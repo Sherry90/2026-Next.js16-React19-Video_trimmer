@@ -70,7 +70,7 @@ export function getConstraintMessages() {
     SIZE_EXCEEDED: `파일 크기가 ${HARD_MAX_GB}GB를 초과합니다.`,
     UNSUPPORTED_FORMAT: `지원하지 않는 파일 형식입니다. 지원 형식: ${SUPPORTED_EXTENSIONS.join(", ")}`,
     SIZE_WARNING: `파일이 큽니다 (권장: ${RECOMMENDED_MAX_MB}MB 이하). 처리 시간이 오래 걸리거나 메모리 부족이 발생할 수 있습니다.`,
-    SIZE_CAUTION: `파일이 매우 큽니다 (${SOFT_MAX_GB}GB 이상). 브라우저 메모리 한계로 처리에 실패할 가능성이 높습니다.`,
+    SIZE_CAUTION: `파일이 매우 큽니다 (${SOFT_MAX_GB}GB 이상). 충분한 임시 디스크 공간과 긴 처리 시간이 필요합니다.`,
   } as const;
 }
 

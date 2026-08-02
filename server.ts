@@ -1,15 +1,20 @@
 import { createServer as createHttpServer } from "http";
 import { createServer as createHttpsServer } from "https";
 import type { IncomingMessage, ServerResponse } from "http";
-import { readFileSync, existsSync, createReadStream, statSync } from "fs";
-import { join } from "path";
+import { readFileSync, existsSync, createReadStream, createWriteStream, statSync } from "fs";
+import { basename, extname, join } from "path";
 import { tmpdir } from "os";
+import { randomUUID } from "crypto";
 import { parse } from "url";
 import type { ParsedUrlQuery } from "querystring";
 import { Readable } from "stream";
+import { pipeline } from "stream/promises";
 import type { ReadableStream as NodeWebReadableStream } from "stream/web";
 import next from "next";
 import type { Job, JobEvent, JobListener } from "./src/lib/downloadTypes";
+import { safeUnlink } from "./src/lib/downloadTypes";
+import { startLocalFileJob } from "./src/lib/downloadJob";
+import { FILE_SIZE } from "./src/constants/fileConstraints";
 
 // ── Next 우회 raw 핸들러들 (다운로드 파일/진행률 SSE/미디어 프록시) ──
 // 공통 이유: 장수명/대용량 스트림을 Next 핸들러에 태우면 Next/Turbopack이 그 Response를
@@ -18,6 +23,73 @@ import type { Job, JobEvent, JobListener } from "./src/lib/downloadTypes";
 //
 // 다운로드 완료 파일 경로는 다운로더 규약과 동일: join(tmpdir(), `download_${jobId}.mp4`) (ytdlp/streamlink 공통)
 const JOBID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/**
+ * POST /api/download/file
+ *
+ * 브라우저 File을 multipart/base64 변환 없이 loopback에서 임시 파일로 바로 흘린다.
+ * 응답 후 번들 네이티브 FFmpeg job을 시작하고 기존 SSE/download API를 그대로 재사용한다.
+ */
+async function tryReceiveLocalFile(
+  req: IncomingMessage,
+  res: ServerResponse,
+  pathname: string,
+  query: ParsedUrlQuery,
+): Promise<boolean> {
+  if (pathname !== "/api/download/file" || req.method !== "POST") return false;
+
+  const startTime = Number(typeof query.startTime === "string" ? query.startTime : NaN);
+  const endTime = Number(typeof query.endTime === "string" ? query.endTime : NaN);
+  const rawName = typeof query.filename === "string" ? query.filename : "video.mp4";
+  const filename = basename(rawName).slice(0, 240) || "video.mp4";
+  const declaredSize = Number(req.headers["content-length"] ?? NaN);
+
+  if (
+    !Number.isFinite(startTime) ||
+    startTime < 0 ||
+    !Number.isFinite(endTime) ||
+    endTime <= startTime ||
+    !Number.isFinite(declaredSize) ||
+    declaredSize <= 0 ||
+    declaredSize > FILE_SIZE.HARD_MAX
+  ) {
+    res.writeHead(400, { "content-type": "application/json" });
+    res.end(JSON.stringify({ error: "파일 크기 또는 트리밍 시간 범위가 올바르지 않습니다" }));
+    return true;
+  }
+
+  const jobId = randomUUID();
+  const safeExt = extname(filename)
+    .toLowerCase()
+    .replace(/[^a-z0-9.]/g, "")
+    .slice(0, 12);
+  const inputPath = join(tmpdir(), `upload_${jobId}${safeExt || ".bin"}`);
+  let received = 0;
+
+  try {
+    req.on("data", (chunk: Buffer) => {
+      received += chunk.length;
+      if (received > FILE_SIZE.HARD_MAX) req.destroy(new Error("upload too large"));
+    });
+    await pipeline(req, createWriteStream(inputPath, { flags: "wx" }));
+    if (received !== declaredSize) throw new Error("업로드 크기가 Content-Length와 다릅니다");
+
+    void startLocalFileJob(jobId, { inputPath, startTime, endTime, filename }).catch((error) => {
+      console.error(`[local-trim] Job ${jobId} failed:`, error);
+    });
+    res.writeHead(202, {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+    });
+    res.end(JSON.stringify({ jobId }));
+  } catch (error) {
+    safeUnlink(inputPath);
+    console.error("[local-trim] upload failed:", error);
+    if (!res.headersSent) res.writeHead(500, { "content-type": "application/json" });
+    res.end(JSON.stringify({ error: "로컬 파일을 임시 저장하지 못했습니다" }));
+  }
+  return true;
+}
 
 /**
  * GET /api/download/<jobId> 를 가로채 파일을 직접 스트리밍한다.
@@ -307,6 +379,12 @@ app
 
         // raw 우회 핸들러 우선 시도(상단 공통 이유 참고). 처리하면 Next로 넘기지 않는다.
         if (parsedUrl.pathname && tryServeProgressSse(req, res, parsedUrl.pathname)) {
+          return;
+        }
+        if (
+          parsedUrl.pathname &&
+          (await tryReceiveLocalFile(req, res, parsedUrl.pathname, parsedUrl.query))
+        ) {
           return;
         }
         if (parsedUrl.pathname && tryServeDownload(req, res, parsedUrl.pathname)) {

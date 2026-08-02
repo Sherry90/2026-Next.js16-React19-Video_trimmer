@@ -47,7 +47,9 @@ function complete(jobId: string) {
   const { inPoint, outPoint } = getTimelineSnapshot();
   // URL 소스의 name은 항상 "${title}.mp4" → generateTrimFilename이 .mp4 보존.
   // 파일 소스 트림과 동일한 MMmSSs 포맷으로 통일.
-  const filename = generateTrimFilename(videoFile?.name || "video.mp4", inPoint, outPoint);
+  const sourceName = videoFile?.name || "video.mp4";
+  const mp4Name = `${sourceName.replace(/\.[^.]+$/, "") || "video"}.mp4`;
+  const filename = generateTrimFilename(mp4Name, inPoint, outPoint);
 
   // blob 적재 없음: 완료 파일은 서버에서 디스크로 직행 스트리밍된다.
   // outputUrl = API URL (jobId 내장 → reset 시 정리에 사용).
@@ -68,7 +70,12 @@ function connect(jobId: string) {
 
       if (data.type === "progress") {
         const s = actions();
-        s.setProgress("trim", calculateOverallProgress(data.phase, data.progress));
+        const isLocalFile = getMediaSnapshot().videoFile?.source === "file";
+        const progress =
+          isLocalFile && data.phase === "processing"
+            ? Math.round(20 + data.progress * 0.8)
+            : calculateOverallProgress(data.phase, data.progress);
+        s.setProgress("trim", progress);
         s.setDownloadPhase(
           data.phase,
           getPhaseMessage(data.phase, data.processedSeconds, data.totalSeconds),
@@ -99,14 +106,48 @@ function connect(jobId: string) {
  * 호출 전 phase는 'processing'으로 전환되어 있어야 한다(진행 UI 표시).
  * 검증 실패 시 false 반환(에러 전환은 호출자가 처리하도록 메시지 throw).
  */
+function uploadLocalFile(
+  file: File,
+  startTime: number,
+  endTime: number,
+  onProgress: (progress: number) => void,
+): Promise<DownloadJobResponse> {
+  return new Promise((resolve, reject) => {
+    const query = new URLSearchParams({
+      startTime: String(startTime),
+      endTime: String(endTime),
+      filename: file.name,
+    });
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `/api/download/file?${query.toString()}`);
+    xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 20));
+    };
+    xhr.onerror = () => reject(new Error("로컬 처리 서버로 파일을 전달하지 못했습니다"));
+    xhr.onabort = () => reject(new Error("파일 전달이 취소되었습니다"));
+    xhr.onload = () => {
+      let body: Partial<DownloadJobResponse> & { error?: string } = {};
+      try {
+        body = JSON.parse(xhr.responseText);
+      } catch {}
+      if (xhr.status < 200 || xhr.status >= 300 || !body.jobId) {
+        reject(new Error(body.error || `파일 전달에 실패했습니다 (${xhr.status})`));
+        return;
+      }
+      onProgress(20);
+      resolve({ jobId: body.jobId });
+    };
+    xhr.send(file);
+  });
+}
+
 export async function startStreamDownload(): Promise<void> {
   // 데이터 read는 snapshot 게터, action 호출은 actions()로 분리(비반응형 접근면 일원화).
   const { videoFile, selectedQuality } = getMediaSnapshot();
   const timeline = getTimelineSnapshot();
 
-  if (!videoFile || videoFile.source !== "url" || !videoFile.originalUrl) {
-    throw new Error("URL 소스가 아닙니다");
-  }
+  if (!videoFile) throw new Error("비디오 파일이 없습니다");
 
   const { inPoint, outPoint } = timeline;
   if (outPoint <= inPoint) {
@@ -127,26 +168,34 @@ export async function startStreamDownload(): Promise<void> {
   s.setProgress("trim", 0);
   s.setDownloadPhase(null);
 
-  const startResponse = await fetch("/api/download/start", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      url: videoFile.originalUrl,
-      startTime: inPoint,
-      endTime: outPoint,
-      filename: videoFile.name || "video.mp4",
-      tbr: videoFile.tbr ?? null,
-      // 플레이어에서 고른 화질로 다운로드도 일치 (미선택 시 기본 1080p)
-      maxHeight: selectedQuality ?? 1080,
-    } satisfies DownloadRequest),
-  });
-
-  if (!startResponse.ok) {
-    const error = await startResponse.json().catch(() => ({}));
-    throw new Error(error.error || "다운로드 시작에 실패했습니다");
+  let job: DownloadJobResponse;
+  if (videoFile.source === "file") {
+    if (!videoFile.file) throw new Error("로컬 파일을 찾을 수 없습니다");
+    job = await uploadLocalFile(videoFile.file, inPoint, outPoint, (progress) =>
+      s.setProgress("trim", progress),
+    );
+  } else {
+    if (!videoFile.originalUrl) throw new Error("원본 URL이 없습니다");
+    const startResponse = await fetch("/api/download/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: videoFile.originalUrl,
+        startTime: inPoint,
+        endTime: outPoint,
+        filename: videoFile.name || "video.mp4",
+        tbr: videoFile.tbr ?? null,
+        maxHeight: selectedQuality ?? 1080,
+      } satisfies DownloadRequest),
+    });
+    if (!startResponse.ok) {
+      const error = await startResponse.json().catch(() => ({}));
+      throw new Error(error.error || "다운로드 시작에 실패했습니다");
+    }
+    job = (await startResponse.json()) as DownloadJobResponse;
   }
 
-  const { jobId }: DownloadJobResponse = await startResponse.json();
+  const { jobId } = job;
   s.setActiveDownloadJobId(jobId);
   connect(jobId);
 }
