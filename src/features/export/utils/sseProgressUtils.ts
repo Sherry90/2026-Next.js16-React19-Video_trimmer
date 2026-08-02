@@ -48,7 +48,7 @@ export function getPhaseMessage(
     case "downloading":
       return `다운로드 중 (${Math.round(processedSeconds ?? 0)}/${Math.round(totalSeconds ?? 0)}s)`;
     case "processing":
-      return "FFmpeg로 타임스탬프 리셋 중...";
+      return "FFmpeg로 프레임 정확하게 내보내는 중...";
     case "completed":
       return "완료!";
     default:

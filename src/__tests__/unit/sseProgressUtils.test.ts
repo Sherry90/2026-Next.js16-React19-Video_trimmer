@@ -43,7 +43,7 @@ describe("sseProgressUtils", () => {
     });
 
     it("should show processing message", () => {
-      expect(getPhaseMessage("processing")).toBe("FFmpeg로 타임스탬프 리셋 중...");
+      expect(getPhaseMessage("processing")).toBe("FFmpeg로 프레임 정확하게 내보내는 중...");
     });
 
     it("should show completed message", () => {
