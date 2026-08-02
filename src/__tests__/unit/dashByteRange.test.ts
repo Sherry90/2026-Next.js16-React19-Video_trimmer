@@ -94,6 +94,12 @@ describe("DASH byte-range", () => {
     expect(r.clipStartTime).toBe(0);
   });
 
+  it("does not fetch the next subsegment when end is exactly on a boundary", () => {
+    const { init, index } = parseInitIndexRange(head);
+    const sidx = parseSidx(head, index[0], index[1]);
+    expect(computeClipByteRange(sidx, init, 1, 2).media).toEqual([200, 399]);
+  });
+
   it("rejects hierarchical sidx (reference_type=1)", () => {
     const bad = Buffer.from(head);
     // 첫 엔트리의 reference_type 비트를 1로 (entry 시작 = 32 + 8 + 24 = 64)
