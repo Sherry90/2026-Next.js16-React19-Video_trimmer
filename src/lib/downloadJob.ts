@@ -9,8 +9,18 @@
 import { detectPlatform, selectDownloadStrategy } from "./platformDetector";
 import { downloadWithStreamlink } from "./streamlinkDownloader";
 import { downloadWithYtdlp } from "./ytdlpDownloader";
-import { type Job, type JobListener, type JobEvent, safeUnlink } from "./downloadTypes";
+import {
+  type Job,
+  type JobListener,
+  type JobEvent,
+  safeUnlink,
+  DownloadProgressTracker,
+} from "./downloadTypes";
 import { DOWNLOAD } from "@/constants/appConfig";
+import { trimAccurately } from "./accurateTrimmer";
+import { tmpdir } from "os";
+import { join } from "path";
+import { reportServerError } from "./errorReport";
 
 // Global job storage (향후 Redis/DB로 교체 가능)
 // globalThis에 저장 → 커스텀 서버(server.ts, Next 우회 raw SSE)가 같은 레지스트리를 본다.
@@ -179,6 +189,68 @@ export async function startDownloadJob(
 
   // 완료/실패/abort 어느 경로로 끝나든 wall 타이머 해제 (타이머 누수 방지)
   return runner.finally(() => clearTimeout(wallTimer));
+}
+
+/**
+ * 브라우저가 loopback으로 업로드한 로컬 파일을 번들 네이티브 FFmpeg로 자른다.
+ * 입력과 출력은 모두 사용자 PC의 임시 디렉터리에만 존재한다.
+ */
+export async function startLocalFileJob(
+  jobId: string,
+  params: {
+    inputPath: string;
+    startTime: number;
+    endTime: number;
+    filename: string;
+  },
+): Promise<void> {
+  cleanupStaleJobs();
+  const { inputPath, startTime, endTime, filename } = params;
+  const duration = endTime - startTime;
+  const outputPath = join(tmpdir(), `download_${jobId}.mp4`);
+  const abortController = new AbortController();
+
+  jobs.set(jobId, {
+    outputPath: null,
+    status: "running",
+    listeners: [],
+    createdAt: Date.now(),
+    abort: () => abortController.abort(),
+  });
+
+  const tracker = new DownloadProgressTracker(jobId, emitEvent, duration, "processing");
+  const wallTimer = setTimeout(() => abortController.abort(), DOWNLOAD.MAX_JOB_MS);
+
+  try {
+    tracker.emitProgress("processing", true);
+    await trimAccurately({
+      inputPath,
+      outputPath,
+      startTime,
+      duration,
+      abortSignal: abortController.signal,
+      onProgress: (progress) => tracker.updateProgress(progress, "processing"),
+    });
+
+    updateJobStatus(jobId, { outputPath, status: "completed" });
+    tracker.setCurrentPhase("completed");
+    tracker.emitProgress("completed", true);
+    tracker.emitComplete(filename);
+  } catch (error) {
+    safeUnlink(outputPath);
+    const report = reportServerError("local file trim", error, { jobId });
+    updateJobStatus(jobId, {
+      outputPath: null,
+      status: "failed",
+      errorMessage: report.userMessage,
+      errorCode: report.code,
+      errorDetails: report.cause,
+    });
+    tracker.emitError(report.userMessage, report.code, report.cause);
+  } finally {
+    clearTimeout(wallTimer);
+    safeUnlink(inputPath);
+  }
 }
 
 /**

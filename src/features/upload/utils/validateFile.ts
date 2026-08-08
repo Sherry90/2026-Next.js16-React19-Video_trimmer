@@ -3,7 +3,6 @@ import {
   FILE_CONSTRAINT_MESSAGES,
   FILE_SIZE,
 } from "@/constants/fileConstraints";
-import { checkMemoryAvailability, getMemoryStatusMessage } from "@/shared/lib/memoryMonitor";
 
 export interface FileValidationResult {
   isValid: boolean;
@@ -23,17 +22,9 @@ export function validateFileSize(file: File): FileValidationResult {
     };
   }
 
-  // 소프트 제한 초과 - 메모리 체크 후 경고
+  // 소프트 제한 초과 - loopback 스트리밍 + 네이티브 FFmpeg라 브라우저 전체 적재가 없다.
+  // 하드 제한까지 허용하되 디스크/처리시간 경고만 표시한다.
   if (file.size > FILE_SIZE.SOFT_MAX) {
-    const memoryWarning = getMemoryStatusMessage(file.size);
-    if (!checkMemoryAvailability(file.size)) {
-      return {
-        isValid: false,
-        error:
-          memoryWarning ||
-          "파일이 너무 커서 브라우저 메모리가 부족할 수 있습니다. 더 작은 파일을 사용해주세요.",
-      };
-    }
     return {
       isValid: true,
       warning: FILE_CONSTRAINT_MESSAGES.SIZE_CAUTION,

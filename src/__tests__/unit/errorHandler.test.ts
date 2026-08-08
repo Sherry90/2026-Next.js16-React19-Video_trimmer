@@ -44,6 +44,14 @@ describe("classifyError", () => {
     expect(classifyError("aria2 exited with code 1")).toBe("DOWNLOAD_ERROR");
   });
 
+  it("부분 다운로드 미지원은 전용 코드로 분류한다", () => {
+    expect(
+      classifyError(
+        "이 영상은 부분 다운로드를 지원하지 않아 전체 다운로드 없이 처리할 수 없습니다: 200 OK",
+      ),
+    ).toBe("PARTIAL_DOWNLOAD_UNAVAILABLE");
+  });
+
   it("403이 네트워크보다 우선 분류된다", () => {
     expect(classifyError("HTTP Error 403: Forbidden (connection)")).toBe("VIDEO_UNAVAILABLE");
   });
@@ -88,6 +96,7 @@ describe("createError", () => {
       "NETWORK_ERROR",
       "TIMEOUT",
       "DOWNLOAD_ERROR",
+      "PARTIAL_DOWNLOAD_UNAVAILABLE",
       "SERVER_ERROR",
     ] as const) {
       const def = getErrorDefinition(code);

@@ -19,6 +19,7 @@ export type ErrorCode =
   // 서버/네트워크/다운로드 계열
   | "NETWORK_ERROR"
   | "DOWNLOAD_ERROR"
+  | "PARTIAL_DOWNLOAD_UNAVAILABLE"
   | "VIDEO_UNAVAILABLE"
   | "BINARY_MISSING"
   | "TIMEOUT"

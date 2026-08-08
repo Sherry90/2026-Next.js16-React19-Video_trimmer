@@ -2,15 +2,14 @@
  * Streamlink 기반 다운로드 (치지직 플랫폼)
  *
  * 2단계 프로세스:
- * 1. streamlink --hls-start-offset + --hls-duration → 임시 파일
- * 2. ffmpeg 타임스탬프 리셋 (-avoid_negative_ts make_zero)
+ * 1. 요청점 이전 pre-roll을 Streamlink로 받고 실제 시작 PTS를 원본 기준으로 보정
+ * 2. raw HLS/TS를 처음부터 디코딩해 요청 프레임에서 자른 뒤 H.264/AAC로 재인코딩
  */
 
 import { spawn } from "child_process";
 import { existsSync, promises as fsPromises } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import { FFmpegProgressTracker } from "./progressParser";
 import { getFfmpegPath, getStreamlinkPath } from "./binPaths";
 import {
   safeUnlink,
@@ -23,6 +22,91 @@ import { reportServerError } from "./errorReport";
 import { runWithTimeout, watchStall } from "./processUtils";
 import { PROCESS, EXPORT, POLLING, DOWNLOAD } from "@/constants/appConfig";
 import { formatTime } from "@/shared/lib/timeFormatter";
+import { trimAccurately } from "./accurateTrimmer";
+
+const HLS_PREROLL_SECONDS = 12;
+
+/** 입력 타임스탬프를 보존한 채 첫 영상 프레임 PTS를 읽는다. */
+async function probeFirstVideoPts(filePath: string): Promise<number | null> {
+  const proc = spawn(
+    getFfmpegPath(),
+    [
+      "-hide_banner",
+      "-loglevel",
+      "info",
+      "-copyts",
+      "-i",
+      filePath,
+      "-map",
+      "0:v:0",
+      "-frames:v",
+      "1",
+      "-vf",
+      "showinfo",
+      "-an",
+      "-f",
+      "null",
+      "-",
+    ],
+    { stdio: ["ignore", "ignore", "pipe"] },
+  );
+  let stderr = "";
+  proc.stderr?.on("data", (chunk: Buffer) => {
+    stderr = (stderr + chunk.toString()).slice(-100_000);
+  });
+  const ok = await runWithTimeout(proc, PROCESS.FFMPEG_TIMEOUT_MS);
+  if (!ok) return null;
+  const match = stderr.match(/\bpts_time:([+-]?\d+(?:\.\d+)?)/);
+  if (!match) return null;
+  const value = Number(match[1]);
+  return Number.isFinite(value) ? value : null;
+}
+
+async function captureHls(
+  streamlinkBin: string,
+  args: string[],
+  outputPath: string,
+  abortSignal?: AbortSignal,
+): Promise<boolean> {
+  safeUnlink(outputPath);
+  const proc = spawn(streamlinkBin, [...args, "-o", outputPath], {
+    stdio: ["ignore", "ignore", "pipe"],
+  });
+  let lastActivity = Date.now();
+  let lastSize = 0;
+  proc.stderr?.on("data", () => {
+    lastActivity = Date.now();
+  });
+  const activityTimer = setInterval(async () => {
+    try {
+      const stat = await fsPromises.stat(outputPath);
+      if (stat.size > lastSize) {
+        lastSize = stat.size;
+        lastActivity = Date.now();
+      }
+    } catch {}
+  }, POLLING.PROGRESS_CHECK_INTERVAL_MS);
+  const stall = watchStall({
+    getLastActivity: () => lastActivity,
+    timeoutMs: DOWNLOAD.STALL_TIMEOUT_MS,
+    checkIntervalMs: DOWNLOAD.STALL_CHECK_INTERVAL_MS,
+    onStall: () => proc.kill("SIGKILL"),
+  });
+  abortSignal?.addEventListener(
+    "abort",
+    () => {
+      if (!proc.killed) proc.kill("SIGKILL");
+    },
+    { once: true },
+  );
+  try {
+    const ok = await runWithTimeout(proc, 0);
+    return ok && !stall.stalled() && existsSync(outputPath);
+  } finally {
+    clearInterval(activityTimer);
+    stall.stop();
+  }
+}
 
 /**
  * Streamlink 기반 다운로드 실행
@@ -44,6 +128,7 @@ export async function downloadWithStreamlink(
   const { url, startTime, endTime, filename, tbr, maxHeight } = params;
   const outputPath = join(tmpdir(), `download_${jobId}.mp4`);
   const tempFile = join(tmpdir(), `streamlink_temp_${jobId}.mp4`);
+  const baselineFile = join(tmpdir(), `streamlink_baseline_${jobId}.mp4`);
 
   const segmentDuration = endTime - startTime;
   const estimatedBitrate = tbr || EXPORT.DEFAULT_BITRATE_KBPS;
@@ -74,25 +159,27 @@ export async function downloadWithStreamlink(
     const qualitySpec = maxHeight && maxHeight > 0 ? `${maxHeight}p,best` : "best";
 
     // ===== PHASE 1: Streamlink 구간 다운로드 =====
-    const streamlinkArgs = [
+    // Streamlink 8.x는 start offset을 정수로 바꾼 뒤 그 이후 HLS 세그먼트를 고른다.
+    // 요청점보다 충분히 앞에서 받아 실제 첫 PTS를 기준으로 잔여 seek를 계산한다.
+    const requestedDownloadStart = Math.max(0, startTime - HLS_PREROLL_SECONDS);
+    const downloadStart = Math.floor(requestedDownloadStart);
+    const downloadDuration = segmentDuration + (startTime - downloadStart) + HLS_PREROLL_SECONDS;
+    const appImageArgs = streamlinkBin.endsWith(".AppImage") ? ["--appimage-extract-and-run"] : [];
+    const buildCaptureArgs = (offset: number, duration: number) => [
+      ...appImageArgs,
       "--loglevel",
       "debug",
       "--progress=force",
       "--hls-start-offset",
-      formatTime(startTime, false),
+      formatTime(offset),
       "--hls-duration",
-      formatTime(segmentDuration, false),
+      formatTime(duration),
       "--stream-segment-threads",
       String(DOWNLOAD.STREAMLINK_SEGMENT_THREADS),
       url,
       qualitySpec,
-      "-o",
-      tempFile,
     ];
-
-    if (streamlinkBin.endsWith(".AppImage")) {
-      streamlinkArgs.unshift("--appimage-extract-and-run");
-    }
+    const streamlinkArgs = [...buildCaptureArgs(downloadStart, downloadDuration), "-o", tempFile];
 
     const streamlinkProc = spawn(streamlinkBin, streamlinkArgs, {
       stdio: ["ignore", "pipe", "pipe"],
@@ -158,49 +245,44 @@ export async function downloadWithStreamlink(
       throw new Error("다운로드가 취소되었습니다");
     }
 
-    // ===== PHASE 2: FFmpeg 타임스탬프 리셋 =====
+    // Streamlink가 실제로 선택한 세그먼트의 원본 타임라인 위치를 계산한다.
+    // offset=0 캡처의 첫 PTS와 본 캡처 첫 PTS 차이는 다운로드 시작점이다.
+    let localStart = startTime;
+    if (downloadStart > 0) {
+      const baselineArgs = buildCaptureArgs(0, 1);
+      const baselineOk = await captureHls(streamlinkBin, baselineArgs, baselineFile, abortSignal);
+      const [baselinePts, clipPts] = baselineOk
+        ? await Promise.all([probeFirstVideoPts(baselineFile), probeFirstVideoPts(tempFile)])
+        : [null, null];
+      safeUnlink(baselineFile);
+
+      if (baselinePts !== null && clipPts !== null) {
+        localStart = startTime - (clipPts - baselinePts);
+      }
+
+      // PTS가 discontinuity 등으로 신뢰 불가능하면 부정확한 결과를 내지 않고 0부터 다시 받는다.
+      if (!Number.isFinite(localStart) || localStart < 0 || localStart > HLS_PREROLL_SECONDS * 3) {
+        console.warn("[Streamlink] HLS PTS mapping unavailable; falling back to start-of-VOD");
+        const fromZeroArgs = buildCaptureArgs(0, endTime + HLS_PREROLL_SECONDS);
+        const fullOk = await captureHls(streamlinkBin, fromZeroArgs, tempFile, abortSignal);
+        if (!fullOk) throw new Error("정확한 HLS 시작점을 확보하지 못했습니다");
+        localStart = startTime;
+      }
+    }
+
+    // ===== PHASE 2: 정확 seek + 선택 구간 재인코딩 =====
     tracker.resetForPhase("processing");
     tracker.emitProgress("processing", true);
-
-    const ffmpegProc = spawn(
-      getFfmpegPath(),
-      [
-        "-y",
-        "-i",
-        tempFile,
-        "-c",
-        "copy",
-        "-avoid_negative_ts",
-        "make_zero",
-        "-fflags",
-        "+genpts",
-        "-movflags",
-        "+faststart",
-        "-progress",
-        "pipe:2",
-        "-nostats",
-        outputPath,
-      ],
-      { stdio: ["ignore", "pipe", "pipe"] },
-    );
-    currentProc = ffmpegProc;
-
-    const ffmpegTracker = new FFmpegProgressTracker(segmentDuration);
-
-    ffmpegProc.stderr?.on("data", (chunk: Buffer) => {
-      const progress = ffmpegTracker.pushChunk(chunk);
-      tracker.updateProgress(progress, "processing");
+    await trimAccurately({
+      inputPath: tempFile,
+      outputPath,
+      startTime: localStart,
+      duration: segmentDuration,
+      seekMode: "output",
+      abortSignal,
+      onProgress: (progress) => tracker.updateProgress(progress, "processing"),
     });
-
-    const ffmpegSuccess = await runWithTimeout(ffmpegProc, PROCESS.FFMPEG_TIMEOUT_MS);
-    currentProc = null;
-
     safeUnlink(tempFile);
-
-    if (!ffmpegSuccess || !existsSync(outputPath)) {
-      safeUnlink(outputPath);
-      throw new Error("FFmpeg 처리에 실패했습니다");
-    }
 
     try {
       await ensureFileComplete(outputPath);
@@ -219,6 +301,7 @@ export async function downloadWithStreamlink(
     tracker.emitProgress("completed", true);
     tracker.emitComplete(filename || "video.mp4");
   } catch (error) {
+    safeUnlink(baselineFile);
     safeUnlink(tempFile);
     safeUnlink(outputPath);
 

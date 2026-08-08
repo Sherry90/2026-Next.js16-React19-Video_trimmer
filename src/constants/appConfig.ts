@@ -125,12 +125,6 @@ export const APP_CONFIG = {
     STREAMLINK_SEGMENT_THREADS: 6,
     /** yt-dlp 동시 다운로드 fragment 수 */
     YTDLP_CONCURRENT_FRAGMENTS: 8,
-    /** aria2c 최대 연결 수 */
-    ARIA2C_MAX_CONNECTIONS: 16,
-    /** aria2c 분할 수 */
-    ARIA2C_SPLIT_COUNT: 16,
-    /** aria2c 청크 크기 */
-    ARIA2C_CHUNK_SIZE: "1M",
     /** 유효 파일 최소 크기 (bytes) - MP4 헤더(4-8KB) + 실제 데이터 여유 */
     MIN_VALID_FILE_SIZE: 32 * 1024,
     /** 고아 잡 정리 유예 시간 (ms) - 재연결 허용 시간 */
@@ -154,14 +148,12 @@ export const APP_CONFIG = {
      * 절대 한계가 아니라 "죽지 않게 하는" 백스톱 — 서버가 죽느니 잡을 실패시킨다.
      */
     MAX_JOB_MS: 20 * 60 * 1000,
-    /** byte-range 단일 Range fetch 타임아웃 (ms) - 응답 없는 소켓에 매달리지 않게. */
-    RANGE_FETCH_TIMEOUT_MS: 60_000,
-    /**
-     * byte-range 허용 최대 media 바이트(video+audio 합). 이보다 크면(=긴 영상/큰 클립) byte-range는
-     * 전체를 메모리(arrayBuffer)에 적재해 비효율·OOM 위험 → fetch 전에 폴백(aria2c→디스크)로 전환.
-     * byte-range는 "긴 영상의 짧은 클립"에만 이득이므로 작은 범위로 제한.
-     */
-    MAX_BYTERANGE_BYTES: 64 * 1024 * 1024,
+    /** DASH media Range 요청 하나의 크기 (8 MiB). */
+    RANGE_CHUNK_BYTES: 8 * 1024 * 1024,
+    /** 표현(video/audio) 하나당 동시 Range 요청 수. */
+    RANGE_CONCURRENCY_PER_REP: 4,
+    /** 네트워크/짧은 응답에 대한 청크별 추가 재시도 횟수. */
+    RANGE_MAX_RETRIES: 3,
   },
 
   /**
