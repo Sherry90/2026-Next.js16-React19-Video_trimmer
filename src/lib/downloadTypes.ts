@@ -52,7 +52,11 @@ export function safeUnlink(path: string): void {
  *
  * FFmpeg 프로세스 종료 후 OS 커널 버퍼가 디스크에 완전히 쓰여질 때까지 대기
  */
-export async function ensureFileComplete(filePath: string, timeoutMs = 5000): Promise<void> {
+export async function ensureFileComplete(
+  filePath: string,
+  timeoutMs = 5000,
+  minimumSize = DOWNLOAD.MIN_VALID_FILE_SIZE,
+): Promise<void> {
   const startTime = Date.now();
 
   while (Date.now() - startTime < timeoutMs) {
@@ -63,7 +67,7 @@ export async function ensureFileComplete(filePath: string, timeoutMs = 5000): Pr
       try {
         // 2. 파일 크기 확인
         const stats = await fd.stat();
-        if (stats.size < DOWNLOAD.MIN_VALID_FILE_SIZE) {
+        if (stats.size < minimumSize) {
           await new Promise((resolve) => setTimeout(resolve, 50));
           continue;
         }

@@ -37,7 +37,7 @@ Video Trimmer
 │   └── 용도: Chzzk HLS 스트림 구간 다운로드
 └── aria2c (다운로드 가속)
     ├── 번들: .bin/aria2/aria2c (플랫폼 prebuilt auto-download)
-    └── 용도: YouTube 전체 다운로드 폴백 시 다중연결 병렬 수신(스로틀 우회)
+    └── 현재 URL 내보내기 경로에서는 사용하지 않음(전체 다운로드 폴백 제거)
 ```
 
 ### 우선순위 전략
@@ -77,16 +77,15 @@ const nextConfig = {
 
 **Video Trimmer에서의 용도:**
 
-1. **타임스탬프 리셋** (메인 용도)
-   - Streamlink로 다운로드한 HLS 세그먼트의 타임스탬프를 0부터 시작하도록 리셋
-   - `-avoid_negative_ts make_zero` 플래그 사용
-2. **yt-dlp 내부 의존성 + 로컬 구간 컷**
+1. **프레임 정확 트리밍** (메인 용도)
+   - 빠른 입력 seek 후 요청 시점 전 프레임을 디코딩·폐기하고 선택 구간을 재인코딩
+   - 영상/오디오 PTS를 각각 0부터 시작하도록 필터링
+2. **yt-dlp 내부 의존성 + URL 구간 컷**
    - yt-dlp가 muxing (비디오+오디오 병합)에 사용 (`--ffmpeg-location`으로 번들 ffmpeg 지정)
-   - YouTube 다운로드 후, 받은 파일을 로컬 ffmpeg로 잘라내고 타임스탬프를 리셋(스트림 카피)
-3. **브라우저 내 처리** (FFmpeg.wasm, 비-ISO 형식용)
-   - `trimVideoDispatcher.ts`가 형식에 따라 선택: ISO(mp4/mov/m4v)는 MP4Box, 그 외는 FFmpeg.wasm
-   - **자체 호스팅**: `@ffmpeg/core` npm 패키지에서 `public/ffmpeg/`로 복사 (CDN 미사용)
-   - 비-ISO 파일 내보내기 시점에만 런타임 로드
+   - YouTube 다운로드 후 공통 정확 트리머로 선택 구간만 처리
+3. **로컬 파일 처리**
+   - 브라우저가 raw body로 loopback 서버에 스트리밍하고 번들 네이티브 FFmpeg가 처리
+   - MP4Box/FFmpeg.wasm 구현은 레거시 모듈로 남아 있지만 기본 export 경로에서는 사용하지 않음
 
 ### 번들 버전
 
@@ -104,15 +103,16 @@ const nextConfig = {
 
 ### 주요 사용 사례
 
-#### 타임스탬프 리셋 (Chzzk Phase 2)
+#### 정확 트리밍 (공통 Phase 2)
 
 **파일:** `src/lib/streamlinkDownloader.ts`
 
 ```bash
-ffmpeg -y -i input.mp4 \
-  -c copy \                      # 재인코딩 없음 (빠름)
-  -avoid_negative_ts make_zero \ # 타임스탬프 0부터 시작
-  -fflags +genpts \               # PTS 재생성
+ffmpeg -y -ss <start> -i input.mp4 -t <duration> \
+  -vf setpts=PTS-STARTPTS \
+  -af asetpts=PTS-STARTPTS \
+  -c:v libx264 -preset veryfast -crf 18 \
+  -c:a aac -b:a 192k \
   -movflags +faststart \          # 스트리밍 최적화
   -progress pipe:2 \              # 진행률 출력
   -nostats \                      # 통계 비활성화
@@ -121,29 +121,28 @@ ffmpeg -y -i input.mp4 \
 
 **왜 필요한가?**
 
-- Streamlink가 다운로드한 HLS 세그먼트는 원본 타임스탬프 유지
-- 예: 10초~30초 구간 다운로드 → 타임스탬프가 10초부터 시작
-- 비디오 플레이어가 0초부터 시작하도록 리셋 필요
+- stream-copy는 임의 P/B 프레임에서 정확히 시작할 수 없음
+- 재인코딩하면 FFmpeg의 accurate seek가 이전 키프레임부터 디코딩하고 요청점 전 프레임을 버림
+- raw HLS/TS는 짧은 pre-roll만 처음부터 디코딩한 뒤 output seek
 
-#### YouTube 전체 다운로드 후 로컬 컷
+#### YouTube Range 임시 입력 후 로컬 컷
 
-**파일:** `src/lib/ytdlpDownloader.ts` (`buildFfmpegCutArgs`)
+**파일:** `src/lib/byteRangeDownloader.ts`
 
-`--download-sections`(yt-dlp 내부 구간 추출)는 쓰지 않는다. 대신 선택 포맷을 받은 뒤,
-로컬에서 ffmpeg로 구간을 잘라내며 타임스탬프를 리셋한다(재인코딩 없는 스트림 카피).
+`--download-sections`나 전체 다운로드는 쓰지 않는다. DASH `sidx`로 계산한 video/audio 구간만
+OS 임시 파일에 Range 스트리밍한 뒤 선택 구간을 재인코딩한다.
 
 ```bash
-# 구간 컷: -ss를 -i 앞에 둬서 키프레임까지 빠르게 seek (±1-2초)
-ffmpeg -y -ss <start> -i full.mp4 -t <duration> \
-  -c copy \                      # 재인코딩 없음
-  -avoid_negative_ts make_zero \ # 타임스탬프 0부터 시작
-  -fflags +genpts \              # PTS 재생성
+# 입력 seek는 빠르게, 정확도는 디코딩·재인코딩으로 확보
+ffmpeg -y -ss <video-offset> -i partial.v.mp4 -ss <audio-offset> -i partial.a.mp4 -t <duration> \
+  -vf setpts=PTS-STARTPTS -af asetpts=PTS-STARTPTS \
+  -c:v libx264 -preset veryfast -crf 18 \
+  -c:a aac -b:a 192k \
   -movflags +faststart \         # 스트리밍 최적화
   clip.mp4
 ```
 
-> byte-range 경로(`byteRangeDownloader.ts`)가 성공하면 이 전체-다운로드 단계 없이,
-> 받은 구간 바이트를 바로 ffmpeg로 mux+cut 한다. 자세한 다운로드 전략은
+> Range/DASH 미지원 소스는 전체 다운로드로 우회하지 않는다. 자세한 다운로드 전략은
 > [01_OVERVIEW.md](./01_OVERVIEW.md#url-영상-통째로-안-받고-필요한-부분만) 참조.
 
 #### FFmpeg 진행률 파싱
@@ -192,8 +191,8 @@ YouTube, Twitch 등 다양한 플랫폼에서 비디오 정보와 스트리밍 U
 1. **메타데이터 추출** (`/api/video/resolve`)
    - 제목, 길이, 썸네일, 스트림 URL
 2. **YouTube/Generic 구간 다운로드** (`/api/download/start`)
-   - `--download-sections`는 쓰지 않는다(yt-dlp의 ffmpeg 직렬 구간 추출이 스로틀에 묶임).
-     byte-range(`sidx` 파싱으로 구간 바이트만) 우선, 폴백으로 aria2c 다중연결 전체 다운로드 + 로컬 ffmpeg 컷.
+   - `--download-sections`는 쓰지 않는다. DASH `sidx`로 선택 구간만 Range 스트리밍하며,
+     Range/DASH 미지원 시 전체 다운로드 없이 실패한다.
 3. **포맷 선택**
    - DASH 다중화질(avc1+mp4a) 또는 최고 화질 muxed 포맷 선택
 

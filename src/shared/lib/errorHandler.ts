@@ -47,6 +47,11 @@ const ERROR_DEFINITIONS: Record<
     solution:
       "잠시 후 다시 시도하거나, 다른 화질/구간으로 시도해주세요. 상세 정보를 확인하면 원인을 알 수 있습니다.",
   },
+  PARTIAL_DOWNLOAD_UNAVAILABLE: {
+    message: "Partial download unavailable",
+    userMessage: "이 영상은 부분 다운로드를 지원하지 않아 전체 다운로드 없이 처리할 수 없습니다",
+    solution: "부분 다운로드를 지원하는 다른 영상이나 소스를 사용해주세요.",
+  },
   VIDEO_UNAVAILABLE: {
     message: "Video unavailable",
     userMessage: "영상을 가져올 수 없습니다 (비공개·삭제·지역 제한 등).",
@@ -105,6 +110,14 @@ export function classifyError(raw: string): ErrorCode {
   const m = (raw || "").toLowerCase();
   if (!m) return "UNKNOWN";
 
+  if (
+    /partialdownloadunavailable|partial_download_unavailable|부분 다운로드를 지원하지 않아 전체 다운로드 없이/.test(
+      m,
+    )
+  ) {
+    return "PARTIAL_DOWNLOAD_UNAVAILABLE";
+  }
+
   // 영상 접근 불가 (비공개/삭제/지역/로그인/403)
   if (
     /\b40[13]\b|forbidden|private video|this video is private|video unavailable|not available|sign in to confirm|members-only|geo|age.?restricted|removed by the uploader/.test(
@@ -128,6 +141,9 @@ export function classifyError(raw: string): ErrorCode {
   // 메모리
   if (/out of memory|oom|malloc|memory_insufficient|allocation failed/.test(m)) {
     return "MEMORY_INSUFFICIENT";
+  }
+  if (/enospc|no space left on device|디스크.*공간/.test(m)) {
+    return "DOWNLOAD_ERROR";
   }
   // 코덱
   if (/unknown codec|decoder not found|codec_unsupported|unsupported codec/.test(m)) {

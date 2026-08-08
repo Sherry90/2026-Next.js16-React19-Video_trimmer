@@ -171,7 +171,7 @@ export function computeClipByteRange(
     }
     if (byteStart >= 0) {
       byteEnd = segEndB - 1;
-      if (t >= endSec) break; // end를 지난 subseg까지 포함하고 종료
+      if (segEndT >= endSec) break;
     }
     t = segEndT;
     b = segEndB;

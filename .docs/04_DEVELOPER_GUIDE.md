@@ -134,30 +134,27 @@ const useStore = create<StoreState>((set, get) => ({
 
 ### Level 3: 비디오 처리 기술 (3-4주)
 
-**목표**: MP4Box, FFmpeg, HLS 트리밍 이해
+**목표**: 키프레임 한계, FFmpeg accurate seek, HLS 보정 이해
 
 **학습 순서**:
 
-1. **MP4Box.js 트리밍**
-   - `src/features/export/utils/trimVideoMP4Box.ts` 분석
-   - MP4 파일 구조 (moov, mdat, samples) 이해
-   - 키프레임 기반 트리밍의 원리와 한계
+1. **stream-copy 한계 재현**
+   - MP4Box와 `ffmpeg -c copy`가 임의 프레임에서 시작할 수 없는 이유 확인
+   - MP4 파일 구조와 키프레임 의존성 이해
 
-2. **FFmpeg.wasm 트리밍**
-   - `src/features/export/utils/trimVideoFFmpeg.ts` 분석
-   - SharedArrayBuffer와 멀티스레드 이해
-   - 재인코딩 vs 스트림 복사 차이
+2. **네이티브 정확 트리밍**
+   - `src/lib/accurateTrimmer.ts` 분석
+   - input seek + decode/discard + 재인코딩 흐름 이해
+   - setpts/asetpts와 결과 검증 이해
 
-3. **Dispatcher 패턴**
-   - `src/features/export/utils/trimVideoDispatcher.ts` 분석
-   - 조건별 자동 선택 로직 (MP4Box → FFmpeg)
-   - Fallback 전략
+3. **로컬 loopback job**
+   - raw 파일 스트리밍, SSE 진행률, 임시 파일 cleanup 분석
 
 4. **URL 영상 다운로드 (SSE 기반)**
    - `src/lib/downloadJob.ts` - 오케스트레이터 (플랫폼 감지 → 전략 선택)
    - `src/lib/streamlinkDownloader.ts` - Chzzk 2-phase 프로세스
-   - `src/lib/ytdlpDownloader.ts` - YouTube: byte-range 우선, 폴백 전체 다운로드 + 로컬 컷
-   - `src/lib/byteRangeDownloader.ts` - DASH `sidx` 파싱 → 구간 바이트만 받아 로컬 컷
+   - `src/lib/ytdlpDownloader.ts` - YouTube: 부분 다운로드 전용 오케스트레이션
+   - `src/lib/byteRangeDownloader.ts` - DASH `sidx` 파싱 → 8MB Range 청크를 디스크에 스트리밍 → 정확 컷
    - SSE로 실시간 진행률 전송 흐름
 
 **실습 과제**:
@@ -187,7 +184,7 @@ const ffmpegArgs = [
 - [ ] MP4Box와 FFmpeg의 장단점 5가지씩 설명
 - [ ] 키프레임이 무엇이고 왜 1-2초마다 있는지 설명
 - [ ] `trimVideoDispatcher`의 조건문 설명
-- [ ] Chzzk(Streamlink 2-phase)와 YouTube(byte-range / 전체 다운로드 + 로컬 컷)의 차이 설명
+- [ ] Chzzk(Streamlink 2-phase)와 YouTube(DASH Range 전용)의 차이 설명
 
 ---
 
@@ -458,56 +455,31 @@ const newArrayBuffer = file.getArrayBuffer();
 
 ---
 
-### 2. FFmpeg.wasm 프레임 단위 트리밍
+### 2. 네이티브 FFmpeg 프레임 단위 트리밍
 
-**SharedArrayBuffer 필요성**:
-
-```typescript
-// FFmpeg.wasm은 멀티스레드 사용
-const ffmpeg = new FFmpeg();
-await ffmpeg.load({
-  coreURL: "/ffmpeg-core.js",
-  wasmURL: "/ffmpeg-core.wasm",
-  // SharedArrayBuffer로 메인 스레드와 Worker 간 메모리 공유
-});
-```
-
-**COEP 헤더 필요**:
+**트리밍 명령어** (`accurateTrimmer.ts`):
 
 ```typescript
-// next.config.ts
-headers: [
-  {
-    source: '/:path*',
-    headers: [
-      { key: 'Cross-Origin-Embedder-Policy', value: 'credentialless' },
-      { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
-    ],
-  },
-],
-```
-
-**트리밍 명령어** (실제 `trimVideoFFmpeg.ts`):
-
-```typescript
-await ffmpeg.exec([
-  "-i",
-  "input.mp4",
+await runNativeFfmpeg([
   "-ss",
-  startTime.toString(), // output seeking (-i 뒤) → 정확도 ↑
+  startTime.toString(),
+  "-i",
+  inputPath,
   "-t",
   duration.toString(),
-  "-c",
-  "copy", // 스트림 카피 (재인코딩 없음)
-  "-progress",
-  "pipe:1", // 진행률 파싱용
-  "output.mp4",
+  "-vf",
+  "setpts=PTS-STARTPTS",
+  "-af",
+  "asetpts=PTS-STARTPTS",
+  "-c:v",
+  "libx264",
+  "-crf",
+  "18",
+  outputPath,
 ]);
 ```
 
-> 재인코딩하지 않는다(`-c copy`). `-ss`를 `-i` **뒤**에 두는 output seeking으로 정확도를 ±0.5초 → ±0.02초로 올렸다(속도 영향 ~+0.002초). MP4Box 경로가 못 다루는 비-ISO 형식을 담당한다.
-
-**정확도**: ±0.02초
+> `-c copy`는 output seek를 사용해도 다음 독립 디코딩 가능 프레임까지 영상이 늦어질 수 있다. 정확 경로는 반드시 디코딩·재인코딩하며 허용 오차는 원본 1프레임이다.
 
 ---
 
@@ -554,12 +526,11 @@ Phase 2: FFmpeg 타임스탬프 리셋
 `--download-sections`는 yt-dlp가 구간을 ffmpeg로 직렬 추출해 연결당 스로틀에 묶이므로 쓰지 않는다. 대신:
 
 ```
-byte-range 우선:  sidx 파싱 → 구간 바이트만 Range 수신 → 로컬 ffmpeg 컷  (byteRangeDownloader.ts)
-폴백:             aria2c 다중연결로 전체 다운로드 → 로컬 ffmpeg 컷·타임스탬프 리셋·faststart
+sidx 파싱 → 구간 바이트를 8MB Range 청크로 디스크 수신 → 로컬 ffmpeg 컷·검증
 ```
 
-- byte-range가 성공하면 클립이 수 초에 끝난다(전체를 받지 않음)
-- 폴백 경로는 전체 다운로드(`downloading`) 후 로컬 컷(`processing`) 2단계
+- 다운로드 크기나 선택 비율과 무관하게 같은 Range 경로를 사용한다.
+- Range/DASH 미지원이면 전체 다운로드 없이 `PARTIAL_DOWNLOAD_UNAVAILABLE`로 실패한다.
 
 ---
 

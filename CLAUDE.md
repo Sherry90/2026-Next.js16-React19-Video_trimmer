@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A client-side web application for trimming videos in the browser without server uploads. Built with Next.js 16, uses MP4Box.js for fast stream-copy trimming, and supports both local files and URL sources (YouTube, Chzzk).
+A local-first video trimmer. The browser streams local files over loopback to the bundled Node/FFmpeg process; URL sources use Streamlink or yt-dlp before the same frame-accurate native trim stage.
 
 ## Commands
 
@@ -50,7 +50,7 @@ npm run test:e2e:ui   # Playwright UI
 - **State**: Zustand 단일 스토어 (`src/stores/useStore.ts`). 읽기는 `src/stores/hooks/`(reactive) / `snapshot.ts`(이벤트용 비반응) 분리 — 컴포넌트가 `useStore` 직접 호출 금지.
 - **Phase**: idle → uploading → editing → processing → completed | error (순차 진행)
 - **Layers**: `app → widgets → features → shared/stores/lib` (FSD 계열 단방향)
-- **Processing**: 로컬은 MP4Box.js(ISO) / FFmpeg.wasm(그 외), URL은 서버 다운로드(chzzk→streamlink, 그 외→yt-dlp)
+- **Processing**: 로컬은 loopback raw upload → 네이티브 FFmpeg, URL은 chzzk→streamlink / 그 외→yt-dlp → 공통 네이티브 FFmpeg
 - **Custom server**: `server.ts`가 다운로드/SSE/프록시를 Next 우회(raw bypass)
 
 > 아키텍처·설계 상세(레이어, selector 분리, URL 파이프라인, player-timeline sync, 커스텀 서버)는 **[.docs/01_OVERVIEW.md](.docs/01_OVERVIEW.md)** 참조.
@@ -92,9 +92,9 @@ MP4, WebM, OGG, MOV, M4V, AVI, WMV, MKV, FLV, TS, 3GP, 3G2, MPEG, MPG (14 format
 - **Soft max**: 2GB (memory check)
 - **Hard max**: 5GB (absolute limit)
 
-### Keyframe Accuracy
+### Trim Accuracy
 
-MP4Box trimming finds the nearest keyframe, resulting in ±1-2 second accuracy (not frame-accurate). This is a trade-off for fast, no-encoding trimming.
+정확 트리밍 경로에서 `-c copy`를 사용하지 않는다. 입력 seek 후 선택 구간을 디코딩·재인코딩하며 허용 오차는 원본 1프레임이다. HLS raw segment 입력은 짧은 pre-roll을 처음부터 디코딩한 뒤 output seek한다.
 
 ## Git Commit Guidelines
 
