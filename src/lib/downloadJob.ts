@@ -2,13 +2,15 @@
  * 다운로드 작업 오케스트레이터
  *
  * 플랫폼 감지 후 적절한 다운로드 전략 선택:
- * - Chzzk → Streamlink
+ * - Chzzk 클립(`/clips/`) → 네이티브 chzzk API (progressive MP4)
+ * - Chzzk 라이브/VOD → Streamlink
  * - YouTube/기타 → yt-dlp
  */
 
 import { detectPlatform, selectDownloadStrategy } from "./platformDetector";
 import { downloadWithStreamlink } from "./streamlinkDownloader";
 import { downloadWithYtdlp } from "./ytdlpDownloader";
+import { downloadChzzkClip } from "./chzzkClipDownloader";
 import {
   type Job,
   type JobListener,
@@ -170,22 +172,19 @@ export async function startDownloadJob(
   }, DOWNLOAD.MAX_JOB_MS);
 
   // 전략별 다운로더에 위임
-  const runner =
-    strategy === "streamlink"
-      ? downloadWithStreamlink(
-          jobId,
-          { url, startTime, endTime, filename, tbr, maxHeight },
-          emitEvent,
-          updateJobStatus,
-          abortController.signal,
-        )
-      : downloadWithYtdlp(
-          jobId,
-          { url, startTime, endTime, filename, tbr, maxHeight },
-          emitEvent,
-          updateJobStatus,
-          abortController.signal,
-        );
+  const downloader =
+    strategy === "chzzkClip"
+      ? downloadChzzkClip
+      : strategy === "streamlink"
+        ? downloadWithStreamlink
+        : downloadWithYtdlp;
+  const runner = downloader(
+    jobId,
+    { url, startTime, endTime, filename, tbr, maxHeight },
+    emitEvent,
+    updateJobStatus,
+    abortController.signal,
+  );
 
   // 완료/실패/abort 어느 경로로 끝나든 wall 타이머 해제 (타이머 누수 방지)
   return runner.finally(() => clearTimeout(wallTimer));

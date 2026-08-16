@@ -45,7 +45,7 @@ URL 입력 직후 제목·썸네일을 빠르게 표시하기 위한 경량 프�
 { "title": "Video Title", "thumbnail": "https://..." }
 ```
 
-- YouTube → oembed, Chzzk(VOD) → chzzk API. 그 외/live/실패 → `{ "title": null, "thumbnail": null }`(graceful, 클라이언트는 무시).
+- YouTube → oembed, Chzzk(VOD) → chzzk API. 그 외/live/클립/실패 → `{ "title": null, "thumbnail": null }`(graceful, 클라이언트는 무시. 클립 제목·썸네일은 resolve 응답으로 들어온다).
 
 **에러:** `400`(url 누락/잘못된 URL). 그 외 실패는 빈 결과로 폴백한다.
 
@@ -98,12 +98,13 @@ URL에서 메타데이터와 재생 소스를 추출한다. YouTube/generic은 �
 | `url`         | muxed/HLS일 때만. 추출된 스트림 URL                                |
 | `tbr`         | muxed/HLS일 때만. 총 비트레이트(kbps), 없으면 `null`               |
 
-**에러:** `400`(잘못된 URL) · `422`(스트림 URL 추출 실패) · `500`(yt-dlp 실패) · `504`(타임아웃)
+**에러:** `400`(잘못된 URL) · `403`(성인 인증 필요 클립) · `404`(클립 없음) · `422`(스트림 URL 추출 실패) · `500`(yt-dlp 실패) · `502`(클립 정보 실패) · `504`(타임아웃)
 
 **구현:** `src/app/api/video/resolve/route.ts`
 
 **내부 로직:**
 
+0. Chzzk 클립(`/clips/{clipUID}`)이면 yt-dlp를 건너뛴다(클립 추출기 없음). `src/lib/chzzkClip.ts`가 chzzk API(play-info → playback MPD → clip detail)로 progressive muxed MP4 주소를 얻어 `streamType: 'mp4'` 응답으로 반환한다. 에러는 이 분기에서 한국어 메시지로 직접 처리(아래 yt-dlp 에러 파서를 타지 않는다).
 1. `yt-dlp -J --no-playlist --ffmpeg-location <ffmpeg> <url>` 로 메타데이터 JSON 추출
 2. Chzzk가 아니면 `tryBuildDash`로 avc1 video-only + mp4a audio를 묶은 정적 MPD 생성 → `manifestStore`에 보관하고 `streamType: 'dash'` 반환
 3. DASH 실패 시 `formatSelector.ts`로 최적 muxed/HLS 선택(**HLS muxed 우선** → HTTPS muxed → `--get-url -f b` 폴백)
@@ -177,6 +178,7 @@ duration×PEAKS_PER_SEC 버킷 peak 계산(MAX_PEAKS 상한) → JSON
 ```
 
 - 원본 URL에서 독립적으로 재해석하므로 resolve 스트림 URL 만료/CORS에 영향받지 않는다.
+- **Chzzk 클립은 미지원**(yt-dlp에 클립 추출기 없음) — 502로 끝나고 클라이언트는 파형 없이 진행한다(`WaveformBackground`가 graceful 처리). 클립은 편집이 아니라 구간 다운로드가 목적이라 의도적으로 다루지 않는다. 스펙트로그램도 동일.
 - 클라이언트는 URL 입력 시 resolve와 **병렬로** prefetch하고(`waveformCache.ts`), 편집 진입 시 캐시를 소비한다.
 - `-P temp:<tmpdir>`로 yt-dlp 임시 fragment를 OS 임시 디렉터리에 격리한다(stdout 출력 시 작업 디렉터리 오염 방지).
 
@@ -307,10 +309,10 @@ data: {"type":"error","message":"에러 메시지","code":"...","technicalDetail
 > **`complete` 이벤트는 `jobId`와 `filename`을 함께 싣는다**(라이브 스트림 경로, `emitComplete` → 원본 이벤트 그대로 전달). 다만 이미 완료된 작업에 재연결하면 bare `{ type: 'complete' }`만 온다. 다운로드 응답의 `Content-Disposition`에는 파일명이 들어있지 않으므로(아래 참고), 클라이언트는 이 이벤트의 `filename`을 파일명 힌트로 쓴다.
 > `progress`의 `processedSeconds`/`totalSeconds`, `error`의 `code`/`technicalDetails`는 optional 필드다.
 
-| Phase         | Chzzk                     | YouTube/Generic           |
-| ------------- | ------------------------- | ------------------------- |
-| `downloading` | ✅ (Streamlink)           | ✅ (yt-dlp / aria2c)      |
-| `processing`  | ✅ (정확 seek + 재인코딩) | ✅ (정확 seek + 재인코딩) |
+| Phase         | Chzzk 클립                | Chzzk 라이브/VOD          | YouTube/Generic           |
+| ------------- | ------------------------- | ------------------------- | ------------------------- |
+| `downloading` | ✅ (chzzk API + MP4 직통) | ✅ (Streamlink)           | ✅ (yt-dlp / Range)       |
+| `processing`  | ✅ (정확 seek + 재인코딩) | ✅ (정확 seek + 재인코딩) | ✅ (정확 seek + 재인코딩) |
 
 **클라이언트:**
 
@@ -337,7 +339,15 @@ es.onmessage = (e) => {
 
 **Platform Strategy** (`src/lib/platformDetector.ts` → `downloadJob.ts`):
 
-**Chzzk** (`streamlinkDownloader.ts`) — 2-phase:
+**Chzzk 클립** (`chzzkClipDownloader.ts`) — yt-dlp/streamlink를 쓰지 않는다:
+
+1. `chzzkClip.ts`가 chzzk API에서 화질별 progressive muxed MP4 주소를 얻는다(`pickClipSource`로 `maxHeight` 이하 최고 화질 — 세로 클립 대비 **짧은 변** 기준).
+2. 원본을 통째로 임시 파일에 스트리밍한다(클립 최대 ~90초). 정체(stall) 감시만 두고 wall 타임아웃은 없다.
+3. `trimAccurately(seekMode: "input")`로 구간을 잘라낸다. 클립 타임라인은 0부터라 PTS 베이스라인 보정이 필요 없다.
+
+- SSE: `downloading` → `processing`.
+
+**Chzzk 라이브/VOD** (`streamlinkDownloader.ts`) — 2-phase:
 
 ```bash
 # Phase 1: Streamlink 구간 다운로드

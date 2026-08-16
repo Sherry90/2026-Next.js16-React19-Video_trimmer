@@ -5,6 +5,8 @@ import { getYtdlpPath, getFfmpegPath } from "@/lib/binPaths";
 import { parseYtdlpError, validateUrlParseable } from "@/lib/apiUtils";
 import { selectBestFormat, selectDashFormats } from "@/lib/formatSelector";
 import { detectPlatform } from "@/lib/platformDetector";
+import { getChzzkClipUid } from "@/shared/lib/platformUrl";
+import { ChzzkClipError, fetchChzzkClipInfo, pickClipSource } from "@/lib/chzzkClip";
 import { parseInitIndexRange, buildMpd, DASH_HEAD_BYTES } from "@/lib/dashManifest";
 import { setManifest, MANIFEST_TTL_MS } from "@/lib/manifestStore";
 import { toProcessError } from "@/types/process";
@@ -118,6 +120,36 @@ export async function POST(request: NextRequest) {
       resolveCache.delete(url); // lazy 만료
     }
 
+    // Step 0: Chzzk 클립 — yt-dlp/streamlink 모두 클립을 처리하지 못한다.
+    // chzzk API가 주는 progressive muxed MP4를 그대로 muxed 응답으로 내보낸다.
+    // (에러는 여기서 직접 처리 — 아래 catch는 yt-dlp 문구를 붙인다)
+    const clipUid = getChzzkClipUid(url);
+    if (clipUid) {
+      try {
+        const info = await fetchChzzkClipInfo(clipUid);
+        const source = pickClipSource(info.sources);
+        const body = {
+          title: info.title,
+          duration: info.duration,
+          thumbnail: info.thumbnail,
+          url: source.url,
+          ext: "mp4",
+          streamType: "mp4" as const,
+          tbr: source.bandwidth > 0 ? Math.round(source.bandwidth / 1000) : null,
+        };
+        resolveCache.set(url, { body, expires: Date.now() + RESOLVE_CACHE_TTL_MS });
+        return NextResponse.json(body);
+      } catch (error) {
+        const isClipError = error instanceof ChzzkClipError;
+        const message = isClipError ? error.message : "클립 정보를 가져올 수 없습니다";
+        console.error(
+          "[resolve] chzzk clip Error:",
+          error instanceof Error ? error.message : String(error),
+        );
+        return NextResponse.json({ error: message }, { status: isClipError ? error.status : 502 });
+      }
+    }
+
     // Step 1: Get metadata with -J
     const ytdlp = getYtdlpPath();
     const ffmpeg = getFfmpegPath();
@@ -134,9 +166,9 @@ export async function POST(request: NextRequest) {
 
     // Step 2a: YouTube/generic → DASH MPD(다중 화질). web 클라이언트 muxed는 360p뿐이라
     // video-only(avc1)+audio(mp4a)를 묶은 정적 MPD를 만들어 VHS가 고화질 재생하게 한다.
-    // 실패하면 아래 muxed 경로로 폴백. Chzzk는 HLS라 스킵.
+    // 실패하면 아래 muxed 경로로 폴백. Chzzk는 HLS라 스킵(클립은 Step 0에서 이미 반환됨).
     const platform = detectPlatform(url);
-    if (platform !== "chzzk") {
+    if (platform !== "chzzk" && platform !== "chzzk-clip") {
       const dash = await tryBuildDash(info, request.signal);
       if (dash) {
         // MPD는 same-origin 경로로 서빙(blob: 불가 — mpd-parser BaseURL 해석 깨짐).

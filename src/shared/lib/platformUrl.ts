@@ -63,3 +63,23 @@ export function getChzzkVideoNo(url: string): string | null {
     return null;
   }
 }
+
+/**
+ * Chzzk URL → clipUID 추출.
+ *
+ * 클립(`chzzk.naver.com/clips/{clipUID}`)은 VOD와 별개의 API 계열을 쓴다
+ * (`/service/v1/clips/{uid}/detail`, `/service/v1/play-info/clip/{uid}`).
+ * clipUID는 영숫자 문자열(숫자 아님)이라 videoNo 정규식과 겹치지 않는다.
+ *
+ * VOD(`/video/`) · live(`/live/`) · 채널 URL은 null.
+ */
+export function getChzzkClipUid(url: string): string | null {
+  try {
+    const u = new URL(url);
+    if (!u.hostname.toLowerCase().includes("chzzk.naver.com")) return null;
+    const m = u.pathname.match(/\/clips\/([^/?#]+)/);
+    return m ? m[1] : null;
+  } catch {
+    return null;
+  }
+}
