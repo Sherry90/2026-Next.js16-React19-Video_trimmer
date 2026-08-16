@@ -15,6 +15,17 @@ describe("platformDetector", () => {
       });
     });
 
+    it("detects Chzzk clip URLs separately", () => {
+      const urls = [
+        "https://chzzk.naver.com/clips/kE8T8ooalH",
+        "https://CHZZK.NAVER.COM/clips/A5x8znskOi?foo=bar",
+      ];
+
+      urls.forEach((url) => {
+        expect(detectPlatform(url)).toBe("chzzk-clip");
+      });
+    });
+
     it("detects YouTube URLs", () => {
       const urls = [
         "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
@@ -54,6 +65,12 @@ describe("platformDetector", () => {
     it("selects streamlink for Chzzk", () => {
       expect(selectDownloadStrategy("chzzk", "hls")).toBe("streamlink");
       expect(selectDownloadStrategy("chzzk", "mp4")).toBe("streamlink");
+    });
+
+    it("selects the native chzzk clip path for clips", () => {
+      // yt-dlp에는 클립 추출기가 없고 streamlink 8.4.0 클립 경로는 언팩 버그로 실패한다
+      expect(selectDownloadStrategy("chzzk-clip", "hls")).toBe("chzzkClip");
+      expect(selectDownloadStrategy("chzzk-clip", "mp4")).toBe("chzzkClip");
     });
 
     it("selects yt-dlp for YouTube", () => {
