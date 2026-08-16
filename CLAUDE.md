@@ -50,7 +50,7 @@ npm run test:e2e:ui   # Playwright UI
 - **State**: Zustand 단일 스토어 (`src/stores/useStore.ts`). 읽기는 `src/stores/hooks/`(reactive) / `snapshot.ts`(이벤트용 비반응) 분리 — 컴포넌트가 `useStore` 직접 호출 금지.
 - **Phase**: idle → uploading → editing → processing → completed | error (순차 진행)
 - **Layers**: `app → widgets → features → shared/stores/lib` (FSD 계열 단방향)
-- **Processing**: 로컬은 loopback raw upload → 네이티브 FFmpeg, URL은 chzzk→streamlink / 그 외→yt-dlp → 공통 네이티브 FFmpeg
+- **Processing**: 로컬은 loopback raw upload → 네이티브 FFmpeg, URL은 chzzk 클립(`/clips/`)→네이티브 chzzk API(progressive MP4) / chzzk 라이브·VOD→streamlink / 그 외→yt-dlp → 공통 네이티브 FFmpeg
 - **Custom server**: `server.ts`가 다운로드/SSE/프록시를 Next 우회(raw bypass)
 
 > 아키텍처·설계 상세(레이어, selector 분리, URL 파이프라인, player-timeline sync, 커스텀 서버)는 **[.docs/01_OVERVIEW.md](.docs/01_OVERVIEW.md)** 참조.
