@@ -186,7 +186,8 @@
 
 **어느 도구로 받을지 먼저 고른다** (`src/lib/platformDetector.ts`). 주소를 보고 판단한다:
 
-- 치지직(chzzk) → **streamlink**
+- 치지직 클립(`chzzk.naver.com/clips/…`) → **치지직 API 직통**(외부 도구 안 씀)
+- 치지직 라이브·다시보기 → **streamlink**
 - 그 외(유튜브·일반) → **yt-dlp**
 
 이렇게 상황 따라 도구를 바꾸는 방식을 전략 패턴(Strategy)이라 한다.
@@ -202,7 +203,9 @@ DASH 머리 128KB만 메모리에서 읽어 조각 위치표(sidx)를 해석
 
 서버가 Range/DASH를 지원하지 않으면 전체 파일을 대신 받지 않고 명확한 오류로 끝난다. 전체 타임라인을 선택한 경우에도 같은 Range 경로를 사용한다.
 
-**치지직 쪽은** `src/lib/streamlinkDownloader.ts`가 처리하며, 2단계로 나뉜다: 먼저 구간을 받고, 그다음 ffmpeg로 시간 표시를 0부터 다시 맞춘다(타임스탬프 리셋, `src/app/api/video/trim/route.ts`).
+**치지직 라이브·다시보기는** `src/lib/streamlinkDownloader.ts`가 처리하며, 2단계로 나뉜다: 먼저 구간을 받고, 그다음 ffmpeg로 시간 표시를 0부터 다시 맞춘다(타임스탬프 리셋, `src/app/api/video/trim/route.ts`).
+
+**치지직 클립은** 도구를 아예 쓰지 않는다(`src/lib/chzzkClip.ts` + `src/lib/chzzkClipDownloader.ts`). yt-dlp에는 클립을 읽는 기능이 없고, 번들된 streamlink 8.4.0은 클립을 열다가 자체 버그로 죽는다. 대신 치지직 공개 API 세 개(재생 정보 → 재생 안내서 → 클립 상세)를 직접 불러 **화질별 MP4 한 파일 주소**를 얻는다. 클립은 길어야 90초라 원본을 통째로 받은 뒤 공통 트리머(`accurateTrimmer.ts`)로 구간을 자른다 — DASH 조각 계산이 필요 없다. 미리보기도 이 MP4 주소를 프록시로 그대로 재생한다. 단 파형·스펙트럼은 클립에서 제공하지 않는다(그 두 기능은 yt-dlp를 쓰는데 클립을 못 읽는다). 클립은 편집 도구를 갖추기보다 구간 다운로드를 목적으로 한다.
 
 **파형·스펙트럼**(`api/video/waveform`, `api/video/spectrogram`): 오디오만 뽑아(영상 안 받고) 소리 그래프를 그린다. URL을 읽는 순간 미리 받아 두고 브라우저에 캐시한다.
 
