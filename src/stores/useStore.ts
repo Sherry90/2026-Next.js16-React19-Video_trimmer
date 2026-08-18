@@ -6,16 +6,18 @@ import type {
   WaveformDisplayMode,
   ProcessingState,
   PlayerState,
+  AudioState,
   ErrorState,
   ExportState,
 } from "@/types/store";
 import { runAllCleanups } from "@/lib/cleanup";
-import { PLAYBACK } from "@/constants/appConfig";
+import { PLAYBACK, AUDIO } from "@/constants/appConfig";
 import {
   constrainInPoint,
   constrainOutPoint,
   constrainPlayhead,
   constrainZoom,
+  constrainOutputGainDb,
 } from "./constraintUtils";
 
 // ==================== 스토어 상태 ====================
@@ -38,6 +40,9 @@ export interface StoreState {
 
   // 플레이어 상태
   player: PlayerState;
+
+  // 출력 오디오 설정 (플레이어 볼륨/뮤트와는 별개 축)
+  audio: AudioState;
 
   // 에러 상태
   error: ErrorState;
@@ -82,6 +87,9 @@ interface StoreActions {
   setVolume: (volume: number) => void;
   setIsMuted: (muted: boolean) => void;
   setIsScrubbing: (scrubbing: boolean) => void;
+
+  // 출력 오디오 관련
+  setOutputGainDb: (db: number) => void;
 
   // 에러 관련
   setError: (message: string, code?: string, technicalDetails?: string) => void;
@@ -129,6 +137,9 @@ const initialState: StoreState = {
     volume: PLAYBACK.DEFAULT_VOLUME,
     isMuted: false,
     isScrubbing: false,
+  },
+  audio: {
+    outputGainDb: AUDIO.DEFAULT_GAIN_DB,
   },
   error: {
     hasError: false,
@@ -277,6 +288,12 @@ export const useStore = create<StoreState & StoreActions>()((set, get) => ({
 
   setIsScrubbing: (scrubbing) =>
     set((state) => ({ player: { ...state.player, isScrubbing: scrubbing } })),
+
+  // 출력 오디오 관련 — player.volume()을 건드리지 않는 별개 축이다.
+  setOutputGainDb: (db) =>
+    set((state) => ({
+      audio: { ...state.audio, outputGainDb: constrainOutputGainDb(db) },
+    })),
 
   // 에러 관련
   setError: (message, code, technicalDetails) =>

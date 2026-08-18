@@ -55,6 +55,14 @@ export interface PlayerState {
   isScrubbing: boolean;
 }
 
+export interface AudioState {
+  /**
+   * 출력 오디오 게인 (dB). 0 = 원본 그대로.
+   * 사용자 볼륨/뮤트(`PlayerState.volume`)와는 별개 축이며 player.volume()을 건드리지 않는다.
+   */
+  outputGainDb: number;
+}
+
 export interface ErrorState {
   hasError: boolean;
   errorMessage: string | null;
