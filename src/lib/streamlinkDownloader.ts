@@ -120,12 +120,13 @@ export async function downloadWithStreamlink(
     filename?: string;
     tbr?: number;
     maxHeight?: number;
+    gainDb?: number | null;
   },
   emitEvent: EventEmitter,
   updateJobStatus: (jobId: string, job: Partial<Job>) => void,
   abortSignal?: AbortSignal,
 ): Promise<void> {
-  const { url, startTime, endTime, filename, tbr, maxHeight } = params;
+  const { url, startTime, endTime, filename, tbr, maxHeight, gainDb } = params;
   const outputPath = join(tmpdir(), `download_${jobId}.mp4`);
   const tempFile = join(tmpdir(), `streamlink_temp_${jobId}.mp4`);
   const baselineFile = join(tmpdir(), `streamlink_baseline_${jobId}.mp4`);
@@ -279,6 +280,7 @@ export async function downloadWithStreamlink(
       startTime: localStart,
       duration: segmentDuration,
       seekMode: "output",
+      gainDb,
       abortSignal,
       onProgress: (progress) => tracker.updateProgress(progress, "processing"),
     });
