@@ -110,6 +110,22 @@ export const APP_CONFIG = {
   },
 
   /**
+   * 출력 오디오 관련 설정
+   */
+  AUDIO: {
+    /** 출력 게인 하한 (dB) */
+    MIN_GAIN_DB: -20,
+    /** 출력 게인 상한 (dB) */
+    MAX_GAIN_DB: 20,
+    /** 출력 게인 기본값 (dB) — 0이면 volume 필터를 아예 넣지 않는다. */
+    DEFAULT_GAIN_DB: 0,
+    /** 출력 게인 조절 단위 (dB) */
+    GAIN_STEP_DB: 0.5,
+    /** 이 값 이하의 절대 게인은 0dB로 스냅 (슬라이더에서 0을 정확히 집기 어려움 보정) */
+    GAIN_SNAP_EPSILON_DB: 0.25,
+  },
+
+  /**
    * 폴링 간격 관련 설정
    */
   POLLING: {
@@ -241,6 +257,7 @@ export const {
   TIME,
   UI,
   PLAYBACK,
+  AUDIO,
   POLLING,
   DOWNLOAD,
   WAVEFORM,

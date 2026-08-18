@@ -5,6 +5,7 @@ import { usePreviewPlaybackContext } from "../context/PreviewPlaybackContext";
 import { TimeInput } from "./TimeInput";
 import { LockButton } from "./LockButton";
 import { PreviewButtons } from "./PreviewButtons";
+import { OutputGainControl } from "./OutputGainControl";
 
 /**
  * Timeline controls (connected) — time inputs, lock buttons, preview buttons.
@@ -58,8 +59,13 @@ export function TimelineControls() {
         </div>
       </div>
 
-      {/* Preview button */}
-      <PreviewButtons onPreviewEdges={handlePreviewEdges} />
+      <div className="flex items-center gap-4">
+        {/* 출력 게인 — 결과물과 미리보기에 적용(PlayerControls의 볼륨/뮤트와 별개) */}
+        <OutputGainControl />
+
+        {/* Preview button */}
+        <PreviewButtons onPreviewEdges={handlePreviewEdges} />
+      </div>
     </div>
   );
 }

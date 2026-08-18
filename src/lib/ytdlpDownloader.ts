@@ -28,12 +28,13 @@ export async function downloadWithYtdlp(
     filename?: string;
     tbr?: number;
     maxHeight?: number;
+    gainDb?: number | null;
   },
   emitEvent: EventEmitter,
   updateJobStatus: (jobId: string, job: Partial<Job>) => void,
   abortSignal?: AbortSignal,
 ): Promise<void> {
-  const { url, startTime, endTime, filename, maxHeight } = params;
+  const { url, startTime, endTime, filename, maxHeight, gainDb } = params;
   const outputPath = join(tmpdir(), `download_${jobId}.mp4`);
   const segmentDuration = endTime - startTime;
   const tracker = new DownloadProgressTracker(jobId, emitEvent, segmentDuration, "downloading");
@@ -44,7 +45,7 @@ export async function downloadWithYtdlp(
 
     tracker.emitProgress("downloading", true);
     await downloadClipByteRange(
-      { jobId, url, startTime, endTime, outputPath, maxHeight },
+      { jobId, url, startTime, endTime, outputPath, maxHeight, gainDb },
       abortSignal,
       (progress) => tracker.updateProgress(progress, "downloading"),
       (progress) => {

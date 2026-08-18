@@ -9,6 +9,7 @@ import type Player from "video.js/dist/types/player";
 import { useVideoUrl, useVideoFile, usePlayerActions } from "@/stores/hooks";
 import { PLAYBACK } from "@/constants/appConfig";
 import { bindPlayerStoreSync } from "../utils/playerStoreSync";
+import { usePreviewGain } from "../hooks/usePreviewGain";
 import { VideoPlayerProvider } from "@/shared/video-player/VideoPlayerContext";
 import { VideoScreen } from "./VideoScreen";
 import { PlayerControls } from "./PlayerControls";
@@ -26,6 +27,7 @@ export function VideoPlayerView({ children }: VideoPlayerViewProps) {
   // 생성된 player를 state로도 노출 → context.player가 실제 인스턴스를 받는다.
   // (ref 변경은 재렌더를 안 일으켜 context 스냅샷이 null로 고정되던 문제 해결.)
   const [player, setPlayer] = useState<Player | null>(null);
+  usePreviewGain(player);
 
   const videoUrl = useVideoUrl();
   const videoFile = useVideoFile();

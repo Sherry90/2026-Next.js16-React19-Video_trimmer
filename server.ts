@@ -14,6 +14,7 @@ import next from "next";
 import type { Job, JobEvent, JobListener } from "./src/lib/downloadTypes";
 import { safeUnlink } from "./src/lib/downloadTypes";
 import { startLocalFileJob } from "./src/lib/downloadJob";
+import { clampGainDb } from "./src/lib/audioFilter";
 import { FILE_SIZE } from "./src/constants/fileConstraints";
 
 // ── Next 우회 raw 핸들러들 (다운로드 파일/진행률 SSE/미디어 프록시) ──
@@ -42,6 +43,8 @@ async function tryReceiveLocalFile(
   const endTime = Number(typeof query.endTime === "string" ? query.endTime : NaN);
   const rawName = typeof query.filename === "string" ? query.filename : "video.mp4";
   const filename = basename(rawName).slice(0, 240) || "video.mp4";
+  // 출력 게인은 ffmpeg 인자로 들어가므로 항상 숫자로 환원 + 범위 clamp (쿼리 값 신뢰 금지)
+  const gainDb = clampGainDb(Number(typeof query.gainDb === "string" ? query.gainDb : NaN));
   const declaredSize = Number(req.headers["content-length"] ?? NaN);
 
   if (
@@ -74,9 +77,11 @@ async function tryReceiveLocalFile(
     await pipeline(req, createWriteStream(inputPath, { flags: "wx" }));
     if (received !== declaredSize) throw new Error("업로드 크기가 Content-Length와 다릅니다");
 
-    void startLocalFileJob(jobId, { inputPath, startTime, endTime, filename }).catch((error) => {
-      console.error(`[local-trim] Job ${jobId} failed:`, error);
-    });
+    void startLocalFileJob(jobId, { inputPath, startTime, endTime, filename, gainDb }).catch(
+      (error) => {
+        console.error(`[local-trim] Job ${jobId} failed:`, error);
+      },
+    );
     res.writeHead(202, {
       "content-type": "application/json",
       "cache-control": "no-store",

@@ -21,6 +21,9 @@ export const getTimelineSnapshot = () => useStore.getState().timeline;
 /** 플레이어 상태 스냅샷. */
 export const getPlayerSnapshot = () => useStore.getState().player;
 
+/** 출력 오디오 설정 스냅샷 (내보내기 요청 조립용). */
+export const getAudioSnapshot = () => useStore.getState().audio;
+
 /** 처리 상태 스냅샷. */
 export const getProcessingSnapshot = () => useStore.getState().processing;
 
