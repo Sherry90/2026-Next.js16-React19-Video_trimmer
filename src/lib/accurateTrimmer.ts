@@ -14,6 +14,7 @@ import { getFfmpegPath } from "./binPaths";
 import { safeUnlink, ensureFileComplete } from "./downloadTypes";
 import { runWithTimeout } from "./processUtils";
 import { FFmpegProgressTracker } from "./progressParser";
+import { buildAudioFilter } from "./audioFilter";
 import { PROCESS } from "@/constants/appConfig";
 
 export interface AccurateTrimOptions {
@@ -24,12 +25,14 @@ export interface AccurateTrimOptions {
   duration: number;
   /** Raw concatenated HLS/TS has no reliable seek index; decode its short pre-roll from the start. */
   seekMode?: "input" | "output";
+  /** Output audio gain in dB applied to the trimmed result. 0/omitted leaves audio untouched. */
+  gainDb?: number | null;
   abortSignal?: AbortSignal;
   onProgress?: (progress: number) => void;
 }
 
 export function buildAccurateFfmpegArgs(options: AccurateTrimOptions): string[] {
-  const { inputPath, outputPath, startTime, duration, seekMode = "input" } = options;
+  const { inputPath, outputPath, startTime, duration, seekMode = "input", gainDb } = options;
   const seek = ["-ss", String(Math.max(0, startTime))];
   return [
     "-y",
@@ -45,8 +48,9 @@ export function buildAccurateFfmpegArgs(options: AccurateTrimOptions): string[] 
     "0:a:0?",
     "-vf",
     "setpts=PTS-STARTPTS",
+    // 게인은 asetpts와 한 필터체인으로 합성한다(-af 중복 시 뒤엣것이 앞엣것을 덮음).
     "-af",
-    "asetpts=PTS-STARTPTS",
+    buildAudioFilter(gainDb),
     "-c:v",
     "libx264",
     "-preset",

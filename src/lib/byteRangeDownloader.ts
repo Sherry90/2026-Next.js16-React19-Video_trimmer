@@ -13,6 +13,7 @@ import type { FileHandle } from "fs/promises";
 import { promisify } from "util";
 import { getFfmpegPath, getYtdlpPath } from "./binPaths";
 import { runWithTimeout } from "./processUtils";
+import { buildAudioFilter } from "./audioFilter";
 import { PROCESS, DOWNLOAD } from "@/constants/appConfig";
 import { selectDashFormats } from "./formatSelector";
 import {
@@ -495,53 +496,66 @@ async function runFfmpeg(args: string[], timeoutMs: number, signal?: AbortSignal
   }
 }
 
-async function encodeClip(
-  videoFile: string,
-  audioFile: string,
-  outputPath: string,
-  videoSeek: number,
-  audioSeek: number,
-  duration: number,
-  signal?: AbortSignal,
-): Promise<void> {
+export interface EncodeClipOptions {
+  videoFile: string;
+  audioFile: string;
+  outputPath: string;
+  videoSeek: number;
+  audioSeek: number;
+  duration: number;
+  /** Output audio gain in dB. 0/omitted leaves audio untouched. */
+  gainDb?: number | null;
+}
+
+/**
+ * encodeClip의 ffmpeg 인자 조립 — 순수 함수로 분리해 단위 테스트 접점을 만든다
+ * (runFfmpeg는 인자를 로깅하지 않아 여기가 유일한 검증 지점).
+ */
+export function buildEncodeClipArgs(options: EncodeClipOptions): string[] {
+  const { videoFile, audioFile, outputPath, videoSeek, audioSeek, duration, gainDb } = options;
+  return [
+    "-y",
+    "-ss",
+    Math.max(0, videoSeek).toFixed(3),
+    "-i",
+    videoFile,
+    "-ss",
+    Math.max(0, audioSeek).toFixed(3),
+    "-i",
+    audioFile,
+    "-map",
+    "0:v:0",
+    "-map",
+    "1:a:0",
+    "-t",
+    String(duration),
+    "-vf",
+    "setpts=PTS-STARTPTS",
+    // 게인은 asetpts와 한 필터체인으로 합성한다(-af 중복 시 뒤엣것이 앞엣것을 덮음).
+    "-af",
+    buildAudioFilter(gainDb),
+    "-c:v",
+    "libx264",
+    "-preset",
+    "veryfast",
+    "-crf",
+    "18",
+    "-pix_fmt",
+    "yuv420p",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "192k",
+    "-movflags",
+    "+faststart",
+    outputPath,
+  ];
+}
+
+async function encodeClip(options: EncodeClipOptions, signal?: AbortSignal): Promise<void> {
   await runFfmpeg(
-    [
-      "-y",
-      "-ss",
-      Math.max(0, videoSeek).toFixed(3),
-      "-i",
-      videoFile,
-      "-ss",
-      Math.max(0, audioSeek).toFixed(3),
-      "-i",
-      audioFile,
-      "-map",
-      "0:v:0",
-      "-map",
-      "1:a:0",
-      "-t",
-      String(duration),
-      "-vf",
-      "setpts=PTS-STARTPTS",
-      "-af",
-      "asetpts=PTS-STARTPTS",
-      "-c:v",
-      "libx264",
-      "-preset",
-      "veryfast",
-      "-crf",
-      "18",
-      "-pix_fmt",
-      "yuv420p",
-      "-c:a",
-      "aac",
-      "-b:a",
-      "192k",
-      "-movflags",
-      "+faststart",
-      outputPath,
-    ],
-    Math.max(PROCESS.FFMPEG_TIMEOUT_MS, Math.ceil(duration * 10_000)),
+    buildEncodeClipArgs(options),
+    Math.max(PROCESS.FFMPEG_TIMEOUT_MS, Math.ceil(options.duration * 10_000)),
     signal,
   );
 }
@@ -569,12 +583,13 @@ export async function downloadClipByteRange(
     endTime: number;
     outputPath: string;
     maxHeight?: number;
+    gainDb?: number | null;
   },
   signal: AbortSignal | undefined,
   reportDownloadProgress: (percent: number) => void,
   reportProcessingProgress?: (percent: number) => void,
 ): Promise<ByteRangeDownloadStats> {
-  const { jobId, url, startTime, endTime, outputPath, maxHeight } = params;
+  const { jobId, url, startTime, endTime, outputPath, maxHeight, gainDb } = params;
   const ytdlp = getYtdlpPath();
   if (!ytdlp) throw new Error("yt-dlp이 설치되어 있지 않습니다");
   if (signal?.aborted) throw new Error("다운로드가 취소되었습니다");
@@ -650,12 +665,15 @@ export async function downloadClipByteRange(
     reportProcessingProgress?.(0);
     const encodeStarted = performance.now();
     await encodeClip(
-      videoFile,
-      audioFile,
-      outputPath,
-      startTime - videoPlan.clipStartTime,
-      startTime - audioPlan.clipStartTime,
-      endTime - startTime,
+      {
+        videoFile,
+        audioFile,
+        outputPath,
+        videoSeek: startTime - videoPlan.clipStartTime,
+        audioSeek: startTime - audioPlan.clipStartTime,
+        duration: endTime - startTime,
+        gainDb,
+      },
       signal,
     );
     encodeMs = performance.now() - encodeStarted;
