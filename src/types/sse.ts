@@ -53,6 +53,8 @@ export interface DownloadRequest {
   tbr?: number | null;
   /** 최대 화질 height(px) — 플레이어에서 선택한 화질과 일치 */
   maxHeight?: number | null;
+  /** 출력 오디오 게인(dB). 0/미지정이면 원본 그대로 (플레이어 볼륨/뮤트와는 별개 축) */
+  gainDb?: number | null;
 }
 
 /**

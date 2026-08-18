@@ -88,12 +88,13 @@ export async function downloadChzzkClip(
     filename?: string;
     tbr?: number;
     maxHeight?: number;
+    gainDb?: number | null;
   },
   emitEvent: EventEmitter,
   updateJobStatus: (jobId: string, job: Partial<Job>) => void,
   abortSignal?: AbortSignal,
 ): Promise<void> {
-  const { url, startTime, endTime, filename, maxHeight } = params;
+  const { url, startTime, endTime, filename, maxHeight, gainDb } = params;
   const outputPath = join(tmpdir(), `download_${jobId}.mp4`);
   const sourcePath = join(tmpdir(), `clipsrc_${jobId}.mp4`);
   const segmentDuration = endTime - startTime;
@@ -125,6 +126,7 @@ export async function downloadChzzkClip(
       startTime,
       duration: segmentDuration,
       seekMode: "input", // 인덱스 있는 MP4 + 타임라인 0 기준 → 입력 seek로 충분
+      gainDb,
       abortSignal,
       onProgress: (percent) => tracker.updateProgress(percent, "processing"),
     });

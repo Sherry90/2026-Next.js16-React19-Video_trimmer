@@ -5,6 +5,7 @@ export { PauseIcon } from "./PauseIcon";
 export { FullscreenEnterIcon } from "./FullscreenEnterIcon";
 export { FullscreenExitIcon } from "./FullscreenExitIcon";
 export { VolumeIcon } from "./VolumeIcon";
+export { GainIcon } from "./GainIcon";
 export { SettingsIcon } from "./SettingsIcon";
 export { ChevronLeftIcon } from "./ChevronLeftIcon";
 export { ChevronRightIcon } from "./ChevronRightIcon";

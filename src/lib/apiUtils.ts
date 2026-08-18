@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { ProcessError } from "@/types/process";
 import { buildServerError, logServerError } from "./errorReport";
+import { clampGainDb } from "./audioFilter";
 
 /**
  * yt-dlp 명령 에러 파싱
@@ -177,6 +178,8 @@ export interface DownloadRequestParams {
   tbr?: number;
   /** 최대 화질 height(px). 플레이어에서 고른 화질과 일치시킨다. 미지정 시 다운로더 기본값. */
   maxHeight?: number;
+  /** 출력 오디오 게인(dB). 클라이언트 값을 신뢰하지 않고 서버에서 다시 clamp한 결과. */
+  gainDb: number;
 }
 
 /**
@@ -188,7 +191,10 @@ export function validateDownloadRequest(
   if (typeof body !== "object" || body === null) {
     return { valid: false, error: "유효하지 않은 요청입니다", status: 400 };
   }
-  const { url, startTime, endTime, filename, tbr, maxHeight } = body as Record<string, unknown>;
+  const { url, startTime, endTime, filename, tbr, maxHeight, gainDb } = body as Record<
+    string,
+    unknown
+  >;
 
   if (!url || typeof url !== "string" || !url.trim()) {
     return { valid: false, error: "유효하지 않은 URL입니다", status: 400 };
@@ -208,6 +214,8 @@ export function validateDownloadRequest(
       filename,
       tbr: typeof tbr === "number" ? tbr : undefined,
       maxHeight: typeof maxHeight === "number" && maxHeight > 0 ? maxHeight : undefined,
+      // ffmpeg 인자로 들어가므로 항상 숫자로 환원 + 범위 clamp (클라이언트 값 신뢰 금지)
+      gainDb: clampGainDb(typeof gainDb === "number" ? gainDb : Number(gainDb)),
     },
   };
 }

@@ -132,11 +132,12 @@ export async function startDownloadJob(
     tbr?: number;
     streamType?: "hls" | "mp4"; // 플랫폼 힌트 (선택적)
     maxHeight?: number; // 최대 화질 height(px) — 플레이어 선택 화질과 일치
+    gainDb?: number | null; // 출력 오디오 게인(dB). 0/미지정이면 원본 그대로
   },
 ) {
   cleanupStaleJobs();
 
-  const { url, startTime, endTime, filename, tbr, streamType, maxHeight } = params;
+  const { url, startTime, endTime, filename, tbr, streamType, maxHeight, gainDb } = params;
 
   const abortController = new AbortController();
 
@@ -180,7 +181,7 @@ export async function startDownloadJob(
         : downloadWithYtdlp;
   const runner = downloader(
     jobId,
-    { url, startTime, endTime, filename, tbr, maxHeight },
+    { url, startTime, endTime, filename, tbr, maxHeight, gainDb },
     emitEvent,
     updateJobStatus,
     abortController.signal,
@@ -201,10 +202,11 @@ export async function startLocalFileJob(
     startTime: number;
     endTime: number;
     filename: string;
+    gainDb?: number | null;
   },
 ): Promise<void> {
   cleanupStaleJobs();
-  const { inputPath, startTime, endTime, filename } = params;
+  const { inputPath, startTime, endTime, filename, gainDb } = params;
   const duration = endTime - startTime;
   const outputPath = join(tmpdir(), `download_${jobId}.mp4`);
   const abortController = new AbortController();
@@ -227,6 +229,7 @@ export async function startLocalFileJob(
       outputPath,
       startTime,
       duration,
+      gainDb,
       abortSignal: abortController.signal,
       onProgress: (progress) => tracker.updateProgress(progress, "processing"),
     });

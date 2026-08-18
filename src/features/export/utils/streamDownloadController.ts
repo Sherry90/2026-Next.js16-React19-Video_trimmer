@@ -3,6 +3,7 @@ import {
   getMediaSnapshot,
   getTimelineSnapshot,
   getProcessingSnapshot,
+  getAudioSnapshot,
 } from "@/stores/snapshot";
 import type { SSEEvent, DownloadRequest, DownloadJobResponse } from "@/types/sse";
 import { calculateOverallProgress, getPhaseMessage } from "./sseProgressUtils";
@@ -110,6 +111,7 @@ function uploadLocalFile(
   file: File,
   startTime: number,
   endTime: number,
+  gainDb: number,
   onProgress: (progress: number) => void,
 ): Promise<DownloadJobResponse> {
   return new Promise((resolve, reject) => {
@@ -117,6 +119,7 @@ function uploadLocalFile(
       startTime: String(startTime),
       endTime: String(endTime),
       filename: file.name,
+      gainDb: String(gainDb),
     });
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `/api/download/file?${query.toString()}`);
@@ -146,6 +149,8 @@ export async function startStreamDownload(): Promise<void> {
   // 데이터 read는 snapshot 게터, action 호출은 actions()로 분리(비반응형 접근면 일원화).
   const { videoFile, selectedQuality } = getMediaSnapshot();
   const timeline = getTimelineSnapshot();
+  // 출력 게인은 편집 화면에서 지정한 값. 서버에서도 다시 clamp된다.
+  const { outputGainDb } = getAudioSnapshot();
 
   if (!videoFile) throw new Error("비디오 파일이 없습니다");
 
@@ -171,7 +176,7 @@ export async function startStreamDownload(): Promise<void> {
   let job: DownloadJobResponse;
   if (videoFile.source === "file") {
     if (!videoFile.file) throw new Error("로컬 파일을 찾을 수 없습니다");
-    job = await uploadLocalFile(videoFile.file, inPoint, outPoint, (progress) =>
+    job = await uploadLocalFile(videoFile.file, inPoint, outPoint, outputGainDb, (progress) =>
       s.setProgress("trim", progress),
     );
   } else {
@@ -186,6 +191,7 @@ export async function startStreamDownload(): Promise<void> {
         filename: videoFile.name || "video.mp4",
         tbr: videoFile.tbr ?? null,
         maxHeight: selectedQuality ?? 1080,
+        gainDb: outputGainDb,
       } satisfies DownloadRequest),
     });
     if (!startResponse.ok) {
